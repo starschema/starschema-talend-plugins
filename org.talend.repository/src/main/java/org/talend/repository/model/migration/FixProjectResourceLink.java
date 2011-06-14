@@ -1,0 +1,83 @@
+// ============================================================================
+//
+// Copyright (C) 2006-2010 Talend Inc. - www.talend.com
+//
+// This source code is available under agreement available at
+// %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
+//
+// You should have received a copy of the agreement
+// along with this program; if not, write to Talend SA
+// 9 rue Pages 92150 Suresnes, France
+//
+// ============================================================================
+package org.talend.repository.model.migration;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.List;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.talend.commons.exception.ExceptionHandler;
+import org.talend.commons.exception.PersistenceException;
+import org.talend.core.model.migration.AbstractItemMigrationTask;
+import org.talend.core.model.properties.Item;
+import org.talend.repository.model.IProxyRepositoryFactory;
+import org.talend.repository.model.ProxyRepositoryFactory;
+import org.talend.repository.model.URIHelper;
+import org.talend.repository.utils.XmiResourceManager;
+
+/**
+ * DOC nrousseau class global comment. Detailled comment
+ */
+public class FixProjectResourceLink extends AbstractItemMigrationTask {
+
+    @Override
+    public ExecutionResult execute(Item item) {
+        if (item.getProperty().getAuthor() == null) {
+            // this case shouldn't happen normally, but just in case, each item should have one author
+            IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
+            item.getProperty().setAuthor(factory.getRepositoryContext().getUser());
+        }
+        if (item.getProperty().getAuthor().getLogin() != null) {
+            return ExecutionResult.NOTHING_TO_DO;
+        }
+        // if go here, it means property got wrong link to the project.
+        // (like for example item look for: ../../../talend.project, but it should be: ../../talend.project)
+        IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
+        item.getProperty().setAuthor(factory.getRepositoryContext().getUser());
+
+        // now we should remove wrong URI from resource manager.
+        // if this bug above happen, means the resourceSet keep wrong link to the project
+        XmiResourceManager manager = ProxyRepositoryFactory.getInstance().getRepositoryFactoryFromProvider().getResourceManager();
+        List<Resource> toDelete = new ArrayList<Resource>();
+        for (Resource resource : manager.resourceSet.getResources()) {
+            if (resource.getURI().toString().contains(manager.getProjectFilename())) {
+                try {
+                    IFile file = URIHelper.getFile(resource.getURI());
+                    if (!file.exists()) {
+                        toDelete.add(resource);
+                    }
+                } catch (Exception e) {
+                    toDelete.add(resource);
+                }
+            }
+        }
+        try {
+            factory.save(item.getProperty(), true);
+        } catch (PersistenceException e) {
+            ExceptionHandler.process(e);
+        }
+
+        manager.resourceSet.getResources().removeAll(toDelete);
+
+        return ExecutionResult.SUCCESS_NO_ALERT;
+    }
+
+    public Date getOrder() {
+        GregorianCalendar gc = new GregorianCalendar(2010, 12, 20, 12, 0, 0);
+        return gc.getTime();
+    }
+
+}
