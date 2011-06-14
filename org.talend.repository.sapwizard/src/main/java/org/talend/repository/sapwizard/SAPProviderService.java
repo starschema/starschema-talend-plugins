@@ -9,7 +9,7 @@ import org.talend.core.model.process.INode;
 import org.talend.core.model.properties.SAPConnectionItem;
 import org.talend.core.ui.ISAPProviderService;
 import org.talend.repository.model.RepositoryNode;
-import org.talend.repository.sapwizard.ui.wizard.SAPWizard;
+import org.talend.repository.sapwizard.ui.wizard.SapWizard;
 
 public class SAPProviderService implements ISAPProviderService{
 
@@ -41,7 +41,7 @@ public class SAPProviderService implements ISAPProviderService{
 	        if (workbench == null) {
 	            workbench = PlatformUI.getWorkbench();
 	        }
-	        return new SAPWizard(workbench, creation, node, existingNames);
+	        return new SapWizard(workbench, creation, node, existingNames);
 	}
 
 }

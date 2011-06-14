@@ -6,11 +6,11 @@ import java.util.List;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.INewWizard;
 import org.eclipse.ui.IWorkbench;
 import org.talend.commons.exception.PersistenceException;
+import org.talend.commons.ui.image.ImageProvider;
 import org.talend.commons.ui.swt.dialogs.ErrorDialogWidthDetailArea;
 import org.talend.commons.utils.VersionUtils;
 import org.talend.core.CorePlugin;
@@ -24,15 +24,17 @@ import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.update.RepositoryUpdateManager;
+import org.talend.core.ui.images.ECoreImage;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
+import org.talend.repository.sap.i18n.Messages;
 import org.talend.repository.ui.utils.ConnectionContextHelper;
 import org.talend.repository.ui.wizards.PropertiesWizardPage;
 import org.talend.repository.ui.wizards.RepositoryWizard;
 
-public class SAPWizard extends RepositoryWizard implements INewWizard {
+public class SapWizard extends RepositoryWizard implements INewWizard {
 
 	private PropertiesWizardPage propertiesWizardPage;
 
@@ -46,7 +48,7 @@ public class SAPWizard extends RepositoryWizard implements INewWizard {
 
 	private RepositoryNode node;
 
-	private WizardPage currentPage;
+	private SapWizardPage sapWizardPage;
 
 	/**
 	 * @param workbench
@@ -54,7 +56,7 @@ public class SAPWizard extends RepositoryWizard implements INewWizard {
 	 * @param node
 	 * @param existingNames
 	 */
-	public SAPWizard(IWorkbench workbench, boolean creation,
+	public SapWizard(IWorkbench workbench, boolean creation,
 			RepositoryNode node, String[] existingNames) {
 		super(workbench, creation);
 		this.existingNames = existingNames;
@@ -103,7 +105,7 @@ public class SAPWizard extends RepositoryWizard implements INewWizard {
 		ConnectionContextHelper.checkContextMode(connectionItem);
 	}
 
-	public SAPWizard(IWorkbench workbench, boolean creation,
+	public SapWizard(IWorkbench workbench, boolean creation,
 			ISelection selection, String[] existingNames) {
 		super(workbench, creation);
 		this.selection = selection;
@@ -210,22 +212,35 @@ public class SAPWizard extends RepositoryWizard implements INewWizard {
 
 	@Override
 	public void addPages() {
-		setWindowTitle("");//$NON-NLS-1$
-		// setDefaultPageImageDescriptor(ImageProvider.getImageDesc(ECoreImage.METADATA_MDM_CONNECTION_WIZ));
-		if (isToolBar) {
+		setWindowTitle(Messages.getString("SapWizard.Window.Title"));//$NON-NLS-1$
+        setDefaultPageImageDescriptor(ImageProvider.getImageDesc(ECoreImage.METADATA_CONNECTION_WIZ));
+
+        if (isToolBar) {
 			pathToSave = null;
 		}
-		propertiesWizardPage = new SapStep0WizardPage(connectionProperty,
-				pathToSave, ERepositoryObjectType.METADATA_MDMCONNECTION,
+		propertiesWizardPage = new SapStep0WizardPage(connectionProperty,pathToSave, ERepositoryObjectType.METADATA_MDMCONNECTION,
 				!isRepositoryObjectEditable(), creation);
-		propertiesWizardPage.setTitle("Talend MDM"); //$NON-NLS-1$
-		propertiesWizardPage
-				.setDescription("Messages.getString(MDMWizard_create_mdm_conn"); //$NON-NLS-1$
-		// mdmWizardPage = new MDMWizardPage(connectionItem,
-		// isRepositoryObjectEditable(), existingNames);
+		sapWizardPage = new SapWizardPage(connectionItem,isRepositoryObjectEditable(), existingNames);
+		if(creation){
+			propertiesWizardPage.setTitle(Messages.getString("SapWizardPage.TitleCreate.Step1")); //$NON-NLS-1$
+			propertiesWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionCreate.Step1")); //$NON-NLS-1$
+			propertiesWizardPage.setPageComplete(false);
+
+			sapWizardPage.setTitle(Messages.getString("SapWizardPage.TitleCreate.Step2")); //$NON-NLS-1$
+			sapWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionCreate.Step2")); //$NON-NLS-1$
+			sapWizardPage.setPageComplete(false);
+
+		}else{
+			propertiesWizardPage.setTitle(Messages.getString("SapWizardPage.TitleUpdate.Step1")); //$NON-NLS-1$
+			propertiesWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionUpdate.Step1")); //$NON-NLS-1$
+			propertiesWizardPage.setPageComplete(isRepositoryObjectEditable());
+			
+			sapWizardPage.setTitle(Messages.getString("SapWizardPage.TitleUpdate.Step2")); //$NON-NLS-1$
+			sapWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionUpdate.Step2")); //$NON-NLS-1$
+			sapWizardPage.setPageComplete(isRepositoryObjectEditable());
+		}
 		addPage(propertiesWizardPage);
-		// addPage(mdmWizardPage);
-		// addPage(universePage);
+		addPage(sapWizardPage);
 	}
 
 	public void setToolBar(boolean isToolbar) {
@@ -245,14 +260,7 @@ public class SAPWizard extends RepositoryWizard implements INewWizard {
 
 	@Override
 	public boolean canFinish() {
-		// if (currentPage instanceof UniversePage &&
-		// currentPage.isPageComplete()) {
-		// return true;
-		// }
-		return false;
+		return sapWizardPage.isPageComplete();
 	}
 
-	public void setCurrentPage(WizardPage currentPage) {
-		this.currentPage = currentPage;
-	}
 }

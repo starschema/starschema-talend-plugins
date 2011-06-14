@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Nl
+Bundle-SymbolicName: org.talend.repository.sapwizard.nl
+Bundle-Version: 1.0.0.qualifier
+Fragment-Host: org.talend.repository.sapwizard;bundle-version="1.0.0"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
