@@ -8,5 +8,17 @@
             serviceId="ISAPProviderService">
       </Service>
    </extension>
+   <extension
+         point="org.talend.core.repositoryContextualsActions">
+      <Action
+            class="org.talend.repository.sapwizard.actions.CreateSAPConnectionAction"
+            id="org.talend.repository.sapwizard.actions.CreateSAPConnectionAction"
+            isEditAction="false"
+            isPropertiesAction="false"
+            isReadAction="false"
+            level="10"
+            name="Metadata/Create SAP">
+      </Action>
+   </extension>
 
 </plugin>

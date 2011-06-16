@@ -23,18 +23,4 @@ public class SapStep0WizardPage extends Step0WizardPage {
             boolean editPath) {
         super(property, destinationPath, type, readOnly, editPath);
     }
-
-//    /*
-//     * (non-Javadoc)
-//     * 
-//     * @see org.talend.repository.ui.wizards.metadata.connection.Step0WizardPage#setVisible(boolean)
-//     */
-//    @Override
-//    public void setVisible(boolean visible) {
-//        super.setVisible(visible);
-//        if (visible) {
-//            ((SapWizard) getWizard()).setCurrentPage(this);
-//        }
-//    }
-
 }

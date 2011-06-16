@@ -4,10 +4,15 @@ Bundle-Name: Sap
 Bundle-SymbolicName: org.talend.repository.sapwizard;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.talend.repository.sapwizard.SAPPlugin
-Require-Bundle: org.eclipse.ui,
- org.eclipse.core.runtime,
- org.talend.core;bundle-version="2.2.0",
+Require-Bundle: org.talend.core;bundle-version="2.2.0",
  org.talend.model;bundle-version="2.2.0",
  org.talend.repository;bundle-version="2.2.0"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-ClassPath: .,
+ sapjco.jar
+Export-Package: com.sap.mw.jco,
+ com.sap.mw.jco.rfc,
+ com.sap.mw.jco.support,
+ com.sap.mw.jco.util,
+ com.sap.mw.jco.webas
