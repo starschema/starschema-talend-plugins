@@ -1,5 +1,11 @@
 package org.talend.repository.sapwizard.ui.wizard;
 
+import java.lang.reflect.InvocationTargetException;
+
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -7,12 +13,16 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Group;
+import org.talend.commons.exception.ExceptionHandler;
 import org.talend.commons.ui.swt.formtools.Form;
 import org.talend.commons.ui.swt.formtools.LabelledText;
 import org.talend.commons.ui.swt.formtools.UtilsButton;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.repository.sap.i18n.Messages;
+
+import com.sap.mw.jco.JCO;
 
 public class SapForm extends AbstractSAPForm {
 	private LabelledText sapClient;
@@ -135,8 +145,61 @@ public class SapForm extends AbstractSAPForm {
 	protected void addUtilsButtonListeners() {
 		this.checkButton.addSelectionListener(new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent paramSelectionEvent) {
+				checkSAPConnection();
 			}
 		});
+	}
+
+	private void checkSAPConnection() {
+
+		if (isContextMode()) {
+			return;
+		}
+		ProgressMonitorDialog localProgressMonitorDialog = new ProgressMonitorDialog(getShell());
+		try {
+			localProgressMonitorDialog.run(true, false, new IRunnableWithProgress() {
+				public void run(IProgressMonitor paramIProgressMonitor) throws InvocationTargetException,
+						InterruptedException {
+					try {
+						testSAPConnection();
+						Display.getDefault().asyncExec(new Runnable() {
+							public void run() {
+								if (!isReadOnly())
+									updateStatus(0, null);
+								MessageDialog.openInformation(getShell(), Messages
+										.getString("SapForm.CheckConnectionTitle"), "\""
+										+ connectionItem.getProperty().getLabel() + "\" "
+										+ Messages.getString("SapForm.CheckIsDone"));
+								if ((isReadOnly()) && (isContextMode()))
+									adaptFormToEditable();
+							}
+						});
+					} catch (Throwable localThrowable) {
+						openErrorDialogWithDetail(localThrowable);
+					}
+				}
+
+			});
+		} catch (InvocationTargetException localInvocationTargetException) {
+			ExceptionHandler.process(localInvocationTargetException);
+		} catch (InterruptedException localInterruptedException) {
+			ExceptionHandler.process(localInterruptedException);
+		}
+	}
+
+	private void testSAPConnection() throws Throwable {
+		JCO.Client localClient = null;
+		try {
+			localClient = JCO.createClient(getConnection().getClient(), getConnection().getUsername(), getConnection()
+					.getPassword(), getConnection().getLanguage(), getConnection().getHost(), getConnection()
+					.getSystemNumber());
+			localClient.connect();
+		} catch (Exception localException) {
+			throw localException;
+		} finally {
+			if (localClient != null)
+				localClient.disconnect();
+		}
 	}
 
 	protected boolean checkFieldsValue() {
