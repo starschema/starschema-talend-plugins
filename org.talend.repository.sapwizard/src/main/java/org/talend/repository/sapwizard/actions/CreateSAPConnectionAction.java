@@ -55,11 +55,11 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 
 	protected static final String PID = RepositoryPlugin.PLUGIN_ID;
 
-	private static final String EDIT_LABEL = Messages.getString("CreateSAPConnectionAction.action.editTitle"); //$NON-NLS-1$
+	private static final String EDIT_LABEL = Messages.getString("CreateSAPConnectionAction.Action.EditTitle"); //$NON-NLS-1$
 
-	private static final String OPEN_LABEL = Messages.getString("CreateSAPConnectionAction.action.openTitle"); //$NON-NLS-1$
+	private static final String OPEN_LABEL = Messages.getString("CreateSAPConnectionAction.Action.OpenTitle"); //$NON-NLS-1$
 
-	private static final String CREATE_LABEL = Messages.getString("CreateSAPConnectionAction.action.createTitle"); //$NON-NLS-1$
+	private static final String CREATE_LABEL = Messages.getString("CreateSAPConnectionAction.Action.CreateTitle"); //$NON-NLS-1$
 
 	private ImageDescriptor defaultImage = ImageProvider.getImageDesc(ECoreImage.METADATA_CONNECTION_ICON);
 

@@ -32,18 +32,17 @@ import org.talend.repository.ui.utils.ConnectionContextHelper;
 import org.talend.repository.ui.wizards.CheckLastVersionRepositoryWizard;
 import org.talend.repository.ui.wizards.PropertiesWizardPage;
 
+/**
+ * @author Ammu
+ * 
+ */
 public class SapWizard extends CheckLastVersionRepositoryWizard implements INewWizard {
-	
+
 	private PropertiesWizardPage propertiesWizardPage;
 	private SAPConnection connection;
 	private Property connectionProperty;
 	private ConnectionItem connectionItem;
 	private SapWizardPage sapWizardPage;
-	private String originaleObjectLabel;
-	private String originalVersion;
-	private String originalPurpose;
-	private String originalDescription;
-	private String originalStatus;
 	private boolean isToolBar;
 
 	/**
@@ -60,15 +59,16 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 		case SIMPLE_FOLDER:
 		case REPOSITORY_ELEMENT:
 			pathToSave = RepositoryNodeUtilities.getPath(node);
+			connection = (SAPConnection) ((ConnectionItem) node.getObject().getProperty().getItem()).getConnection();
+			connectionProperty = node.getObject().getProperty();
+			connectionItem = (ConnectionItem) node.getObject().getProperty().getItem();
+			// set the repositoryObject, lock and set isRepositoryObjectEditable
+			setRepositoryObject(node.getObject());
+			isRepositoryObjectEditable();
+			initLockStrategy();
 			break;
 		case SYSTEM_FOLDER:
 			pathToSave = new Path(""); //$NON-NLS-1$
-			break;
-		}
-
-		switch (node.getType()) {
-		case SIMPLE_FOLDER:
-		case SYSTEM_FOLDER:
 			connection = ConnectionFactory.eINSTANCE.createSAPConnection();
 			connectionProperty = PropertiesFactory.eINSTANCE.createProperty();
 			connectionProperty.setAuthor(((RepositoryContext) CorePlugin.getContext().getProperty(
@@ -80,23 +80,6 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 			connectionItem.setProperty(connectionProperty);
 			connectionItem.setConnection(connection);
 			break;
-
-		case REPOSITORY_ELEMENT:
-			connection = (SAPConnection) ((ConnectionItem) node.getObject().getProperty().getItem()).getConnection();
-			connectionProperty = node.getObject().getProperty();
-			connectionItem = (ConnectionItem) node.getObject().getProperty().getItem();
-			// set the repositoryObject, lock and set isRepositoryObjectEditable
-			setRepositoryObject(node.getObject());
-			isRepositoryObjectEditable();
-			initLockStrategy();
-			break;
-		}
-		if (!creation) {
-			this.originaleObjectLabel = this.connectionItem.getProperty().getLabel();
-			this.originalVersion = this.connectionItem.getProperty().getVersion();
-			this.originalDescription = this.connectionItem.getProperty().getDescription();
-			this.originalPurpose = this.connectionItem.getProperty().getPurpose();
-			this.originalStatus = this.connectionItem.getProperty().getStatusCode();
 		}
 		// initialize the context mode
 		ConnectionContextHelper.checkContextMode(connectionItem);
@@ -119,15 +102,17 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 		case SIMPLE_FOLDER:
 		case REPOSITORY_ELEMENT:
 			pathToSave = RepositoryNodeUtilities.getPath(node);
+			connection = (SAPConnection) ((ConnectionItem) node.getObject().getProperty().getItem()).getConnection();
+			connectionProperty = node.getObject().getProperty();
+			connectionItem = (ConnectionItem) node.getObject().getProperty().getItem();
+			// set the repositoryObject, lock and set isRepositoryObjectEditable
+			setRepositoryObject(node.getObject());
+			isRepositoryObjectEditable();
+			initLockStrategy();
+
 			break;
 		case SYSTEM_FOLDER:
 			pathToSave = new Path(""); //$NON-NLS-1$
-			break;
-		}
-
-		switch (node.getType()) {
-		case SIMPLE_FOLDER:
-		case SYSTEM_FOLDER:
 			connection = ConnectionFactory.eINSTANCE.createSAPConnection();
 			connectionProperty = PropertiesFactory.eINSTANCE.createProperty();
 			connectionProperty.setAuthor(((RepositoryContext) CorePlugin.getContext().getProperty(
@@ -139,23 +124,6 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 			connectionItem.setProperty(connectionProperty);
 			connectionItem.setConnection(connection);
 			break;
-
-		case REPOSITORY_ELEMENT:
-			connection = (SAPConnection) ((ConnectionItem) node.getObject().getProperty().getItem()).getConnection();
-			connectionProperty = node.getObject().getProperty();
-			connectionItem = (ConnectionItem) node.getObject().getProperty().getItem();
-			// set the repositoryObject, lock and set isRepositoryObjectEditable
-			setRepositoryObject(node.getObject());
-			isRepositoryObjectEditable();
-			initLockStrategy();
-			break;
-		}
-		if (!creation) {
-			this.originaleObjectLabel = this.connectionItem.getProperty().getLabel();
-			this.originalVersion = this.connectionItem.getProperty().getVersion();
-			this.originalDescription = this.connectionItem.getProperty().getDescription();
-			this.originalPurpose = this.connectionItem.getProperty().getPurpose();
-			this.originalStatus = this.connectionItem.getProperty().getStatusCode();
 		}
 		// initialize the context mode
 		ConnectionContextHelper.checkContextMode(connectionItem);
@@ -216,24 +184,24 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 			pathToSave = null;
 		}
 		propertiesWizardPage = new SapStep0WizardPage(connectionProperty, pathToSave,
-				ERepositoryObjectType.METADATA_MDMCONNECTION, !isRepositoryObjectEditable(), creation);
+				ERepositoryObjectType.METADATA_CONNECTIONS, !isRepositoryObjectEditable(), creation);
 		sapWizardPage = new SapWizardPage(connectionItem, isRepositoryObjectEditable(), existingNames);
 		if (creation) {
 			propertiesWizardPage.setTitle(Messages.getString("SapWizardPage.TitleCreate.Step1")); //$NON-NLS-1$
-			propertiesWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionCreate.Step1")); //$NON-NLS-1$
+			propertiesWizardPage.setDescription(Messages.getString("SapWizardPage.DescriptionCreate.Step1")); //$NON-NLS-1$
 			propertiesWizardPage.setPageComplete(false);
 
 			sapWizardPage.setTitle(Messages.getString("SapWizardPage.TitleCreate.Step2")); //$NON-NLS-1$
-			sapWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionCreate.Step2")); //$NON-NLS-1$
+			sapWizardPage.setDescription(Messages.getString("SapWizardPage.DescriptionCreate.Step2")); //$NON-NLS-1$
 			sapWizardPage.setPageComplete(false);
 
 		} else {
 			propertiesWizardPage.setTitle(Messages.getString("SapWizardPage.TitleUpdate.Step1")); //$NON-NLS-1$
-			propertiesWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionUpdate.Step1")); //$NON-NLS-1$
+			propertiesWizardPage.setDescription(Messages.getString("SapWizardPage.DescriptionUpdate.Step1")); //$NON-NLS-1$
 			propertiesWizardPage.setPageComplete(isRepositoryObjectEditable());
 
 			sapWizardPage.setTitle(Messages.getString("SapWizardPage.TitleUpdate.Step2")); //$NON-NLS-1$
-			sapWizardPage.setDescription(Messages.getString("SapWizardPage.descriptionUpdate.Step2")); //$NON-NLS-1$
+			sapWizardPage.setDescription(Messages.getString("SapWizardPage.DescriptionUpdate.Step2")); //$NON-NLS-1$
 			sapWizardPage.setPageComplete(isRepositoryObjectEditable());
 		}
 		addPage(propertiesWizardPage);

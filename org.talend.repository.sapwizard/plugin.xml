@@ -12,12 +12,21 @@
          point="org.talend.core.repositoryContextualsActions">
       <Action
             class="org.talend.repository.sapwizard.actions.CreateSAPConnectionAction"
-            id="org.talend.repository.sapwizard.actions.CreateSAPConnectionAction"
+            id="org.talend.repository.sapwizard.actions.createSAPConnectionAction"
             isEditAction="false"
             isPropertiesAction="false"
             isReadAction="false"
             level="10"
             name="Metadata/Create SAP">
+      </Action>
+       <Action
+            class="org.talend.repository.sapwizard.actions.CreateSAPTableAction"
+            id="org.talend.repository.sapwizard.actions.createSAPTableAction"
+            isEditAction="false"
+            isPropertiesAction="false"
+            isReadAction="false"
+            level="11"
+            name="Retrieve SAP Tables">
       </Action>
    </extension>
 
