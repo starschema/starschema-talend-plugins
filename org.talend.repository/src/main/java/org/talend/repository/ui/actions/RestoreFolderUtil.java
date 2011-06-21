@@ -58,7 +58,7 @@ public class RestoreFolderUtil {
         }
     }
 
-    private Set<String> getFolders(ERepositoryObjectType type) throws PersistenceException {
+    public Set<String> getFolders(ERepositoryObjectType type) throws PersistenceException {
         Set<String> folders = foldersMap.get(type);
         if (folders == null) {
             folders = new HashSet<String>(factory.getFolders(type));

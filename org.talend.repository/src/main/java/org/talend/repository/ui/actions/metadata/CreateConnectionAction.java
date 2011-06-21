@@ -22,7 +22,6 @@ import org.eclipse.ui.PlatformUI;
 import org.talend.commons.exception.ExceptionHandler;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.image.ImageProvider;
-import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.general.Project;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
@@ -32,7 +31,6 @@ import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.model.repository.RepositoryObject;
-import org.talend.core.ui.ISAPProviderService;
 import org.talend.core.ui.images.ECoreImage;
 import org.talend.core.ui.images.OverlayImageProvider;
 import org.talend.repository.ProjectManager;
@@ -43,7 +41,6 @@ import org.talend.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
 import org.talend.repository.model.IRepositoryNode.EProperties;
-import org.talend.repository.ui.wizards.RepositoryWizard;
 import org.talend.repository.ui.wizards.metadata.connection.database.DatabaseWizard;
 
 /**
@@ -188,41 +185,31 @@ public class CreateConnectionAction extends AbstractCreateAction {
 
         }
 
-        RepositoryWizard repositoryWizard = null;
-		ERepositoryObjectType nodeType = (ERepositoryObjectType) node
-				.getProperties(EProperties.CONTENT_TYPE);
-		switch (nodeType) {
-		case METADATA_CONNECTIONS:
+        DatabaseWizard databaseWizard;
+        if (isToolbar()) {
+            databaseWizard = new DatabaseWizard(PlatformUI.getWorkbench(), creation, node, getExistingNames());
+            databaseWizard.setToolBar(true);
+        } else {
+            databaseWizard = new DatabaseWizard(PlatformUI.getWorkbench(), creation, node, getExistingNames());
+        }
+        if (!creation) {
+            RepositoryManager.refreshSavedNode(node);
+        }
 
-			repositoryWizard = new DatabaseWizard(PlatformUI.getWorkbench(), creation, node, getExistingNames());
-			((DatabaseWizard)repositoryWizard).setToolBar(isToolbar());
-			if (!creation) {
-				RepositoryManager.refreshSavedNode(node);
-			}
-			break;
-		case METADATA_SAPCONNECTIONS:
-			ISAPProviderService service = (ISAPProviderService) GlobalServiceRegister.getDefault().getService(ISAPProviderService.class);
-			if (service != null) {
-				repositoryWizard = (RepositoryWizard) service.newSAPWizard(
-						PlatformUI.getWorkbench(), creation, node,
-						getExistingNames());
-			}
-			break;
-		}
-		// Open the Wizard
-		WizardDialog wizardDialog = new WizardDialog(Display.getCurrent()
-				.getActiveShell(), repositoryWizard);
-		wizardDialog.setPageSize(600, 510);
-		wizardDialog.create();
-		wizardDialog.open();
-		connItem = repositoryWizard.getConnectionItem();
-		RepositoryManager.refreshSavedNode(node);
+        // Open the Wizard
+        WizardDialog wizardDialog = new WizardDialog(Display.getCurrent().getActiveShell(), databaseWizard);
+        wizardDialog.setPageSize(600, 510);
+        wizardDialog.create();
+        wizardDialog.open();
+        connItem = databaseWizard.getConnectionItem();
+        RepositoryManager.refreshSavedNode(node);
+
     }
 
     @Override
     protected void init(RepositoryNode node) {
         ERepositoryObjectType nodeType = (ERepositoryObjectType) node.getProperties(EProperties.CONTENT_TYPE);
-        if (!ERepositoryObjectType.METADATA_CONNECTIONS.equals(nodeType)&&!ERepositoryObjectType.METADATA_SAPCONNECTIONS.equals(nodeType)) {
+        if (!ERepositoryObjectType.METADATA_CONNECTIONS.equals(nodeType)) {
             setEnabled(false);
             return;
         }

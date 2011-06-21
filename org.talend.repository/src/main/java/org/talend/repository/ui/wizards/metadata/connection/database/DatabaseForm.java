@@ -214,8 +214,9 @@ public class DatabaseForm extends AbstractForm {
     public void initialize() {
         EDatabaseConnTemplate template = EDatabaseConnTemplate.indexOfTemplate(getConnection().getDatabaseType());
         if (template != null) {
-            dbTypeCombo.setText(template.getDbType().getDisplayName());
-
+            if (dbTypeCombo.getText().length() == 0 || !dbTypeCombo.getText().equals(template.getDbType().getDisplayName())) {
+                dbTypeCombo.setText(template.getDbType().getDisplayName());
+            }
             if (isGeneralJDBC()) {
                 switchBetweenTypeandGeneralDB(false);
                 initializeGeneralJDBC();

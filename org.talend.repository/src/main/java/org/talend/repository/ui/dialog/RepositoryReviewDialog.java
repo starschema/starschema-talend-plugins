@@ -432,6 +432,7 @@ class FakeRepositoryView extends RepositoryView {
      */
     @Override
     public void createPartControl(Composite parent) {
+        super.setFromFake(false);
         super.createPartControl(parent);
         ViewerFilter filter = typeProcessor.makeFilter();
         addFilter(filter);
@@ -523,7 +524,7 @@ class FakeRepositoryView extends RepositoryView {
     public void refresh() {
         super.refresh();
         // getViewer().setInput(this.getViewSite());
-        getViewer().setInput(getInput());
+        // getViewer().setInput(getInput());
     }
 
     @Override
@@ -712,7 +713,8 @@ class RepositoryTypeProcessor implements ITypeProcessor {
             return;
         }
         // referenced project.
-        nodesList.removeAll(null);
+        while (nodesList.remove(null))
+            ;
         if (contentProvider.getReferenceProjectNode() != null) {
             RepositoryNode contentRepositoryNode = contentProvider.getReferenceProjectNode();
             if (!contentRepositoryNode.isInitialized()) {
@@ -1133,7 +1135,8 @@ class SchemaTypeProcessor implements ITypeProcessor {
                     refContainer.add(refProject.getMetadataConNode());
 
                 }
-                refContainer.remove(null); // Not allow null element
+                while (refContainer.remove(null))
+                    ;
                 newProject.getChildren().addAll(refContainer);
                 nodesList.add(newProject);
                 this.addSubReferencedProjectNodes(refProject);
@@ -1146,7 +1149,8 @@ class SchemaTypeProcessor implements ITypeProcessor {
             return;
         }
         // referenced project.
-        nodesList.removeAll(null);
+        while (nodesList.remove(null))
+            ;
         if (contentProvider.getReferenceProjectNode() != null) {
             List<IRepositoryNode> refProjects = contentProvider.getReferenceProjectNode().getChildren();
             if (refProjects != null && !refProjects.isEmpty()) {
@@ -1178,7 +1182,8 @@ class SchemaTypeProcessor implements ITypeProcessor {
                         refContainer.add(refProject.getMetadataConNode());
 
                     }
-                    refContainer.remove(null); // Not allow null element
+                    while (refContainer.remove(null))
+                        ;
                     newProject.getChildren().addAll(refContainer);
                     nodesList.add(newProject);
                     this.addSubReferencedProjectNodes(refProject);
@@ -1519,7 +1524,8 @@ class QueryTypeProcessor implements ITypeProcessor {
     public RepositoryNode getInputRoot(RepositoryContentProvider contentProvider) {
         RepositoryNode metadataConNode = contentProvider.getMetadataConNode();
         // referenced project.
-        nodesList.removeAll(null);
+        while (nodesList.remove(null))
+            ;
         if (contentProvider.getReferenceProjectNode() != null) {
             List<IRepositoryNode> refProjects = contentProvider.getReferenceProjectNode().getChildren();
             if (refProjects != null && !refProjects.isEmpty()) {

@@ -153,7 +153,7 @@ import org.talend.repository.ui.actions.RepositoryFilterAction;
  * 
  * View that presents all the content of the repository.<br/>
  * 
- * $Id: RepositoryView.java 62043 2011-06-10 02:11:38Z wchen $
+ * $Id: RepositoryView.java 63024 2011-06-21 10:14:23Z ycbai $
  * 
  */
 public class RepositoryView extends ViewPart implements IRepositoryView, ITabbedPropertySheetPageContributor,
@@ -194,6 +194,8 @@ public class RepositoryView extends ViewPart implements IRepositoryView, ITabbed
     private Label refreshBtn;
 
     private Label filterBtn;
+
+    protected boolean isFromFake = true;
 
     // private boolean useFilter = false;
 
@@ -285,7 +287,9 @@ public class RepositoryView extends ViewPart implements IRepositoryView, ITabbed
 
         viewer.expandAll();
         viewer.collapseAll();
-        refresh();
+        if (isFromFake) {
+            refresh();
+        }
 
         // This only tree listener aim is to change open/close icons on folders :
         viewer.addTreeListener(new ITreeViewerListener() {
@@ -1351,7 +1355,7 @@ public class RepositoryView extends ViewPart implements IRepositoryView, ITabbed
      * 
      * 
      * 
-     * $Id: RepositoryView.java 62043 2011-06-10 02:11:38Z wchen $
+     * $Id: RepositoryView.java 63024 2011-06-21 10:14:23Z ycbai $
      * 
      */
     class RepositoryMouseTrackListener implements MouseTrackListener {
@@ -1404,5 +1408,13 @@ public class RepositoryView extends ViewPart implements IRepositoryView, ITabbed
 
         }
 
+    }
+
+    public boolean isFromFake() {
+        return this.isFromFake;
+    }
+
+    public void setFromFake(boolean isFromFake) {
+        this.isFromFake = isFromFake;
     }
 }
