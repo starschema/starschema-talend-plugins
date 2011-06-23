@@ -1,3 +1,20 @@
+/** 
+ *    Copyright (C) 2011, Starschema Ltd. <info at starschema.net>
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 2 of the License, or
+ *    any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 package org.talend.repository.sapwizard.ui.wizard;
 
 import java.lang.reflect.InvocationTargetException;
@@ -21,33 +38,65 @@ import org.talend.commons.ui.swt.formtools.LabelledText;
 import org.talend.commons.ui.swt.formtools.UtilsButton;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.repository.sap.i18n.Messages;
+import org.talend.repository.sapwizard.service.SapUtil;
 
-import com.sap.mw.jco.JCO;
+/**
+ * @author Ammu
+ * 
+ */
+public class SapForm extends BaseSAPForm {
 
-public class SapForm extends AbstractSAPForm {
+	/**
+	 * sapClient
+	 */
 	private LabelledText sapClient;
+	/**
+	 * sapSystemNumberText
+	 */
 	private LabelledText sapSystemNumberText;
+	/**
+	 * sapLanguageText
+	 */
 	private LabelledText sapLanguageText;
+	/**
+	 * sapUsernameText
+	 */
 	private LabelledText sapUsernameText;
+	/**
+	 * sapPasswordText
+	 */
 	private LabelledText sapPasswordText;
+	/**
+	 * sapHostnameText
+	 */
 	private LabelledText sapHostnameText;
+	/**
+	 * checkButton
+	 */
 	private UtilsButton checkButton;
+	/**
+	 * readOnly
+	 */
 	private boolean readOnly;
 
-	public SapForm(Composite paramComposite, ConnectionItem paramConnectionItem, String[] paramArrayOfString) {
-		super(paramComposite, 0, paramArrayOfString);
-		this.connectionItem = paramConnectionItem;
-		setConnectionItem(paramConnectionItem);
+	/**
+	 * @param composite
+	 * @param connectionItem
+	 * @param existingNames
+	 */
+	public SapForm(Composite composite, ConnectionItem connectionItem, String[] existingNames) {
+		super(composite, 0, existingNames);
+		this.connectionItem = connectionItem;
+		setConnectionItem(connectionItem);
 		setupForm(false);
-		layoutForm();
 	}
 
-	private void layoutForm() {
-		GridLayout localGridLayout = (GridLayout) getLayout();
-		localGridLayout.marginHeight = 0;
-		setLayout(localGridLayout);
-	}
-
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.talend.repository.ui.swt.utils.AbstractForm#adaptFormToReadOnly()
+	 */
 	protected void adaptFormToReadOnly() {
 		this.readOnly = isReadOnly();
 		this.sapHostnameText.setReadOnly(this.readOnly);
@@ -58,39 +107,53 @@ public class SapForm extends AbstractSAPForm {
 		this.sapLanguageText.setReadOnly(this.readOnly);
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.talend.repository.ui.swt.utils.AbstractForm#addFields()
+	 */
 	protected void addFields() {
-		Group localGroup = new Group(this, 0);
-		GridLayout localGridLayout = new GridLayout();
-		localGridLayout.numColumns = 2;
-		localGroup.setLayout(localGridLayout);
-		GridData localGridData = new GridData(768);
-		localGroup.setLayoutData(localGridData);
-		this.sapClient = new LabelledText(localGroup, Messages.getString("SapForm.Client"), true);
+		Group group = new Group(this, 0);
+		GridLayout gridLayout = new GridLayout();
+		gridLayout.numColumns = 2;
+		group.setLayout(gridLayout);
+		GridData gridData = new GridData(768);
+		group.setLayoutData(gridData);
+
+		this.sapClient = new LabelledText(group, Messages.getString("SapForm.Client"), true);
 		this.sapClient.setText("000");
-		this.sapHostnameText = new LabelledText(localGroup, Messages.getString("SapForm.Host"), true);
-		this.sapUsernameText = new LabelledText(localGroup, Messages.getString("SapForm.User"), true);
-		this.sapPasswordText = new LabelledText(localGroup, Messages.getString("SapForm.Password"), 1, 4196352);
-		this.sapSystemNumberText = new LabelledText(localGroup, Messages.getString("SapForm.SysNumber"), true);
+		this.sapHostnameText = new LabelledText(group, Messages.getString("SapForm.Host"), true);
+		this.sapUsernameText = new LabelledText(group, Messages.getString("SapForm.User"), true);
+		this.sapPasswordText = new LabelledText(group, Messages.getString("SapForm.Password"), 1, 4196352);
+		this.sapSystemNumberText = new LabelledText(group, Messages.getString("SapForm.SysNumber"), true);
 		this.sapSystemNumberText.setText("00");
-		this.sapLanguageText = new LabelledText(localGroup, Messages.getString("SapForm.Language"), true);
+		this.sapLanguageText = new LabelledText(group, Messages.getString("SapForm.Language"), true);
 		this.sapLanguageText.setText("EN");
-		addCheckButton(localGroup);
+		addCheckButton(group);
 	}
 
-	private void addCheckButton(Composite paramComposite) {
-		Composite localComposite = Form.startNewGridLayout(paramComposite, 1, false, 16777216, 128);
-		GridData localGridData = new GridData(768);
-		localGridData.horizontalSpan = 2;
-		localGridData.horizontalAlignment = 16777216;
-		localComposite.setLayoutData(localGridData);
-		GridLayout localGridLayout = (GridLayout) localComposite.getLayout();
-		localGridLayout.marginHeight = 0;
-		localGridLayout.marginTop = 0;
-		localGridLayout.marginBottom = 0;
-		this.checkButton = new UtilsButton(localComposite, Messages.getString("SapForm.Check"), 100, 30);
+	/**
+	 * @param parent
+	 */
+	private void addCheckButton(Composite parent) {
+		Composite composite = Form.startNewGridLayout(parent, 1, false, 16777216, 128);
+		GridData gridData = new GridData(768);
+		gridData.horizontalSpan = 2;
+		gridData.horizontalAlignment = 16777216;
+		composite.setLayoutData(gridData);
+		GridLayout gridLayout = (GridLayout) composite.getLayout();
+		gridLayout.marginHeight = 0;
+		gridLayout.marginTop = 0;
+		gridLayout.marginBottom = 0;
+		this.checkButton = new UtilsButton(composite, Messages.getString("SapForm.Check"), 100, 30);
 		this.checkButton.setEnabled(false);
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.talend.repository.ui.swt.utils.AbstractForm#addFieldsListeners()
+	 */
 	protected void addFieldsListeners() {
 		this.sapHostnameText.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent paramModifyEvent) {
@@ -142,6 +205,12 @@ public class SapForm extends AbstractSAPForm {
 		});
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.talend.repository.ui.swt.utils.AbstractForm#addUtilsButtonListeners()
+	 */
 	protected void addUtilsButtonListeners() {
 		this.checkButton.addSelectionListener(new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent paramSelectionEvent) {
@@ -150,61 +219,59 @@ public class SapForm extends AbstractSAPForm {
 		});
 	}
 
+	/**
+	 * 
+	 */
 	private void checkSAPConnection() {
 
 		if (isContextMode()) {
 			return;
 		}
-		ProgressMonitorDialog localProgressMonitorDialog = new ProgressMonitorDialog(getShell());
+		ProgressMonitorDialog progressMonitorDialog = new ProgressMonitorDialog(getShell());
 		try {
-			localProgressMonitorDialog.run(true, false, new IRunnableWithProgress() {
-				public void run(IProgressMonitor paramIProgressMonitor) throws InvocationTargetException,
+			progressMonitorDialog.run(true, false, new IRunnableWithProgress() {
+				public void run(IProgressMonitor progressMonitor) throws InvocationTargetException,
 						InterruptedException {
 					try {
-						testSAPConnection();
+						SapUtil.connectSAPserver(getConnection().getClient(), getConnection().getLanguage(),
+								getConnection().getSystemNumber(), getConnection().getHost(), getConnection()
+										.getUsername(), getConnection().getPassword());
 						Display.getDefault().asyncExec(new Runnable() {
 							public void run() {
-								if (!isReadOnly())
+								if (!isReadOnly()) {
 									updateStatus(0, null);
+								}
 								MessageDialog.openInformation(getShell(), Messages
 										.getString("SapForm.CheckConnectionTitle"), "\""
 										+ connectionItem.getProperty().getLabel() + "\" "
 										+ Messages.getString("SapForm.CheckIsDone"));
-								if ((isReadOnly()) && (isContextMode()))
+								if ((isReadOnly()) && (isContextMode())) {
 									adaptFormToEditable();
+								}
 							}
 						});
-					} catch (Throwable localThrowable) {
-						openErrorDialogWithDetail(localThrowable);
+					} catch (Throwable throwable) {
+						openErrorDialogWithDetail(throwable);
 					}
 				}
 
 			});
-		} catch (InvocationTargetException localInvocationTargetException) {
-			ExceptionHandler.process(localInvocationTargetException);
-		} catch (InterruptedException localInterruptedException) {
-			ExceptionHandler.process(localInterruptedException);
+		} catch (InvocationTargetException invocationTargetException) {
+			ExceptionHandler.process(invocationTargetException);
+		} catch (InterruptedException interruptedException) {
+			ExceptionHandler.process(interruptedException);
 		}
 	}
 
-	private void testSAPConnection() throws Throwable {
-		JCO.Client localClient = null;
-		try {
-			localClient = JCO.createClient(getConnection().getClient(), getConnection().getUsername(), getConnection()
-					.getPassword(), getConnection().getLanguage(), getConnection().getHost(), getConnection()
-					.getSystemNumber());
-			localClient.connect();
-		} catch (Exception localException) {
-			throw localException;
-		} finally {
-			if (localClient != null)
-				localClient.disconnect();
-		}
-	}
-
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.talend.repository.ui.swt.utils.AbstractForm#checkFieldsValue()
+	 */
 	protected boolean checkFieldsValue() {
-		if (isContextMode())
+		if (isContextMode()) {
 			return true;
+		}
 		if (this.sapHostnameText.getCharCount() == 0) {
 			updateStatus(2, Messages.getString("SapForm.Alert", new Object[] { this.sapHostnameText.getLabelText() }));
 			return false;
@@ -235,6 +302,9 @@ public class SapForm extends AbstractSAPForm {
 		return true;
 	}
 
+	/**
+	 * 
+	 */
 	private void updateCheckButton() {
 		if (isContextMode()) {
 			this.checkButton.setEnabled(true);
@@ -246,6 +316,11 @@ public class SapForm extends AbstractSAPForm {
 		}
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.talend.repository.ui.swt.utils.AbstractForm#initialize()
+	 */
 	protected void initialize() {
 		this.sapHostnameText.setText(getConnection().getHost());
 		this.sapUsernameText.setText(getConnection().getUsername());
@@ -256,12 +331,19 @@ public class SapForm extends AbstractSAPForm {
 		updateStatus(0, "");
 	}
 
-	public void setVisible(boolean paramBoolean) {
-		super.setVisible(paramBoolean);
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.swt.widgets.Control#setVisible(boolean)
+	 */
+	public void setVisible(boolean visible) {
+		super.setVisible(visible);
 		updateCheckButton();
-		if (isContextMode())
+		if (isContextMode()) {
 			adaptFormToEditable();
-		if (isReadOnly() != this.readOnly)
+		}
+		if (isReadOnly() != this.readOnly) {
 			adaptFormToReadOnly();
+		}
 	}
 }

@@ -1,10 +1,23 @@
+/** 
+ *    Copyright (C) 2011, Starschema Ltd. <info at starschema.net>
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 2 of the License, or
+ *    any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 package org.talend.repository.sapwizard.ui.wizard;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.eclipse.core.runtime.Path;
-import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.INewWizard;
 import org.eclipse.ui.IWorkbench;
@@ -21,7 +34,6 @@ import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.update.RepositoryUpdateManager;
 import org.talend.core.ui.images.ECoreImage;
 import org.talend.repository.model.ProxyRepositoryFactory;
@@ -30,7 +42,7 @@ import org.talend.repository.model.RepositoryNodeUtilities;
 import org.talend.repository.sap.i18n.Messages;
 import org.talend.repository.ui.utils.ConnectionContextHelper;
 import org.talend.repository.ui.wizards.CheckLastVersionRepositoryWizard;
-import org.talend.repository.ui.wizards.PropertiesWizardPage;
+import org.talend.repository.ui.wizards.metadata.connection.Step0WizardPage;
 
 /**
  * @author Ammu
@@ -38,11 +50,26 @@ import org.talend.repository.ui.wizards.PropertiesWizardPage;
  */
 public class SapWizard extends CheckLastVersionRepositoryWizard implements INewWizard {
 
-	private PropertiesWizardPage propertiesWizardPage;
+	/**
+	 * propertiesWizardPage
+	 */
+	private Step0WizardPage propertiesWizardPage;
+	/**
+	 * connection
+	 */
 	private SAPConnection connection;
+	/**
+	 * connectionProperty
+	 */
 	private Property connectionProperty;
-	private ConnectionItem connectionItem;
+
+	/**
+	 * sapWizardPage
+	 */
 	private SapWizardPage sapWizardPage;
+	/**
+	 * isToolBar
+	 */
 	private boolean isToolBar;
 
 	/**
@@ -55,49 +82,10 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 		super(workbench, creation);
 		this.existingNames = existingNames;
 		setNeedsProgressMonitor(true);
-		switch (node.getType()) {
-		case SIMPLE_FOLDER:
-		case REPOSITORY_ELEMENT:
-			pathToSave = RepositoryNodeUtilities.getPath(node);
-			connection = (SAPConnection) ((ConnectionItem) node.getObject().getProperty().getItem()).getConnection();
-			connectionProperty = node.getObject().getProperty();
-			connectionItem = (ConnectionItem) node.getObject().getProperty().getItem();
-			// set the repositoryObject, lock and set isRepositoryObjectEditable
-			setRepositoryObject(node.getObject());
-			isRepositoryObjectEditable();
-			initLockStrategy();
-			break;
-		case SYSTEM_FOLDER:
-			pathToSave = new Path(""); //$NON-NLS-1$
-			connection = ConnectionFactory.eINSTANCE.createSAPConnection();
-			connectionProperty = PropertiesFactory.eINSTANCE.createProperty();
-			connectionProperty.setAuthor(((RepositoryContext) CorePlugin.getContext().getProperty(
-					Context.REPOSITORY_CONTEXT_KEY)).getUser());
-			connectionProperty.setVersion(VersionUtils.DEFAULT_VERSION);
-			connectionProperty.setStatusCode(""); //$NON-NLS-1$
-
-			connectionItem = PropertiesFactory.eINSTANCE.createSAPConnectionItem();
-			connectionItem.setProperty(connectionProperty);
-			connectionItem.setConnection(connection);
-			break;
-		}
-		// initialize the context mode
-		ConnectionContextHelper.checkContextMode(connectionItem);
+		init(node);
 	}
 
-	public SapWizard(IWorkbench workbench, boolean creation, ISelection selection, String[] existingNames) {
-		super(workbench, creation);
-		this.selection = selection;
-		this.existingNames = existingNames;
-		setNeedsProgressMonitor(true);
-		RepositoryNode node = null;
-		Object obj = ((IStructuredSelection) selection).getFirstElement();
-		if (obj instanceof RepositoryNode) {
-			node = (RepositoryNode) obj;
-		} else {
-			return;
-		}
-
+	private void init(RepositoryNode node) {
 		switch (node.getType()) {
 		case SIMPLE_FOLDER:
 		case REPOSITORY_ELEMENT:
@@ -105,11 +93,9 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 			connection = (SAPConnection) ((ConnectionItem) node.getObject().getProperty().getItem()).getConnection();
 			connectionProperty = node.getObject().getProperty();
 			connectionItem = (ConnectionItem) node.getObject().getProperty().getItem();
-			// set the repositoryObject, lock and set isRepositoryObjectEditable
 			setRepositoryObject(node.getObject());
 			isRepositoryObjectEditable();
 			initLockStrategy();
-
 			break;
 		case SYSTEM_FOLDER:
 			pathToSave = new Path(""); //$NON-NLS-1$
@@ -125,7 +111,6 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 			connectionItem.setConnection(connection);
 			break;
 		}
-		// initialize the context mode
 		ConnectionContextHelper.checkContextMode(connectionItem);
 	}
 
@@ -137,27 +122,25 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 	@Override
 	public boolean performFinish() {
 		if (this.sapWizardPage.isPageComplete()) {
-			ProxyRepositoryFactory localProxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
+			ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
 			try {
 				if (this.creation) {
-					String nextId = localProxyRepositoryFactory.getNextId();
+					String nextId = proxyRepositoryFactory.getNextId();
 					this.connectionProperty.setId(nextId);
-					localProxyRepositoryFactory.create(this.connectionItem, this.propertiesWizardPage
-							.getDestinationPath(), new boolean[0]);
+					proxyRepositoryFactory.create(this.connectionItem, this.propertiesWizardPage.getDestinationPath(),
+							new boolean[0]);
 				} else {
 					RepositoryUpdateManager.updateFileConnection(this.connectionItem);
-					localProxyRepositoryFactory.save(this.connectionItem, new boolean[0]);
+					proxyRepositoryFactory.save(this.connectionItem, new boolean[0]);
 					closeLockStrategy();
 				}
-			} catch (PersistenceException localPersistenceException) {
-				String detailError = localPersistenceException.toString();
+			} catch (PersistenceException persistenceException) {
+				String detailError = persistenceException.toString();
 				new ErrorDialogWidthDetailArea(getShell(), "org.talend.repository", Messages
 						.getString("CommonWizard.persistenceException"), detailError);
 				log.error(Messages.getString("CommonWizard.persistenceException") + "\n" + detailError);
 				return false;
 			}
-			List<IRepositoryViewObject> localArrayList = new ArrayList<IRepositoryViewObject>();
-			localArrayList.add(this.repositoryObject);
 			return true;
 		}
 		return false;
@@ -175,6 +158,11 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.jface.wizard.Wizard#addPages()
+	 */
 	@Override
 	public void addPages() {
 		setWindowTitle(Messages.getString("SapWizard.Window.Title"));//$NON-NLS-1$
@@ -183,7 +171,7 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 		if (isToolBar) {
 			pathToSave = null;
 		}
-		propertiesWizardPage = new SapStep0WizardPage(connectionProperty, pathToSave,
+		propertiesWizardPage = new Step0WizardPage(connectionProperty, pathToSave,
 				ERepositoryObjectType.METADATA_CONNECTIONS, !isRepositoryObjectEditable(), creation);
 		sapWizardPage = new SapWizardPage(connectionItem, isRepositoryObjectEditable(), existingNames);
 		if (creation) {
@@ -208,6 +196,9 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 		addPage(sapWizardPage);
 	}
 
+	/**
+	 * @param isToolbar
+	 */
 	public void setToolBar(boolean isToolbar) {
 		this.isToolBar = isToolbar;
 	}

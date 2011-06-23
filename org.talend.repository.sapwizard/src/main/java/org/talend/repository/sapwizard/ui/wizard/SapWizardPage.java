@@ -1,3 +1,20 @@
+/** 
+ *    Copyright (C) 2011, Starschema Ltd. <info at starschema.net>
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 2 of the License, or
+ *    any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 package org.talend.repository.sapwizard.ui.wizard;
 
 import org.eclipse.jface.dialogs.IDialogPage;
@@ -7,20 +24,32 @@ import org.talend.core.model.properties.ConnectionItem;
 import org.talend.repository.ui.swt.utils.AbstractForm;
 
 /**
- * DatabaseWizard present the DatabaseForm. Use to Use to manage the metadata
- * connection. Page allows setting a database.
+ * SapWizard present the SapForm. Use to Use to manage the metadata connection.
+ * Page allows setting a sap server.
  * 
  * @author Ammu
  */
 public class SapWizardPage extends WizardPage {
 
+	/**
+	 * connectionItem
+	 */
 	private ConnectionItem connectionItem;
+	/**
+	 * sapForm
+	 */
 	private SapForm sapForm;
+	/**
+	 * existingNames
+	 */
 	private final String[] existingNames;
+	/**
+	 * isRepositoryObjectEditable
+	 */
 	private final boolean isRepositoryObjectEditable;
 
 	/**
-	 * DatabaseWizardPage constructor.
+	 * SapWizardPage constructor.
 	 * 
 	 * @param connection
 	 * @param isRepositoryObjectEditable
@@ -39,10 +68,6 @@ public class SapWizardPage extends WizardPage {
 	 * @see IDialogPage#createControl(Composite)
 	 */
 	public void createControl(final Composite parent) {
-//		boolean isCreation = false;
-//		if (this.getWizard() instanceof RepositoryWizard) {
-//			isCreation = ((RepositoryWizard) getWizard()).isCreation();
-//		}
 		sapForm = new SapForm(parent, connectionItem, existingNames);
 		sapForm.setReadOnly(!isRepositoryObjectEditable);
 

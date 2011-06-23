@@ -1,20 +1,22 @@
-// ============================================================================
-//
-// Copyright (C) 2006-2010 Talend Inc. - www.talend.com
-//
-// This source code is available under agreement available at
-// %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
-//
-// You should have received a copy of the agreement
-// along with this program; if not, write to Talend SA
-// 9 rue Pages 92150 Suresnes, France
-//
-// ============================================================================
+/** 
+ *    Copyright (C) 2011, Starschema Ltd. <info at starschema.net>
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 2 of the License, or
+ *    any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 package org.talend.repository.sapwizard.actions;
 
-import org.apache.log4j.Logger;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.wizard.WizardDialog;
@@ -23,11 +25,6 @@ import org.eclipse.ui.PlatformUI;
 import org.talend.commons.exception.ExceptionHandler;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.image.ImageProvider;
-import org.talend.core.model.general.Project;
-import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
-import org.talend.core.model.metadata.builder.connection.SAPConnection;
-import org.talend.core.model.properties.ConnectionItem;
-import org.talend.core.model.properties.Property;
 import org.talend.core.model.properties.SAPConnectionItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.RepositoryManager;
@@ -35,11 +32,9 @@ import org.talend.core.model.repository.RepositoryObject;
 import org.talend.core.ui.images.ECoreImage;
 import org.talend.core.ui.images.OverlayImageProvider;
 import org.talend.repository.ProjectManager;
-import org.talend.repository.RepositoryPlugin;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.model.RepositoryNode;
-import org.talend.repository.model.RepositoryNodeUtilities;
 import org.talend.repository.model.IRepositoryNode.EProperties;
 import org.talend.repository.sap.i18n.Messages;
 import org.talend.repository.sapwizard.ui.wizard.SapWizard;
@@ -50,10 +45,6 @@ import org.talend.repository.ui.actions.metadata.AbstractCreateAction;
  * 
  */
 public class CreateSAPConnectionAction extends AbstractCreateAction {
-
-	protected static Logger log = Logger.getLogger(CreateSAPConnectionAction.class);
-
-	protected static final String PID = RepositoryPlugin.PLUGIN_ID;
 
 	private static final String EDIT_LABEL = Messages.getString("CreateSAPConnectionAction.Action.EditTitle"); //$NON-NLS-1$
 
@@ -66,8 +57,9 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 	private ImageDescriptor createImage = OverlayImageProvider.getImageWithNew(ImageProvider
 			.getImage(ECoreImage.METADATA_CONNECTION_ICON));
 
-	private ConnectionItem connItem;
-
+	/**
+	 * 
+	 */
 	public CreateSAPConnectionAction() {
 		super();
 
@@ -76,6 +68,9 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 		this.setImageDescriptor(defaultImage);
 	}
 
+	/**
+	 * @param isToolbar
+	 */
 	public CreateSAPConnectionAction(boolean isToolbar) {
 		super();
 		setToolbar(isToolbar);
@@ -105,17 +100,11 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 		RepositoryManager.getRepositoryView().refresh();
 		RepositoryNode metadataNode = repositoryNode.getParent();
 		if (metadataNode != null) {
-			// Force focus to the repositoryView and open Metadata and
-			// DbConnection nodes
 			getViewPart().setFocus();
 			getViewPart().expand(metadataNode, true);
 			getViewPart().expand(repositoryNode, true);
 		}
 
-		SAPConnection connection = null;
-		IPath pathToSave = null;
-
-		// 16670
 		if (repositoryNode.getObject() != null && repositoryNode.getObject().getClass().equals(RepositoryObject.class)) {
 			try {
 				((RepositoryObject) repositoryNode.getObject()).setProperty(ProxyRepositoryFactory.getInstance()
@@ -125,9 +114,7 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 			}
 		}
 
-		// Define the RepositoryNode, by default Metadata/DbConnection
 		RepositoryNode node = repositoryNode;
-		// When the userSelection is an element of metadataNode, use it !
 		if (!isToolbar()) {
 			Object userSelection = ((IStructuredSelection) getSelection()).getFirstElement();
 			if (userSelection instanceof RepositoryNode) {
@@ -141,59 +128,23 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 			}
 		}
 		boolean creation = false;
-		// Define the repositoryObject SAP Connection and his pathToSave
 		switch (node.getType()) {
 		case REPOSITORY_ELEMENT:
-			// pathToSave = null;
-			connection = (SAPConnection) ((ConnectionItem) node.getObject().getProperty().getItem()).getConnection();
 			creation = false;
 			break;
 		case SIMPLE_FOLDER:
-			pathToSave = RepositoryNodeUtilities.getPath(node);
-			connection = ConnectionFactory.eINSTANCE.createSAPConnection();
 			creation = true;
 			break;
 		case SYSTEM_FOLDER:
-			pathToSave = new Path(""); //$NON-NLS-1$
-			connection = ConnectionFactory.eINSTANCE.createSAPConnection();
 			creation = true;
 			break;
 		}
 
-		if (!creation) {
-			Property property = node.getObject().getProperty();
-			Property updatedProperty = null;
-			if (getNeededVersion() == null) {
-				// try {
-				// updatedProperty =
-				// ProxyRepositoryFactory.getInstance().getLastVersion(
-				// new
-				// Project(ProjectManager.getInstance().getProject(property.getItem())),
-				// property.getId())
-				// .getProperty();
-				//
-				// node.getObject().setProperty(updatedProperty);
-				// } catch (PersistenceException e) {
-				// ExceptionHandler.process(e);
-				// }
-			} else {
-				try {
-					updatedProperty = ProxyRepositoryFactory.getInstance().getUptodateProperty(
-							new Project(ProjectManager.getInstance().getProject(property.getItem())), property);
-				} catch (PersistenceException e) {
-					ExceptionHandler.process(e);
-				}
-			}
-
-		}
-
 		SapWizard repositoryWizard = new SapWizard(PlatformUI.getWorkbench(), creation, node, getExistingNames());
-		// Open the Wizard
 		WizardDialog wizardDialog = new WizardDialog(Display.getCurrent().getActiveShell(), repositoryWizard);
-		wizardDialog.setPageSize(600, 510);
+		wizardDialog.setPageSize(600, 500);
 		wizardDialog.create();
 		wizardDialog.open();
-		connItem = repositoryWizard.getConnectionItem();
 		RepositoryManager.refreshSavedNode(node);
 	}
 
@@ -239,10 +190,6 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 	@Override
 	public Class<SAPConnectionItem> getClassForDoubleClick() {
 		return SAPConnectionItem.class;
-	}
-
-	public ConnectionItem getConnectionItem() {
-		return connItem;
 	}
 
 }

@@ -1,3 +1,20 @@
+/** 
+ *    Copyright (C) 2011, Starschema Ltd. <info at starschema.net>
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 2 of the License, or
+ *    any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 package org.talend.repository.sapwizard.actions;
 
 import org.eclipse.emf.common.util.EList;
@@ -14,7 +31,6 @@ import org.talend.core.model.properties.SAPConnectionItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryObject;
 import org.talend.core.model.repository.IRepositoryViewObject;
-import org.talend.core.model.repository.RepositoryViewObject;
 import org.talend.core.ui.images.ECoreImage;
 import org.talend.cwm.helper.TableHelper;
 import org.talend.repository.ProjectManager;
@@ -32,6 +48,7 @@ import org.talend.repository.ui.actions.metadata.AbstractCreateTableAction;
  * 
  */
 public class CreateSAPTableAction extends AbstractCreateTableAction {
+
 	private static final String CREATE_LABEL = Messages.getString("CreateSAPTableAction.Action.CreateTitle");
 	private RepositoryNode node = null;
 
@@ -74,10 +91,11 @@ public class CreateSAPTableAction extends AbstractCreateTableAction {
 				|| (ERepositoryObjectType.METADATA_SAP_FUNCTION.equals(repositoryNodeType))) {
 			getViewPart().expand(this.node, true);
 		}
-		createSAPFunctionTableWizard(this.node, true);
+		createSAPTableWizard(this.node, true);
 	}
 
-	private void createSAPFunctionTableWizard(RepositoryNode paramRepositoryNode, boolean creation) {
+	@SuppressWarnings("deprecation")
+	private void createSAPTableWizard(RepositoryNode paramRepositoryNode, boolean creation) {
 		SAPConnection localSAPConnection = null;
 		SAPFunctionUnit localSAPFunctionUnit = null;
 		if (paramRepositoryNode.getType() == RepositoryNode.ENodeType.REPOSITORY_ELEMENT) {
@@ -138,8 +156,9 @@ public class CreateSAPTableAction extends AbstractCreateTableAction {
 		localWizardDialog.setPageSize(400, 400);
 		localWizardDialog.setBlockOnOpen(true);
 		RepositoryNode localRepositoryNode = this.node;
-		if ((this.node.getObject() instanceof SAPFunctionRepositoryObject))
+		if ((this.node.getObject() instanceof SAPFunctionRepositoryObject)) {
 			localRepositoryNode = this.node.getParent().getParent();
+		}
 		handleWizard(localRepositoryNode, localWizardDialog, true);
 		this.node = null;
 	}
