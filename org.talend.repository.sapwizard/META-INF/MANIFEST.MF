@@ -11,8 +11,3 @@ Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ClassPath: .,
  sapjco.jar
-Export-Package: com.sap.mw.jco,
- com.sap.mw.jco.rfc,
- com.sap.mw.jco.support,
- com.sap.mw.jco.util,
- com.sap.mw.jco.webas
