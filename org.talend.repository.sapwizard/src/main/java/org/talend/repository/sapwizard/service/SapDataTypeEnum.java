@@ -1,4 +1,3 @@
-
 /** 
  *    Copyright (C) 2011, Starschema Ltd. <info at starschema.net>
  *
@@ -16,35 +15,75 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-
 package org.talend.repository.sapwizard.service;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Ammu
  * 
  */
-public class SapTableDescription {
-	private String name;
-	private String description;
+public enum SapDataTypeEnum {
+	CLNT,
 
-	public SapTableDescription(String name, String description) {
-		this.name = name;
-		this.description = description;
-	}
+	NUMC,
 
-	public String getName() {
-		return this.name;
-	}
+	INT4,
 
-	public void setName(String paramString) {
-		this.name = paramString;
-	}
+	TIMS,
 
-	public String getDescription() {
-		return this.description;
-	}
+	QUAN,
+	
+	DEC,
+	
+	CURR,
+	
+	DATS,
 
-	public void setDescription(String paramString) {
-		this.description = paramString;
+	UNIT,
+	
+	INVALID,
+
+	CHAR,
+
+	DATE,
+
+	BCD,
+
+	TIME,
+
+	BYTE,
+
+	ITAB,
+
+	NUM,
+
+	FLOAT,
+
+	INT,
+
+	INT2,
+
+	INT1,
+
+	STRING,
+
+	XSTRING,
+
+	STRUCTURE,
+
+	TABLE,
+
+	EXCEPTION,
+
+	ITEM;
+
+	public static String[] getLabels() {
+		List<String> arrayOfString = new ArrayList<String>();
+		for (SapDataTypeEnum typeEnum : values()) {
+			arrayOfString.add(typeEnum.name());
+		}
+		return arrayOfString.toArray(new String[0]);
 	}
 }

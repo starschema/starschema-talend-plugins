@@ -17,60 +17,66 @@
 
 package org.talend.repository.sapwizard.ui.wizard;
 
-import java.io.CharArrayWriter;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ColumnLabelProvider;
+import org.eclipse.jface.viewers.CellEditor;
+import org.eclipse.jface.viewers.ColumnViewerEditor;
+import org.eclipse.jface.viewers.ColumnViewerEditorActivationEvent;
+import org.eclipse.jface.viewers.ColumnViewerEditorActivationStrategy;
 import org.eclipse.jface.viewers.ColumnWeightData;
+import org.eclipse.jface.viewers.ComboBoxCellEditor;
+import org.eclipse.jface.viewers.ICellModifier;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TableLayout;
 import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.jface.viewers.TableViewerColumn;
+import org.eclipse.jface.viewers.TableViewerEditor;
+import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
-import org.talend.commons.exception.ExceptionHandler;
+import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
+import org.talend.commons.ui.image.EImage;
+import org.talend.commons.ui.image.ImageProvider;
 import org.talend.commons.ui.swt.formtools.Form;
 import org.talend.commons.ui.swt.formtools.LabelledText;
 import org.talend.commons.ui.swt.formtools.UtilsButton;
 import org.talend.commons.utils.data.text.IndiceHelper;
 import org.talend.core.model.metadata.MetadataTool;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
-import org.talend.core.model.metadata.builder.connection.InputSAPFunctionParameterTable;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.OutputSAPFunctionParameterTable;
-import org.talend.core.model.metadata.builder.connection.SAPConnection;
 import org.talend.core.model.metadata.builder.connection.SAPFunctionParameterColumn;
 import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
-import org.talend.core.model.metadata.builder.connection.SAPTestInputParameterTable;
 import org.talend.core.model.properties.ConnectionItem;
-import org.talend.repository.model.IProxyRepositoryFactory;
+import org.talend.cwm.helper.ModelElementHelper;
 import org.talend.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.sap.i18n.Messages;
-import org.talend.repository.sapwizard.service.SapParameterTypeEnum;
-import org.talend.repository.sapwizard.service.SapClientManager;
-import org.talend.repository.sapwizard.service.SapTableDescription;
+import org.talend.repository.sapwizard.service.SapDataTypeEnum;
 import org.talend.repository.sapwizard.service.SapUtil;
 
-import com.sap.mw.jco.JCO;
+//import com.sap.mw.jco.JCO;
 
-/**
- * @author Ammu
- * 
- */
 /**
  * @author Ammu
  * 
@@ -108,37 +114,13 @@ public class SapTableForm extends BaseSAPForm {
 	 */
 	private SAPFunctionUnit functionUnit;
 	/**
-	 * manager
-	 */
-	private SapClientManager manager = null;
-	/**
-	 * selectedFunction
-	 */
-	private JCO.Function selectedFunction = null;
-	/**
-	 * inputParameterTable
-	 */
-	private OutputSAPFunctionParameterTable outputParameterTable;
-	/**
-	 * inputParameterTable
-	 */
-	private InputSAPFunctionParameterTable inputParameterTable;
-	/**
 	 * metadataTable
 	 */
 	private MetadataTable metadataTable;
-	/**
-	 * testInputParameterTable
-	 */
-	private SAPTestInputParameterTable testInputParameterTable;
-	/**
-	 * createOne
-	 */
-	private boolean createOne;
-	/**
-	 * initFunctionName
-	 */
-	private String initTableName = null;
+	private ToolItem addToolItem;
+	private ToolItem removeToolItem;
+	private ToolItem upToolItem;
+	private ToolItem downToolItemDown;
 
 	/**
 	 * @param parent
@@ -146,16 +128,13 @@ public class SapTableForm extends BaseSAPForm {
 	 * @param functionUnit
 	 * @param metadataTable
 	 */
-	public SapTableForm(Composite parent, ConnectionItem connectionItem, SAPFunctionUnit functionUnit,
-			MetadataTable metadataTable) {
+	public SapTableForm(Composite parent, ConnectionItem connectionItem, SAPFunctionUnit functionUnit, MetadataTable metadataTable) {
 		super(parent, 0, null);
 		this.connectionItem = connectionItem;
 		this.functionUnit = functionUnit;
 		this.metadataTable = metadataTable;
 		this.newTableList = new ArrayList<MetadataTable>();
-		if (functionUnit != null) {
-			this.initTableName = functionUnit.getName();
-		}
+
 		setConnectionItem(connectionItem);
 		setupForm(false);
 	}
@@ -185,20 +164,6 @@ public class SapTableForm extends BaseSAPForm {
 		}
 		if (isReadOnly() != this.readOnly) {
 			adaptFormToReadOnly();
-		}
-	}
-
-	/**
-	 * 
-	 */
-	private void initJCOManager() {
-		SAPConnection connection = getConnection();
-		try {
-			this.manager = new SapClientManager(connection.getClient(), connection.getHost(), connection.getUsername(),
-					connection.getPassword(), connection.getLanguage(), connection.getSystemNumber());
-		} catch (Throwable throwable) {
-			openErrorDialogWithDetail(throwable);
-			this.manager = null;
 		}
 	}
 
@@ -237,30 +202,155 @@ public class SapTableForm extends BaseSAPForm {
 		gridData.verticalIndent = 20;
 		group.setLayoutData(gridData);
 
-		Composite columnTableComposite = Form.startNewDimensionnedGridLayout(group, 1, 400, 200);
-		columnTableComposite.setLayout(new FillLayout());
-		columnTableViewer = new TableViewer(columnTableComposite);
+		Composite columnTableComposite = new Composite(group, SWT.NULL);
+		columnTableComposite.setLayout(new GridLayout());
+		GridData columnCompGridData = new GridData(GridData.FILL_BOTH);
+		columnCompGridData.widthHint = 400;
+		columnCompGridData.heightHint = 200;
+		columnTableComposite.setLayoutData(columnCompGridData);
+
+		columnTableViewer = new TableViewer(columnTableComposite, SWT.FULL_SELECTION | SWT.MULTI | SWT.BORDER);
 		TableLayout layout = new TableLayout();
-		layout.addColumnData(new ColumnWeightData(50, 75, true));
+		layout.addColumnData(new ColumnWeightData(10, 50, true));
+		layout.addColumnData(new ColumnWeightData(10, 20, true));
+		layout.addColumnData(new ColumnWeightData(10, 50, false));
 		columnTableViewer.getTable().setLayout(layout);
-		columnTableViewer.setColumnProperties(new String[] { Messages.getString("SapTableForm.ColumnTable.Column1") });
+		GridDataFactory.fillDefaults().span(1, 2).grab(true, true).applyTo(columnTableViewer.getTable());
+
+		String[] columnNames = new String[] { Messages.getString("SapTableForm.ColumnTable.Column1"),
+				Messages.getString("SapTableForm.ColumnTable.Column2"), Messages.getString("SapTableForm.ColumnTable.Column3") };
+
+		columnTableViewer.setColumnProperties(columnNames);
 		columnTableViewer.setContentProvider(new ArrayContentProvider());
+		columnTableViewer.setLabelProvider(new TableColumnLabelProvider());
 		final Table table = columnTableViewer.getTable();
 		table.setHeaderVisible(true);
 		table.setLinesVisible(true);
 
-		final TableViewerColumn viewerColumn = new TableViewerColumn(columnTableViewer, SWT.NONE);
-		viewerColumn.setLabelProvider(new ColumnLabelProvider() {
-			@Override
-			public String getText(Object element) {
-				return ((SAPFunctionParameterColumn) element).getName();
-			}
-		});
-		final TableColumn column = viewerColumn.getColumn();
-		column.setText(Messages.getString("SapTableForm.ColumnTable.Column1"));
-		column.setWidth(200);
+		createColumn(0, 50);
+		createColumn(1, 20);
+		createColumn(2, 50);
+
+		ComboBoxCellEditor dataTypeComboCellEdditor = new ComboBoxCellEditor(table, SapDataTypeEnum.getLabels(), SWT.READ_ONLY);
+		TextCellEditor columNameTextCellEditor = new TextCellEditor(this.columnTableViewer.getTable());
+		TextCellEditor descTextCellEditor = new TextCellEditor(this.columnTableViewer.getTable());
+
+		this.columnTableViewer.setCellEditors(new CellEditor[] { columNameTextCellEditor, dataTypeComboCellEdditor, descTextCellEditor });
+		addCellModifier();
+		createTabbingForTableCell();
+
+		addTableToolBar(columnTableComposite);
+	}
+
+	private void createColumn(final int columnIndex, int width) {
+		TableColumn column = new TableColumn(columnTableViewer.getTable(), SWT.LEFT_TO_RIGHT);
+		column.setText(columnTableViewer.getColumnProperties()[columnIndex].toString());
+		column.setWidth(width);
 		column.setResizable(true);
 		column.setMoveable(true);
+	}
+
+	private void addTableToolBar(Composite columnTableComposite) {
+		ToolBar toolBar = new ToolBar(columnTableComposite, SWT.HORIZONTAL | SWT.WRAP | SWT.RIGHT);
+
+		addToolItem = new ToolItem(toolBar, SWT.PUSH);
+		addToolItem.setImage(ImageProvider.getImage(EImage.ADD_ICON));
+
+		removeToolItem = new ToolItem(toolBar, SWT.PUSH);
+		removeToolItem.setImage(ImageProvider.getImage(EImage.DELETE_ICON));
+		removeToolItem.setEnabled(false);
+
+		upToolItem = new ToolItem(toolBar, SWT.PUSH);
+		upToolItem.setImage(ImageProvider.getImage(EImage.UP_ICON));
+		upToolItem.setEnabled(false);
+
+		downToolItemDown = new ToolItem(toolBar, SWT.PUSH);
+		downToolItemDown.setImage(ImageProvider.getImage(EImage.DOWN_ICON));
+		downToolItemDown.setEnabled(false);
+	}
+
+	private void setMoveAndUp(int currentPos, int newPos) {
+		List<SAPFunctionParameterColumn> input = (List<SAPFunctionParameterColumn>) columnTableViewer.getInput();
+		IStructuredSelection selection = (IStructuredSelection) columnTableViewer.getSelection();
+		SAPFunctionParameterColumn moveColumn = (SAPFunctionParameterColumn) selection.getFirstElement();
+		input.remove(currentPos);
+		input.add(newPos, moveColumn);
+		columnTableViewer.setSelection(selection, true);
+		columnTableViewer.refresh();
+	}
+
+	private void addCellModifier() {
+		this.columnTableViewer.setCellModifier(new ICellModifier() {
+
+			public void modify(Object element, String property, Object value) {
+				TableItem localTableItem = (TableItem) element;
+				Object localObject = localTableItem.getData();
+				int columnIndex = getColumnIndex(property);
+				if ((localObject instanceof SAPFunctionParameterColumn)) {
+					SAPFunctionParameterColumn column = (SAPFunctionParameterColumn) localObject;
+					switch (columnIndex) {
+					case 0:
+						column.setName(String.valueOf(value));
+						break;
+					case 1:
+						Integer index = Integer.valueOf(value.toString());
+						String dataTpe;
+						if (index < 0 || index > SapDataTypeEnum.getLabels().length) {
+							dataTpe = SapDataTypeEnum.INVALID.name();
+						} else {
+							dataTpe = SapDataTypeEnum.getLabels()[index];
+						}
+						column.setDataType(dataTpe);
+						break;
+					case 2:
+						ModelElementHelper.getFirstDescription(column).setBody(String.valueOf(value));
+						break;
+					}
+				}
+				columnTableViewer.refresh();
+
+			}
+
+			public Object getValue(Object element, String property) {
+				if (element == null || property == null) {
+					return "";
+				}
+				if ((element instanceof SAPFunctionParameterColumn)) {
+					SAPFunctionParameterColumn column = (SAPFunctionParameterColumn) element;
+					switch (getColumnIndex(property)) {
+					case 0:
+						return column.getName() == null ? "" : column.getName();
+					case 1:
+						List<String> dataTypes = Arrays.asList(SapDataTypeEnum.getLabels());
+						return column.getDataType() == null ? dataTypes.indexOf(SapDataTypeEnum.INVALID) : dataTypes.indexOf(column.getDataType());
+					case 2:
+						return ModelElementHelper.getFirstDescription(column).getBody();
+					}
+				}
+				return null;
+			}
+
+			public boolean canModify(Object element, String property) {
+				return true;
+			}
+		});
+	}
+
+	private int getColumnIndex(String property) {
+		return Arrays.asList(columnTableViewer.getColumnProperties()).indexOf(property);
+	}
+
+	private void createTabbingForTableCell() {
+		ColumnViewerEditorActivationStrategy actSupport = new ColumnViewerEditorActivationStrategy(columnTableViewer) {
+			protected boolean isEditorActivationEvent(ColumnViewerEditorActivationEvent event) {
+				return event.eventType == ColumnViewerEditorActivationEvent.TRAVERSAL
+						|| event.eventType == ColumnViewerEditorActivationEvent.MOUSE_DOUBLE_CLICK_SELECTION
+						|| event.eventType == ColumnViewerEditorActivationEvent.PROGRAMMATIC;
+			}
+		};
+
+		TableViewerEditor.create(columnTableViewer, actSupport, ColumnViewerEditor.TABBING_HORIZONTAL
+				| ColumnViewerEditor.TABBING_MOVE_TO_ROW_NEIGHBOR | ColumnViewerEditor.TABBING_VERTICAL | ColumnViewerEditor.KEYBOARD_ACTIVATION);
 	}
 
 	/**
@@ -276,7 +366,7 @@ public class SapTableForm extends BaseSAPForm {
 		localGridLayout.marginHeight = 0;
 		localGridLayout.marginTop = 0;
 		localGridLayout.marginBottom = 0;
-		this.findButton = new UtilsButton(localComposite, Messages.getString("SapTableForm.FindButton"), 100, 30);
+		this.findButton = new UtilsButton(localComposite, Messages.getString("SapTableForm.FindButton"), 150, 30);
 		this.findButton.setEnabled(false);
 	}
 
@@ -311,6 +401,110 @@ public class SapTableForm extends BaseSAPForm {
 				checkFieldsValue();
 			}
 		});
+		this.columnTableViewer.addSelectionChangedListener(new ISelectionChangedListener() {
+
+			public void selectionChanged(SelectionChangedEvent event) {
+				IStructuredSelection localIStructuredSelection = (IStructuredSelection) columnTableViewer.getSelection();
+				updateToolBarItems(localIStructuredSelection.getFirstElement() != null);
+			}
+		});
+		this.columnTableViewer.getTable().addKeyListener(new KeyListener() {
+
+			public void keyReleased(KeyEvent e) {
+				if (e.keyCode == SWT.DEL) {
+					removeColumn();
+				}
+			}
+
+			public void keyPressed(KeyEvent e) {
+			}
+		});
+		this.addToolItem.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				if (functionUnit == null) {
+					return;
+				}
+				SAPFunctionParameterColumn sapFunctionParameterColumn = ConnectionFactory.eINSTANCE.createSAPFunctionParameterColumn();
+				sapFunctionParameterColumn.setName(Messages.getString("SapTableForm.DefaultNewLabel"));
+				sapFunctionParameterColumn.setDataType("DataType");
+				sapFunctionParameterColumn.setParameterType("");
+				sapFunctionParameterColumn.setLength("Length");
+				ModelElementHelper.getFirstDescription(sapFunctionParameterColumn).setBody("Description");
+
+				sapFunctionParameterColumn.setStructureOrTableName(metadataTable.getLabel());
+				functionUnit.getOutputParameterTable().getColumns().add(sapFunctionParameterColumn);
+				columnTableViewer.refresh();
+				columnTableViewer.setSelection(new StructuredSelection(sapFunctionParameterColumn), true);
+				updateToolBarItems(true);
+			}
+		});
+
+		this.removeToolItem.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				removeColumn();
+			}
+		});
+
+		this.upToolItem.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				Table table = columnTableViewer.getTable();
+				int selectedIndex = table.getSelectionIndex();
+				setMoveAndUp(selectedIndex, selectedIndex - 1);
+				table.select(selectedIndex - 1);
+				upToolItem.setEnabled(selectedIndex - 1 > 0);
+				downToolItemDown.setEnabled(true);
+
+			}
+		});
+
+		this.downToolItemDown.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+
+				Table table = columnTableViewer.getTable();
+				int selectedIndex = table.getSelectionIndex();
+				setMoveAndUp(selectedIndex, selectedIndex + 1);
+				table.select(selectedIndex + 1);
+				upToolItem.setEnabled(true);
+				downToolItemDown.setEnabled(selectedIndex < table.getItemCount() - 2);
+			}
+
+		});
+
+	}
+
+	private void removeColumn() {
+		IStructuredSelection selections = (IStructuredSelection) columnTableViewer.getSelection();
+		if (selections.isEmpty() || functionUnit == null) {
+			return;
+		}
+		for (Object selection : selections.toArray()) {
+
+			SAPFunctionParameterColumn selectedCol = (SAPFunctionParameterColumn) selection;
+			Table table = columnTableViewer.getTable();
+			int selectionIndex = table.getSelectionIndex();
+			functionUnit.getOutputParameterTable().getColumns().remove(selectedCol);
+			columnTableViewer.refresh();
+
+			if (table.getItemCount() == 0) {
+				updateToolBarItems(false);
+				return;
+			}
+			int nextIndex = selectionIndex == table.getItemCount() ? 0 : selectionIndex;
+			SAPFunctionParameterColumn elementAt = (SAPFunctionParameterColumn) columnTableViewer.getElementAt(nextIndex);
+			columnTableViewer.setSelection(new StructuredSelection(elementAt), true);
+		}
+		updateToolBarItems(true);
+	}
+
+	private void updateToolBarItems(boolean enabled) {
+		removeToolItem.setEnabled(enabled);
+		Table table = columnTableViewer.getTable();
+		upToolItem.setEnabled(!(table.getSelectionIndex() <= 0));
+		downToolItemDown.setEnabled((table.getSelectionIndex() < table.getItemCount() - 1 && table.getSelectionIndex() >= 0));
 	}
 
 	/*
@@ -341,156 +535,6 @@ public class SapTableForm extends BaseSAPForm {
 			boolean bool = (this.tableNameText.getCharCount() != 0);
 			this.findButton.setEnabled(bool);
 		}
-	}
-
-	/**
-	 * @param jcoFunctionDescription
-	 */
-	private void validatingFunction(SapTableDescription jcoFunctionDescription) {
-		if (this.manager == null) {
-			initJCOManager();
-		}
-		if (this.manager != null) {
-			String tableName = jcoFunctionDescription.getName();
-			JCO.Function function = null;
-			try {
-				function = this.manager.getTableByName(tableName);
-				if (function == null) {
-					MessageDialog.openWarning(getShell(), "SAP", Messages.getString("SapTableForm.NoTableName")
-							+ tableName);
-				} else if (this.selectedFunction == null) {
-					this.selectedFunction = function;
-					setFunctionUnitParametersAndMetadata(false);
-				} else if (!this.selectedFunction.equals(function)) {
-					this.selectedFunction = function;
-					setFunctionUnitParametersAndMetadata(true);
-				}
-				this.selectedFunction = function;
-				if (this.selectedFunction != null) {
-					getConnection().setCurrentFucntion(this.functionUnit.getName());
-				}
-			} catch (Exception exception) {
-				MessageDialog.openWarning(getShell(), "SAP", exception.getMessage());
-			}
-		}
-		checkFieldsValue();
-	}
-
-	/**
-	 * @param isFunctionValid
-	 */
-	private void setFunctionUnitParametersAndMetadata(boolean isFunctionValid) {
-		SAPConnection localSAPConnection = getConnection();
-		ProxyRepositoryFactory localProxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
-		createFunctionParametersAndMetadata(localSAPConnection, localProxyRepositoryFactory, isFunctionValid);
-	}
-
-	private void createFunctionParametersAndMetadata(SAPConnection sapConnection,
-			IProxyRepositoryFactory proxyRepositoryFactory, boolean isFunctionValid) {
-		SAPFunctionUnit functionUnit = null;
-		JCO.Function function = this.selectedFunction;
-		if (functionUnit != null) {
-			this.functionUnit = functionUnit;
-			this.inputParameterTable = functionUnit.getInputParameterTable();
-			this.outputParameterTable = functionUnit.getOutputParameterTable();
-			this.metadataTable = functionUnit.getMetadataTable();
-			this.testInputParameterTable = functionUnit.getTestInputParameterTable();
-		} else if (this.functionUnit == null) {
-			createFunctionAndAdd(sapConnection, proxyRepositoryFactory, function);
-		} else if ((this.initTableName != null) && (!this.initTableName.equals(function.getName()))
-				&& (!this.createOne)) {
-			createFunctionAndAdd(sapConnection, proxyRepositoryFactory, function);
-		} else if (isFunctionValid) {
-			this.functionUnit.setName(this.selectedFunction.getName());
-			CharArrayWriter localCharArrayWriter = new CharArrayWriter();
-			try {
-				this.selectedFunction.writeHTML(localCharArrayWriter);
-			} catch (IOException ioException) {
-				ExceptionHandler.process(ioException);
-			}
-
-			this.inputParameterTable = this.functionUnit.getInputParameterTable();
-			this.inputParameterTable.setLabel(this.functionUnit.getName());
-			this.inputParameterTable.getColumns().clear();
-			SapUtil.createParamsForFunction(this.inputParameterTable, function, 0);
-
-			this.outputParameterTable = this.functionUnit.getOutputParameterTable();
-			this.outputParameterTable.setLabel(this.functionUnit.getName());
-			this.outputParameterTable.getColumns().clear();
-			SapUtil.createParamsForFunction(this.outputParameterTable, function, 1);
-
-			this.metadataTable = this.functionUnit.getMetadataTable();
-			this.metadataTable.setLabel(this.functionUnit.getName());
-
-			this.testInputParameterTable = ConnectionFactory.eINSTANCE.createSAPTestInputParameterTable();
-			this.testInputParameterTable.setFunctionUnit(this.functionUnit);
-			this.testInputParameterTable.setLabel(function.getName());
-			SapUtil.createParamsForFunction(this.testInputParameterTable, function, 0);
-		} else {
-			if (this.functionUnit.getTestInputParameterTable() == null) {
-				this.testInputParameterTable = ConnectionFactory.eINSTANCE.createSAPTestInputParameterTable();
-				this.testInputParameterTable.setFunctionUnit(this.functionUnit);
-				this.testInputParameterTable.setId(proxyRepositoryFactory.getNextId());
-				this.testInputParameterTable.setLabel(function.getName());
-				SapUtil.createParamsForFunction(this.testInputParameterTable, function, 0);
-				this.functionUnit.setTestInputParameterTable(this.testInputParameterTable);
-			}
-		}
-	}
-
-	/**
-	 * @param sapConnection
-	 * @param proxyRepositoryFactory
-	 * @param function
-	 * @return
-	 */
-	private SAPFunctionUnit createFunctionAndAdd(SAPConnection sapConnection,
-			IProxyRepositoryFactory proxyRepositoryFactory, JCO.Function function) {
-		this.functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
-		this.functionUnit.setName(function.getName());
-		this.functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
-		this.functionUnit.setConnection(sapConnection);
-		this.functionUnit.setId(proxyRepositoryFactory.getNextId());
-		CharArrayWriter charArrayWriter = new CharArrayWriter();
-		try {
-			function.writeHTML(charArrayWriter);
-		} catch (IOException ioException) {
-			ExceptionHandler.process(ioException);
-		}
-		// New Input parameter table
-		this.inputParameterTable = ConnectionFactory.eINSTANCE.createInputSAPFunctionParameterTable();
-		this.inputParameterTable.setFunctionUnit(this.functionUnit);
-		this.inputParameterTable.setId(proxyRepositoryFactory.getNextId());
-		this.inputParameterTable.setLabel(this.functionUnit.getName());
-		SapUtil.createParamsForFunction(this.inputParameterTable, function, 0);
-
-		// New out parameter table
-		this.outputParameterTable = ConnectionFactory.eINSTANCE.createOutputSAPFunctionParameterTable();
-		this.outputParameterTable.setFunctionUnit(this.functionUnit);
-		this.outputParameterTable.setId(proxyRepositoryFactory.getNextId());
-		this.outputParameterTable.setLabel(this.functionUnit.getName());
-		SapUtil.createParamsForFunction(this.outputParameterTable, function, 1);
-
-		// New Test parameter table
-		this.testInputParameterTable = ConnectionFactory.eINSTANCE.createSAPTestInputParameterTable();
-		this.testInputParameterTable.setFunctionUnit(this.functionUnit);
-		this.testInputParameterTable.setId(proxyRepositoryFactory.getNextId());
-		this.testInputParameterTable.setLabel(function.getName());
-		SapUtil.createParamsForFunction(this.testInputParameterTable, function, 0);
-
-		// New Metadata table
-		this.metadataTable = ConnectionFactory.eINSTANCE.createMetadataTable();
-		this.metadataTable.setId(proxyRepositoryFactory.getNextId());
-		this.metadataTable.setLabel(function.getName());
-		// FIXME
-		// this.metadataTable.setConnection(paramSAPConnection);
-		this.functionUnit.setInputParameterTable(this.inputParameterTable);
-		this.functionUnit.setOutputParameterTable(this.outputParameterTable);
-		this.functionUnit.setMetadataTable(this.metadataTable);
-		this.functionUnit.setTestInputParameterTable(this.testInputParameterTable);
-		sapConnection.getFuntions().add(this.functionUnit);
-		this.createOne = true;
-		return this.functionUnit;
 	}
 
 	/**
@@ -538,18 +582,16 @@ public class SapTableForm extends BaseSAPForm {
 	 * 
 	 */
 	private void searchFunction() {
-		if (this.manager == null) {
-			initJCOManager();
-		}
-		if (this.manager != null && getStatusLevel() == Status.OK) {
+		if (getStatusLevel() == Status.OK) {
 			String tableName = this.tableNameText.getText();
 			try {
-				List<SapTableDescription> tableList = this.manager.listTables(tableName, "");
-				if ((tableList == null) || (tableList.isEmpty())) {
+				functionUnit = SapUtil.createFunctionForGivenTable(tableName, getConnection());
+				if (functionUnit == null) {
 					MessageDialog.openWarning(getShell(), "SAP", Messages.getString("SapTableForm.NoTable"));
 				} else {
-					validatingFunction(tableList.get(0));
+					this.metadataTable = functionUnit.getMetadataTable();
 					setColumnTableInput();
+					updateStatus(0, "");
 				}
 			} catch (Exception exception) {
 				String message = exception.getMessage();
