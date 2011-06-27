@@ -56,8 +56,26 @@ boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"
 String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
 %>
 
-/* com.starschema.jco.tools.SapCustomDataProvider provider; */
+/* Connect to SAP */
+com.sap.conn.jco.JCoDestination destination = null;
+try {
+	com.starschema.jco.utils.SapCustomDataProvider customDataProvider = new com.starschema.jco.utils.SapCustomDataProvider (
+		<%= client %>, <%= language %>, <%= systemnumber %>, <%=hostname %>, <%= userid %>, <%= password %> 
+	);
 
+	// Register customDataProvider
+	com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(customDataProvider);
+	// Connect to SAP server
+	destination = com.sap.conn.jco.JCoDestinationManager.getDestination(com.starschema.jco.utils.SapCustomDataProvider.SAP_SERVER);
+	
+} catch (Exception e_<%=cid%>) {
+    throw new RuntimeException(e_<%=cid%>.getMessage());
+}
+
+/* switch to JCO Context */
+try { 
+		com.sap.conn.jco.JCoContext.begin(destination);
+		System.out.println(destination.getAttributes());
 <%
   for (int i = 0; i < sapTableColumns.size(); i++) {
     Map<String, String> line = sapTableColumns.get(i);

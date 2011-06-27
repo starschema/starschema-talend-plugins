@@ -20,8 +20,15 @@
 	boolean close = ("true").equals(ElementParameterParser.getValue(node,"__CLOSE__"));
 %>
 
-/*
-}catch (Exception e_<%=cid%>) {
-	com.sap.mw.jco.JCO.releaseClient(client_<%=cid %>);
+
+} catch (Exception e_<%=cid%>) {
+
+	// close JcoConect even if the connection should persist
+	if ( ! <%= close %> )
+		com.sap.conn.jco.JCoContext.end(destination);
+
     throw new RuntimeException(e_<%=cid%>.getMessage());
-}*/	
+} finally {
+	if ( <%= close %> ) 
+		com.sap.conn.jco.JCoContext.end(destination);
+}
