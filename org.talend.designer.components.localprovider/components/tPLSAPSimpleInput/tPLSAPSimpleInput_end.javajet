@@ -19,45 +19,9 @@
 	String cid = node.getUniqueName();
 	boolean close = ("true").equals(ElementParameterParser.getValue(node,"__CLOSE__"));
 %>
-	
-<%	
-	IConnection firstDataConn = null;
-	List<IMetadataColumn> firstColumnList = null;
 
-	//1. get first DATA Link
-	List< ? extends IConnection> conns = node.getOutgoingSortedConnections();	
-	if(conns != null && conns.size() > 0){
-		for(IConnection conn : conns){
-			if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
-				firstDataConn = conn;
-				break;
-			}
-		}
-	}
-
-	//2. get first columnList (with real columns data) 	
-	List<IMetadataTable> metadatas = node.getMetadataList();
-	if ( metadatas != null && metadatas.size() > 0 ) {
-		IMetadataTable metadata = metadatas.get(0);
-		if(metadata != null){
-			firstColumnList = metadata.getListColumns(); 
-			if ( firstColumnList == null || firstColumnList.size() == 0 ) {
-				firstColumnList = null;
-			}
-		}
-	}
-	
-	//3. check the config Link and Schema
-	if(firstDataConn == null || firstColumnList == null)
-	{
-		return "";
-	}
-%>
-	}
-	<%if(close){%>
-	com.sap.mw.jco.JCO.releaseClient(client_<%=cid %>);
-	<%}%>
+/*
 }catch (Exception e_<%=cid%>) {
 	com.sap.mw.jco.JCO.releaseClient(client_<%=cid %>);
     throw new RuntimeException(e_<%=cid%>.getMessage());
-}	
+}*/	
