@@ -25,10 +25,10 @@
 
 	// close JcoConect even if the connection should persist
 	if ( ! <%= close %> )
-		com.sap.conn.jco.JCoContext.end(destination);
+		com.sap.conn.jco.JCoContext.end(dest_<%=cid%>);
 
     throw new RuntimeException(e_<%=cid%>.getMessage());
 } finally {
 	if ( <%= close %> ) 
-		com.sap.conn.jco.JCoContext.end(destination);
+		com.sap.conn.jco.JCoContext.end(dest_<%=cid%>);
 }

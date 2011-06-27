@@ -46,7 +46,7 @@ String tableName = ElementParameterParser.getValue(node, "__SAP_TABLE_NAME__");
 String functionName = ElementParameterParser.getValue(node, "__SAP_FUNCTION__");
 String sapOutputDirectory = ElementParameterParser.getValue(node, "__SAP_OUTPUT_DIRECTORY__");
 String whereCondition = ElementParameterParser.getValue(node, "__WHERE_CONDITION__");
-String outputFileName = tableName + "_" + cid + ".dat";
+String outputFileName = tableName; // concat cid
 boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"__COMPRESSION__"));
 
 
@@ -57,42 +57,60 @@ String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
 %>
 
 /* Connect to SAP */
-com.sap.conn.jco.JCoDestination destination = null;
-try {
-	com.starschema.jco.utils.SapCustomDataProvider customDataProvider = new com.starschema.jco.utils.SapCustomDataProvider (
-		<%= client %>, <%= language %>, <%= systemnumber %>, <%=hostname %>, <%= userid %>, <%= password %> 
-	);
+com.sap.conn.jco.JCoDestination dest_<%=cid%> = null;
+<%if(useExistingConn){%>	
+	dest_<%=cid%> = (com.sap.conn.jco.JCoDestination)globalMap.get("conn_<%=connection %>");
+<%}else{%>
+	org.talend.sap.TalendDestinationData destinationData_<%=cid%> = null;
+	<%if("ApplicationServer".equals(serverType)){%>
+		destinationData_<%=cid%> = new org.talend.sap.TalendDestinationData(<%=client%>,
+																			<%=userid%>,
+																			<%=password%>,
+																			<%=language%>,
+																			<%=hostname%>,
+																			<%=systemnumber%>);
+	<%}else{%>			
+		destinationData_<%=cid%> = new org.talend.sap.TalendDestinationData(<%=client%>,
+																			<%=userid%>,
+																			<%=password%>,
+																			<%=language%>,
+																			<%=hostname%>,
+																			<%=systemId %>,
+				            				 								<%=groupName%> );
+	<%}%>
+    org.talend.sap.TalendDestinationDataProvider destinationDataProvider_<%=cid%> = org.talend.sap.TalendDestinationDataProvider.getInstance();
+    destinationDataProvider_<%=cid%>.addDestination("SAP_SERVER_<%=cid%>", destinationData_<%=cid%>);
+    try {
+    	com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(destinationDataProvider_<%=cid%>);
+	} catch (java.lang.IllegalStateException ex) {
+		//ignore if the provider already registered.
+    }
+    dest_<%=cid%> = com.sap.conn.jco.JCoDestinationManager.getDestination("SAP_SERVER_<%=cid%>");
 
-	// Register customDataProvider
-	com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(customDataProvider);
-	// Connect to SAP server
-	destination = com.sap.conn.jco.JCoDestinationManager.getDestination(com.starschema.jco.utils.SapCustomDataProvider.SAP_SERVER);
-	
-} catch (Exception e_<%=cid%>) {
-    throw new RuntimeException(e_<%=cid%>.getMessage());
-}
-
+<%}%>  
+		
 /* switch to JCO Context */
 try { 
-	com.sap.conn.jco.JCoContext.begin(destination);
+    // Begins the stateful call sequence for calls to the specified destination.
+	com.sap.conn.jco.JCoContext.begin(dest_<%=cid%>);
 
-	com.sap.conn.jco.JCoFunction function = destination.getRepository().getFunction( "<%= functionName %>" );
+	com.sap.conn.jco.JCoFunction function_<%=cid %> = dest_<%=cid%>.getRepository().getFunction( "<%= functionName %>" );
 
-	if(function == null)
+	if(function_<%=cid %> == null)
     	throw new RuntimeException("<%= functionName %> not found in SAP.");
 
-	function.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> ); // table name
-	function.getImportParameterList().setValue( "FILE_NAME", <%= tableName %> ); // table name
+	function_<%=cid %>.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> ); // table name
+	function_<%=cid %>.getImportParameterList().setValue( "FILE_NAME", <%= outputFileName %> ); // table name
 
-	com.sap.conn.jco.JCoTable fields = function.getTableParameterList().getTable("TABLE_FIELD");
+	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD");
 
 <%
   for (int i = 0; i < sapTableColumns.size(); i++) {
     Map<String, String> line = sapTableColumns.get(i);
    	 %>
-	fields.appendRows(1);
-	fields.setValue("TABNAME", <%= tableName %> );
-	fields.setValue("FIELDNAME", <%= line.get("FIELD_NAME") %> );
+	fields_<%=cid %>.appendRows(1);
+	fields_<%=cid %>.setValue("TABNAME", <%= tableName %> );
+	fields_<%=cid %>.setValue("FIELDNAME", <%= line.get("FIELD_NAME") %> );
 
  	System.out.println("Adding SAP Column: " + <%= line.get("FIELD_NAME") %> );
 <%
@@ -102,7 +120,7 @@ try {
 	// Add where condition
 
 	// Call RFC
-	function.execute(destination);
+	function_<%=cid%>.execute(dest_<%=cid%>);
   
 
 

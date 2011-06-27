@@ -161,9 +161,8 @@
   </ADVANCED_PARAMETERS>
   <CODEGENERATION>
      <IMPORTS>
-       <IMPORT NAME="sapjco-arch-3.0.1" MODULE="sapjco3.jar" REQUIRED="true" /><IMPORT
-       	MODULE="jcoutils.jar" NAME="starschema-jcoutils" REQUIRED="true">
-</IMPORT>
+       <IMPORT NAME="sapjco-arch-3.0.1" MODULE="sapjco3.jar" REQUIRED="true" />
+	   <IMPORT NAME="talend-sap" MODULE="talend-sap.jar" REQUIRED="true" /> 	   
      </IMPORTS>
   </CODEGENERATION>
   
