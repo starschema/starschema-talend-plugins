@@ -46,7 +46,7 @@ String tableName = ElementParameterParser.getValue(node, "__SAP_TABLE_NAME__");
 String functionName = ElementParameterParser.getValue(node, "__SAP_FUNCTION__");
 String sapOutputDirectory = ElementParameterParser.getValue(node, "__SAP_OUTPUT_DIRECTORY__");
 String whereCondition = ElementParameterParser.getValue(node, "__WHERE_CONDITION__");
-
+String outputFileName = tableName + "_" + cid + ".dat";
 boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"__COMPRESSION__"));
 
 
@@ -74,15 +74,36 @@ try {
 
 /* switch to JCO Context */
 try { 
-		com.sap.conn.jco.JCoContext.begin(destination);
-		System.out.println(destination.getAttributes());
+	com.sap.conn.jco.JCoContext.begin(destination);
+
+	com.sap.conn.jco.JCoFunction function = destination.getRepository().getFunction( "<%= functionName %>" );
+
+	if(function == null)
+    	throw new RuntimeException("<%= functionName %> not found in SAP.");
+
+	function.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> ); // table name
+	function.getImportParameterList().setValue( "FILE_NAME", <%= tableName %> ); // table name
+
+	com.sap.conn.jco.JCoTable fields = function.getTableParameterList().getTable("TABLE_FIELD");
+
 <%
   for (int i = 0; i < sapTableColumns.size(); i++) {
     Map<String, String> line = sapTableColumns.get(i);
    	 %>
-   	 	System.out.println("SAP Column: " + <%= line.get("FIELD_NAME") %> );
-   	 <%
+	fields.appendRows(1);
+	fields.setValue("TABNAME", <%= tableName %> );
+	fields.setValue("FIELDNAME", <%= line.get("FIELD_NAME") %> );
+
+ 	System.out.println("Adding SAP Column: " + <%= line.get("FIELD_NAME") %> );
+<%
   }
 %>
 
-System.out.println("SAP Table: " + <%= tableName %> );
+	// Add where condition
+
+	// Call RFC
+	function.execute(destination);
+  
+
+
+	
