@@ -20,8 +20,13 @@
 	boolean close = ("true").equals(ElementParameterParser.getValue(node,"__CLOSE__"));
 %>
 
-} // FOR loop
-
+		} // FOR DataRow loop
+		
+	// close reader
+	} finally {
+		read_dat_<%=cid%>.close();
+	}
+  	
 } catch (Exception e_<%=cid%>) {
 
 	// close JcoConect even if the connection should persist

@@ -27,7 +27,7 @@
 
 <%
 boolean startIterate = false;
-String firstDataConnName = "table_content";
+int sizeListColumns = 0;
 
 String client = ElementParameterParser.getValue(node, "__CLIENT__");
 String userid = ElementParameterParser.getValue(node, "__USERID__");
@@ -45,14 +45,15 @@ String groupName = ElementParameterParser.getValue(node,"__GROUPNAME__");
 String tableName = ElementParameterParser.getValue(node, "__SAP_TABLE_NAME__");	
 String functionName = ElementParameterParser.getValue(node, "__SAP_FUNCTION__");
 String sapOutputDirectory = ElementParameterParser.getValue(node, "__SAP_OUTPUT_DIRECTORY__");
+String plsapInputDirectory = ElementParameterParser.getValue(node, "__PLSAP_INPUT_DIRECTORY__");
 String whereCondition = ElementParameterParser.getValue(node, "__WHERE_CONDITION__");
-String outputFileName = tableName; // concat cid
 boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"__COMPRESSION__"));
 
 boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"__USE_EXISTING_CONNECTION__"));
 String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
 %>
 
+String fileNameBase_<%=cid%> = "<%= cid %>" + (System.currentTimeMillis()/1000-1309270519);
 
 /* Connect to SAP */
 com.sap.conn.jco.JCoDestination dest_<%=cid%> = null;
@@ -98,19 +99,18 @@ try {
 	if(function_<%=cid %> == null)
     	throw new RuntimeException("<%= functionName %> not found in SAP.");
 
-	function_<%=cid %>.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> ); // table name
-	function_<%=cid %>.getImportParameterList().setValue( "FILE_NAME", <%= outputFileName %> ); // table name
+	function_<%=cid %>.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> );
+	function_<%=cid %>.getImportParameterList().setValue( "FILE_NAME", fileNameBase_<%=cid%> );
 
 	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD");
 
 <%
-String outConnName = null;
 List< ? extends IConnection> outConns = node.getOutgoingConnections();
 for(IConnection conn : outConns){
 	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
 		IMetadataTable justMetadata = conn.getMetadataTable();
 		List<IMetadataColumn> justColumnList = justMetadata.getListColumns();
-		int sizeListColumns = justColumnList.size();
+		sizeListColumns = justColumnList.size();
 		for (int valueN=0; valueN<sizeListColumns; valueN++) {
 			IMetadataColumn column = justColumnList.get(valueN);
 			%>
@@ -131,26 +131,47 @@ for(IConnection conn : outConns){
 	// Call RFC
 	function_<%=cid%>.execute(dest_<%=cid%>);
   
+  
+  	// Parse fields file
+	com.infomata.data.DataFile read_fields_<%=cid%> = com.infomata.data.DataFile.createReader("8859_1");
+	read_fields_<%=cid%>.setDataFormat(new com.infomata.data.SimpleDelimiterFormat(";", null));
 
-	com.infomata.data.DataFile read_<%=cid%> = com.infomata.data.DataFile.createReader("8859_1");
-	read_<%=cid%>.setDataFormat(new com.infomata.data.FixedWidthFormat(new int[] {20,20}));
-	read_<%=cid%>.open( new java.io.File("\\\\ides.starschema.biz\\sapdata\\SPFLI.dat") );
+  	int [] fieldLengths = new int[ <%= sizeListColumns %> ];
+  	try {
+	  	int fieldNo = 0;
+		read_fields_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".fields") );
+	
+		for (com.infomata.data.DataRow row = read_fields_<%=cid%>.next(); row != null; row = read_fields_<%=cid%>.next())
+		{
+			fieldLengths[fieldNo++] = row.getInt(2);
+		}
 
-	for (com.infomata.data.DataRow row = read_<%=cid%>.next(); row != null; row = read_<%=cid%>.next())
-	{
+	} finally {
+		read_fields_<%=cid%>.close();
+	}
+  	
+  	// Read .DAT file
+	com.infomata.data.DataFile read_dat_<%=cid%> = com.infomata.data.DataFile.createReader("8859_1");
+	read_dat_<%=cid%>.setDataFormat(new com.infomata.data.FixedWidthFormat(fieldLengths));
 
+  	try { 
+		read_dat_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".dat") );
+	
+		for (com.infomata.data.DataRow row = read_dat_<%=cid%>.next(); row != null; row = read_dat_<%=cid%>.next())
+		{
+	
 <%
 for(IConnection conn : outConns){
 	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
 		IMetadataTable justMetadata = conn.getMetadataTable();
 		List<IMetadataColumn> justColumnList = justMetadata.getListColumns();
-		int sizeListColumns = justColumnList.size();
+		sizeListColumns = justColumnList.size();
 		for (int valueN=0; valueN<sizeListColumns; valueN++) {
 			IMetadataColumn column = justColumnList.get(valueN);
 			%>
 		
-			<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(<%=valueN%>);				
-
+				<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(<%=valueN%>);				
+	
 			<%
 		} // for valueN 					
 	} // if DATA 
