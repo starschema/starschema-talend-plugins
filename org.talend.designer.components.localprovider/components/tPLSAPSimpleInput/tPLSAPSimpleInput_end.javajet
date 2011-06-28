@@ -20,6 +20,7 @@
 	boolean close = ("true").equals(ElementParameterParser.getValue(node,"__CLOSE__"));
 %>
 
+} // FOR loop
 
 } catch (Exception e_<%=cid%>) {
 

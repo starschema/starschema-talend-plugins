@@ -49,12 +49,10 @@ String whereCondition = ElementParameterParser.getValue(node, "__WHERE_CONDITION
 String outputFileName = tableName; // concat cid
 boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"__COMPRESSION__"));
 
-
-List<Map<String, String>>  sapTableColumns = (List<Map<String,String>>)ElementParameterParser.getObjectValue(node, "__SAP_TABLE_COLUMNS__");
-
 boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"__USE_EXISTING_CONNECTION__"));
 String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
 %>
+
 
 /* Connect to SAP */
 com.sap.conn.jco.JCoDestination dest_<%=cid%> = null;
@@ -89,6 +87,7 @@ com.sap.conn.jco.JCoDestination dest_<%=cid%> = null;
 
 <%}%>  
 		
+
 /* switch to JCO Context */
 try { 
     // Begins the stateful call sequence for calls to the specified destination.
@@ -105,17 +104,27 @@ try {
 	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD");
 
 <%
-  for (int i = 0; i < sapTableColumns.size(); i++) {
-    Map<String, String> line = sapTableColumns.get(i);
-   	 %>
+String outConnName = null;
+List< ? extends IConnection> outConns = node.getOutgoingConnections();
+for(IConnection conn : outConns){
+	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
+		IMetadataTable justMetadata = conn.getMetadataTable();
+		List<IMetadataColumn> justColumnList = justMetadata.getListColumns();
+		int sizeListColumns = justColumnList.size();
+		for (int valueN=0; valueN<sizeListColumns; valueN++) {
+			IMetadataColumn column = justColumnList.get(valueN);
+			%>
+	System.out.println("Add SAP Column:  <%= column.getLabel() %>" );
+	
 	fields_<%=cid %>.appendRows(1);
 	fields_<%=cid %>.setValue("TABNAME", <%= tableName %> );
-	fields_<%=cid %>.setValue("FIELDNAME", <%= line.get("FIELD_NAME") %> );
+	fields_<%=cid %>.setValue("FIELDNAME", "<%= column.getLabel() %>" ); 
+			<%
+		} // for valueN 					
+	} // if DATA 
+} // foreach outConns
+%> 
 
- 	System.out.println("Adding SAP Column: " + <%= line.get("FIELD_NAME") %> );
-<%
-  }
-%>
 
 	// Add where condition
 
@@ -123,5 +132,27 @@ try {
 	function_<%=cid%>.execute(dest_<%=cid%>);
   
 
+	com.infomata.data.DataFile read_<%=cid%> = com.infomata.data.DataFile.createReader("8859_1");
+	read_<%=cid%>.setDataFormat(new com.infomata.data.FixedWidthFormat(new int[] {20,20}));
+	read_<%=cid%>.open( new java.io.File("\\\\ides.starschema.biz\\sapdata\\SPFLI.dat") );
 
-	
+	for (com.infomata.data.DataRow row = read_<%=cid%>.next(); row != null; row = read_<%=cid%>.next())
+	{
+
+<%
+for(IConnection conn : outConns){
+	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
+		IMetadataTable justMetadata = conn.getMetadataTable();
+		List<IMetadataColumn> justColumnList = justMetadata.getListColumns();
+		int sizeListColumns = justColumnList.size();
+		for (int valueN=0; valueN<sizeListColumns; valueN++) {
+			IMetadataColumn column = justColumnList.get(valueN);
+			%>
+		
+			<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(<%=valueN%>);				
+
+			<%
+		} // for valueN 					
+	} // if DATA 
+} // foreach outConns
+%> 
