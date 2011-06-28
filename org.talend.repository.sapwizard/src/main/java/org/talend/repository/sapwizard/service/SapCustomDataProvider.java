@@ -37,7 +37,7 @@ public class SapCustomDataProvider implements DestinationDataProvider {
 		properties.setProperty(DestinationDataProvider.JCO_ASHOST, host);
 		properties.setProperty(DestinationDataProvider.JCO_SYSNR, sysNumber);
 		properties.setProperty(DestinationDataProvider.JCO_CLIENT, client);
-
+		properties.setProperty(DestinationDataProvider.JCO_LANG,   language);
 		properties.setProperty(DestinationDataProvider.JCO_USER, userName);
 		properties.setProperty(DestinationDataProvider.JCO_PASSWD, password);
 

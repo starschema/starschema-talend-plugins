@@ -51,13 +51,19 @@ public class SAPProviderService implements ISAPProviderService {
 	public SAPConnectionItem getRepositoryItem(INode node) {
 		if (node != null) {
 			if (isSAPNode(node)) {
-				IElementParameter param = node.getElementParameter(ISAPConstant.PROPERTY);
-				IElementParameter typeParam = param.getChildParameters().get(ISAPConstant.PROPERTY_TYPE);
-				if (typeParam != null && ISAPConstant.REF_ATTR_REPOSITORY.equals(typeParam.getValue())) {
-					IElementParameter repositoryParam = param.getChildParameters().get(
-							ISAPConstant.REPOSITORY_PROPERTY_TYPE);
+				IElementParameter param = node
+						.getElementParameter(ISAPConstant.PROPERTY);
+				IElementParameter typeParam = param.getChildParameters().get(
+						ISAPConstant.PROPERTY_TYPE);
+				if (typeParam != null
+						&& ISAPConstant.REF_ATTR_REPOSITORY.equals(typeParam
+								.getValue())) {
+					IElementParameter repositoryParam = param
+							.getChildParameters().get(
+									ISAPConstant.REPOSITORY_PROPERTY_TYPE);
 					final String value = (String) repositoryParam.getValue();
-					Item item = UpdateRepositoryUtils.getConnectionItemByItemId(value);
+					Item item = UpdateRepositoryUtils
+							.getConnectionItemByItemId(value);
 					if (item != null && item instanceof SAPConnectionItem) {
 						return (SAPConnectionItem) item;
 					}
@@ -75,11 +81,14 @@ public class SAPProviderService implements ISAPProviderService {
 	 * .core.model.process.INode, java.util.Map)
 	 */
 	@SuppressWarnings("deprecation")
-	public boolean isRepositorySchemaLine(INode node, Map<String, Object> lineValue) {
+	public boolean isRepositorySchemaLine(INode node,
+			Map<String, Object> lineValue) {
 		if (lineValue != null && node != null) {
-			Object type = lineValue.get(ISAPConstant.FIELD_SCHEMA + ISAPConstant.REF_TYPE);
+			Object type = lineValue.get(ISAPConstant.FIELD_SCHEMA
+					+ ISAPConstant.REF_TYPE);
 			if (type != null && ISAPConstant.REF_ATTR_REPOSITORY.equals(type)) {
-				String value = (String) lineValue.get(ISAPConstant.FIELD_SCHEMA);
+				String value = (String) lineValue
+						.get(ISAPConstant.FIELD_SCHEMA);
 				if (value != null && !value.isEmpty()) { //$NON-NLS-1$
 					if (MetadataTool.getMetadataTableFromNode(node, value) != null) {
 						return true;
@@ -101,9 +110,12 @@ public class SAPProviderService implements ISAPProviderService {
 
 	public boolean isSAPNode(INode node) {
 		if (node != null) {
-			IElementParameter param = node.getElementParameter(ISAPConstant.PROPERTY);
-			if (param != null && param.getField() == EParameterFieldType.PROPERTY_TYPE
-					&& ISAPConstant.REPOSITORY_VALUE.equals(param.getRepositoryValue())) {
+			IElementParameter param = node
+					.getElementParameter(ISAPConstant.PROPERTY);
+			if (param != null
+					&& param.getFieldType() == EParameterFieldType.PROPERTY_TYPE
+					&& ISAPConstant.REPOSITORY_VALUE.equals(param
+							.getRepositoryValue())) {
 				return true;
 			}
 		}
@@ -119,7 +131,8 @@ public class SAPProviderService implements ISAPProviderService {
 	 * java.lang.String[])
 	 */
 
-	public IWizard newSAPWizard(IWorkbench workbench, boolean creation, RepositoryNode node, String[] existingNames) {
+	public IWizard newSAPWizard(IWorkbench workbench, boolean creation,
+			RepositoryNode node, String[] existingNames) {
 		if (node == null) {
 			return null;
 		}

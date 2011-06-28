@@ -26,8 +26,8 @@ import org.talend.core.model.metadata.builder.connection.SAPFunctionParameterCol
 import org.talend.core.model.metadata.builder.connection.SAPFunctionParameterTable;
 import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
 import org.talend.core.model.metadata.builder.connection.SAPTestInputParameterTable;
+import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.cwm.helper.ModelElementHelper;
-import org.talend.repository.model.ProxyRepositoryFactory;
 
 import com.sap.conn.jco.JCoDestination;
 import com.sap.conn.jco.JCoDestinationManager;
