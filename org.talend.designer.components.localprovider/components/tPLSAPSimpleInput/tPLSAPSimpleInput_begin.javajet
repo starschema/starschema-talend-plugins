@@ -127,10 +127,14 @@ for(IConnection conn : outConns){
 
 
 	// Add where condition
+<% if ( whereCondition.length() > 2 ) { %>
+	com.sap.conn.jco.JCoTable where_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("OPTIONS");
+	where_<%=cid %>.appendRows(1);
+	where_<%=cid %>.setValue("TEXT", <%= whereCondition %> );
+<% } %>
 
 	// Call RFC
 	function_<%=cid%>.execute(dest_<%=cid%>);
-  
   
   	// Parse fields file
 	com.infomata.data.DataFile read_fields_<%=cid%> = com.infomata.data.DataFile.createReader("8859_1");
@@ -141,7 +145,7 @@ for(IConnection conn : outConns){
 	  	int fieldNo = 0;
 		read_fields_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".fields") );
 	
-		for (com.infomata.data.DataRow row = read_fields_<%=cid%>.next(); row != null; row = read_fields_<%=cid%>.next())
+		for (com.infomata.data.DataRow row = read_fields_<%=cid%>.next(); row != null && fieldNo < <%=sizeListColumns %>; row = read_fields_<%=cid%>.next())
 		{
 			fieldLengths[fieldNo++] = row.getInt(2);
 		}
