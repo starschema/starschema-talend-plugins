@@ -41,18 +41,6 @@ import com.sap.conn.jco.ext.Environment;
  * 
  */
 public class SapUtil {
-	/**
-	 * SAP_CLIENT
-	 */
-	public static final String SAP_CLIENT = "000"; //$NON-NLS-1$
-	/**
-	 * SAP_LANGUAGE
-	 */
-	public static final String SAP_LANGUAGE = "EN";//$NON-NLS-2$
-	/**
-	 * SAP_SYSTEM_NUMBER
-	 */
-	public static final String SAP_SYSTEM_NUMBER = "00";//$NON-NLS-N$
 
 	private static SapCustomDataProvider customDataProvider;
 
@@ -67,12 +55,15 @@ public class SapUtil {
 	 * @throws Throwable
 	 * 
 	 */
-	public static boolean connectSAPserver(String client, String language, String sysNumber, String host, String userName, String password)
+	public static boolean connectSAPserver(String client, String language,
+			String sysNumber, String host, String userName, String password)
 			throws Throwable {
-		registerSAPServerDetails(client, language, sysNumber, host, userName, password);
+		registerSAPServerDetails(client, language, sysNumber, host, userName,
+				password);
 		boolean connected = false;
 		try {
-			JCoDestination dest = JCoDestinationManager.getDestination(SapCustomDataProvider.SAP_SERVER);
+			JCoDestination dest = JCoDestinationManager
+					.getDestination(SapCustomDataProvider.SAP_SERVER);
 			connected = dest.getAttributes() != null;
 		} catch (Exception exception) {
 			connected = false;
@@ -84,25 +75,36 @@ public class SapUtil {
 		return connected;
 	}
 
-	private static void registerSAPServerDetails(String client, String language, String sysNumber, String host, String userName, String password) {
-		if (customDataProvider == null) {
-			customDataProvider = new SapCustomDataProvider(client, language, sysNumber, host, userName, password);
-			Environment.registerDestinationDataProvider(customDataProvider);
+	private static void registerSAPServerDetails(String client,
+			String language, String sysNumber, String host, String userName,
+			String password) {
+		if (customDataProvider != null) {
+			Environment.unregisterDestinationDataProvider(customDataProvider);
 		}
+		customDataProvider = new SapCustomDataProvider(client, language,
+				sysNumber, host, userName, password);
+		Environment.registerDestinationDataProvider(customDataProvider);
 	}
 
-	public static SAPFunctionUnit createFunctionForGivenTable(String tableName, SAPConnection connection) throws Exception {
-		registerSAPServerDetails(connection.getClient(), connection.getLanguage(), connection.getSystemNumber(), connection.getHost(), connection
-				.getUsername(), connection.getPassword());
+	public static SAPFunctionUnit createFunctionForGivenTable(String tableName,
+			SAPConnection connection) throws Exception {
+		registerSAPServerDetails(connection.getClient(), connection
+				.getLanguage(), connection.getSystemNumber(), connection
+				.getHost(), connection.getUsername(), connection.getPassword());
 		JCoDestination destination = null;
 		try {
-			destination = JCoDestinationManager.getDestination(SapCustomDataProvider.SAP_SERVER);
-			JCoFunction function = destination.getRepository().getFunction("DDIF_FIELDINFO_GET");
+			destination = JCoDestinationManager
+					.getDestination(SapCustomDataProvider.SAP_SERVER);
+			JCoFunction function = destination.getRepository().getFunction(
+					"DDIF_FIELDINFO_GET");
 			if (function == null) {
-				throw new RuntimeException("DDIF_FIELDINFO_GET not found in SAP.");
+				throw new RuntimeException(
+						"DDIF_FIELDINFO_GET not found in SAP.");
 			}
-			function.getImportParameterList().setValue("TABNAME", tableName.trim());
-			function.getImportParameterList().setValue("LANGU", connection.getLanguage().trim().toUpperCase());
+			function.getImportParameterList().setValue("TABNAME",
+					tableName.trim());
+			function.getImportParameterList().setValue("LANGU",
+					connection.getLanguage().trim().toUpperCase());
 			function.execute(destination);
 
 			return createFunctionUnit(tableName, connection, function);
@@ -112,7 +114,8 @@ public class SapUtil {
 		}
 	}
 
-	private static SAPFunctionUnit createFunctionUnit(String tableName, SAPConnection connection, JCoFunction function) {
+	private static SAPFunctionUnit createFunctionUnit(String tableName,
+			SAPConnection connection, JCoFunction function) {
 
 		SAPFunctionUnit functionUnit;
 		OutputSAPFunctionParameterTable outputParameterTable;
@@ -120,31 +123,37 @@ public class SapUtil {
 		MetadataTable metadataTable;
 		SAPTestInputParameterTable testInputParameterTable;
 
-		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
+		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory
+				.getInstance();
 
 		functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
 		functionUnit.setName(tableName);
-		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
+		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE
+				.getDisplayLabel());
 		functionUnit.setConnection(connection);
 		functionUnit.setId(proxyRepositoryFactory.getNextId());
 
 		// New Input parameter table
-		inputParameterTable = ConnectionFactory.eINSTANCE.createInputSAPFunctionParameterTable();
+		inputParameterTable = ConnectionFactory.eINSTANCE
+				.createInputSAPFunctionParameterTable();
 		inputParameterTable.setFunctionUnit(functionUnit);
 		inputParameterTable.setId(proxyRepositoryFactory.getNextId());
 		inputParameterTable.setLabel(functionUnit.getName());
 		// createParamsForFunction(inputParameterTable, function, 0);
 
 		// New out parameter table
-		outputParameterTable = ConnectionFactory.eINSTANCE.createOutputSAPFunctionParameterTable();
+		outputParameterTable = ConnectionFactory.eINSTANCE
+				.createOutputSAPFunctionParameterTable();
 		outputParameterTable.setFunctionUnit(functionUnit);
 		outputParameterTable.setId(proxyRepositoryFactory.getNextId());
 		outputParameterTable.setLabel(functionUnit.getName());
 
-		createSingleParameterColumn(outputParameterTable, function, function.getName());
+		createSingleParameterColumn(outputParameterTable, function, function
+				.getName());
 
 		// New Test parameter table
-		testInputParameterTable = ConnectionFactory.eINSTANCE.createSAPTestInputParameterTable();
+		testInputParameterTable = ConnectionFactory.eINSTANCE
+				.createSAPTestInputParameterTable();
 		testInputParameterTable.setFunctionUnit(functionUnit);
 		testInputParameterTable.setId(proxyRepositoryFactory.getNextId());
 		testInputParameterTable.setLabel(function.getName());
@@ -170,23 +179,28 @@ public class SapUtil {
 	 * @param paramTyrpe
 	 * @param structOrTableName
 	 */
-	private static void createSingleParameterColumn(SAPFunctionParameterTable sapFunctionParameterTable, JCoFunction function,
-			String structOrTableName) {
+	private static void createSingleParameterColumn(
+			SAPFunctionParameterTable sapFunctionParameterTable,
+			JCoFunction function, String structOrTableName) {
 		JCoTable data = function.getTableParameterList().getTable("DFIES_TAB");
 		data.firstRow();
 
 		for (int i = 0; i < data.getNumRows(); i++, data.nextRow()) {
 
-			SAPFunctionParameterColumn sapFunctionParameterColumn = ConnectionFactory.eINSTANCE.createSAPFunctionParameterColumn();
+			SAPFunctionParameterColumn sapFunctionParameterColumn = ConnectionFactory.eINSTANCE
+					.createSAPFunctionParameterColumn();
 			sapFunctionParameterColumn.setName(data.getString("FIELDNAME"));
 			sapFunctionParameterColumn.setDataType(data.getString("DATATYPE"));
 			sapFunctionParameterColumn.setParameterType("");
 			sapFunctionParameterColumn.setLength(data.getString("LENG"));
-			ModelElementHelper.getFirstDescription(sapFunctionParameterColumn).setBody(data.getString("FIELDTEXT"));
+			ModelElementHelper.getFirstDescription(sapFunctionParameterColumn)
+					.setBody(data.getString("FIELDTEXT"));
 			if (structOrTableName != null) {
-				sapFunctionParameterColumn.setStructureOrTableName(structOrTableName);
+				sapFunctionParameterColumn
+						.setStructureOrTableName(structOrTableName);
 			}
-			sapFunctionParameterTable.getColumns().add(sapFunctionParameterColumn);
+			sapFunctionParameterTable.getColumns().add(
+					sapFunctionParameterColumn);
 
 		}
 
