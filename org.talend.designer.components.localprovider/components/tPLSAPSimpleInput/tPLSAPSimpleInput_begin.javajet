@@ -120,7 +120,8 @@ for(IConnection conn : outConns){
 	fields_<%=cid %>.setValue("TABNAME", <%= tableName %> );
 	fields_<%=cid %>.setValue("FIELDNAME", "<%= column.getLabel() %>" ); 
 			<%
-		} // for valueN 					
+		} // for valueN
+		break; 					
 	} // if DATA 
 } // foreach outConns
 %> 
