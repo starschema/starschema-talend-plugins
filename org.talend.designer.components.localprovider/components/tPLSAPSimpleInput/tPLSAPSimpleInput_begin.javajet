@@ -53,6 +53,89 @@ boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"
 String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
 %>
 
+final class FieldData
+{
+  protected String fieldName;
+  protected String fileOffset;
+  protected String fileLength;
+  protected String fieldType;
+  protected String fieldComment;
+  protected String fieldLength;
+  protected String fieldDecimals;
+
+  public void setFieldName(String fieldName)
+  {
+    this.fieldName = fieldName;
+  }
+
+  public void setFileOffset(String fileOffset)
+  {
+    this.fileOffset = fileOffset;
+  }
+
+  public void setFileLength(String fileLength)
+  {
+    this.fileLength = fileLength;
+  }
+
+  public void setFieldType(String fieldType)
+  {
+    this.fieldType = fieldType;
+  }
+
+  public void setFieldComment(String fieldComment)
+  {
+    this.fieldComment = fieldComment;
+  }
+
+  public void setFieldLength(String fieldLength)
+  {
+    this.fieldLength = fieldLength;
+  }
+
+  public void setFieldDecimals(String fieldDecimals)
+  {
+    this.fieldDecimals = fieldDecimals;
+  }
+
+  public String getFieldName()
+  {
+    return fieldName;
+  }
+
+  public String getFileOffset()
+  {
+    return fileOffset;
+  }
+
+  public String getFileLength()
+  {
+    return fileLength;
+  }
+
+  public String getFieldType()
+  {
+    return fieldType;
+  }
+
+  public String getFieldComment()
+  {
+    return fieldComment;
+  }
+
+  public String getFieldLength()
+  {
+    return fieldLength;
+  }
+
+  public String getFieldDecimals()
+  {
+    return fieldDecimals;
+  }
+
+  
+} 
+
 String fileNameBase_<%=cid%> = "<%= cid %>" + (System.currentTimeMillis()/1000-1309270519);
 
 /* Connect to SAP */
@@ -141,14 +224,21 @@ for(IConnection conn : outConns){
 	com.infomata.data.DataFile read_fields_<%=cid%> = com.infomata.data.DataFile.createReader("8859_1");
 	read_fields_<%=cid%>.setDataFormat(new com.infomata.data.SimpleDelimiterFormat(";", null));
 
-  	int [] fieldLengths = new int[ <%= sizeListColumns %> ];
+  	int [] fieldLengths<%=cid%> = new int[ <%= sizeListColumns %> ];
+  	FieldData [] fieldsData<%=cid%> = new FieldData[ <%= sizeListColumns %> ];
   	try {
 	  	int fieldNo = 0;
 		read_fields_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".fields") );
 	
 		for (com.infomata.data.DataRow row = read_fields_<%=cid%>.next(); row != null && fieldNo < <%=sizeListColumns %>; row = read_fields_<%=cid%>.next())
 		{
-			fieldLengths[fieldNo++] = row.getInt(2);
+			fieldsData<%=cid%>[fieldNo].setFieldName( row.getString(0) );
+			fieldsData<%=cid%>[fieldNo].setFileOffset( row.getString(1) );
+			fieldsData<%=cid%>[fieldNo].setFileLength( row.getString(2) );
+			fieldsData<%=cid%>[fieldNo].setFieldType( row.getString(3) );
+			fieldsData<%=cid%>[fieldNo].setFieldComment( row.getString(4) );
+			
+			fieldLengths<%=cid%>[fieldNo++] = row.getInt(2);			
 		}
 
 	} finally {
@@ -157,7 +247,7 @@ for(IConnection conn : outConns){
   	
   	// Read .DAT file
 	com.infomata.data.DataFile read_dat_<%=cid%> = com.infomata.data.DataFile.createReader("8859_1");
-	read_dat_<%=cid%>.setDataFormat(new com.infomata.data.FixedWidthFormat(fieldLengths));
+	read_dat_<%=cid%>.setDataFormat(new com.infomata.data.FixedWidthFormat(fieldLengths<%=cid%>));
 
   	try { 
 		read_dat_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".dat") );
@@ -174,8 +264,32 @@ for(IConnection conn : outConns){
 		for (int valueN=0; valueN<sizeListColumns; valueN++) {
 			IMetadataColumn column = justColumnList.get(valueN);
 			%>
-		
-				<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(<%=valueN%>);				
+			switch( fieldsData<%=cid%>[<%=valueN%>].getFieldType(<%=valueN%>) {
+				case "D":
+					// Date				
+					<%=conn.getName() %>.<%=column.getLabel() %> = row.getDate(<%=valueN%>, "yyyyMMdd");
+					break;
+				case "I":
+					// Integer			
+					<%=conn.getName() %>.<%=column.getLabel() %> = row.getInt(<%=valueN%>);
+					break;
+				case "b":
+				case "s":
+				case "F":
+				case "P":				
+					// Double and float
+					<%=conn.getName() %>.<%=column.getLabel() %> = row.getDouble(<%=valueN%>);
+					break;																	
+				case "C":
+				case "N":
+				case "S":
+				case "T":				
+				case "X":				
+				default:
+					// String
+					<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(<%=valueN%>);
+					break;				
+			}				
 	
 			<%
 		} // for valueN 					
