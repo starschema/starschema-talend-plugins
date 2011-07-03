@@ -25,59 +25,7 @@ import java.util.List;
  * 
  */
 public enum SapDataTypeEnum {
-	CLNT,
-
-	NUMC,
-
-	INT4,
-
-	TIMS,
-
-	QUAN,
-	
-	DEC,
-	
-	CURR,
-	
-	DATS,
-
-	UNIT,
-	
-	INVALID,
-
-	CHAR,
-
-	DATE,
-
-	BCD,
-
-	TIME,
-
-	BYTE,
-
-	ITAB,
-
-	NUM,
-
-	FLOAT,
-
-	INT,
-
-	INT2,
-
-	INT1,
-
-	STRING,
-
-	XSTRING,
-
-	STRUCTURE,
-
-	TABLE,
-
-	EXCEPTION,
-
-	ITEM;
+	CLNT, NUMC, INT4, TIMS, QUAN, DEC, CURR, DATS, UNIT, INVALID, CHAR, DATE, BCD, TIME, BYTE, ITAB, NUM, FLOAT, INT, INT2, INT1, STRING, XSTRING, STRUCTURE, TABLE, EXCEPTION, ITEM;
 
 	public static String[] getLabels() {
 		List<String> arrayOfString = new ArrayList<String>();

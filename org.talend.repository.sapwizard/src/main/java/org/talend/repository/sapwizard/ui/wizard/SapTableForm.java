@@ -62,7 +62,6 @@ import org.talend.commons.ui.swt.formtools.Form;
 import org.talend.commons.ui.swt.formtools.LabelledText;
 import org.talend.commons.ui.swt.formtools.UtilsButton;
 import org.talend.commons.utils.data.text.IndiceHelper;
-import org.talend.core.model.metadata.MetadataTool;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.OutputSAPFunctionParameterTable;
@@ -274,6 +273,7 @@ public class SapTableForm extends BaseSAPForm {
 	}
 
 	private void setMoveAndUp(int currentPos, int newPos) {
+		@SuppressWarnings("unchecked")
 		List<SAPFunctionParameterColumn> input = (List<SAPFunctionParameterColumn>) columnTableViewer.getInput();
 		IStructuredSelection selection = (IStructuredSelection) columnTableViewer.getSelection();
 		SAPFunctionParameterColumn moveColumn = (SAPFunctionParameterColumn) selection.getFirstElement();

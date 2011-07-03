@@ -17,8 +17,17 @@
 
 package org.talend.repository.sapwizard.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
 import org.talend.core.model.metadata.builder.connection.InputSAPFunctionParameterTable;
+import org.talend.core.model.metadata.builder.connection.MetadataColumn;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.OutputSAPFunctionParameterTable;
 import org.talend.core.model.metadata.builder.connection.SAPConnection;
@@ -43,6 +52,26 @@ import com.sap.conn.jco.ext.Environment;
 public class SapUtil {
 
 	private static SapCustomDataProvider customDataProvider;
+	private final static Map<String, String> PLSAP_DADTYPE_MAP = new HashMap<String, String>();
+	private final static Map<String, Boolean> SAP_KEY_IDENTIFIER = new HashMap<String, Boolean>();
+
+	static {
+		PLSAP_DADTYPE_MAP.put("P", "id_Double");
+		PLSAP_DADTYPE_MAP.put("C", "id_String");
+		PLSAP_DADTYPE_MAP.put("D", "id_Date");
+		PLSAP_DADTYPE_MAP.put("F", "id_Double");
+		PLSAP_DADTYPE_MAP.put("I", "id_Integer");
+		PLSAP_DADTYPE_MAP.put("b", "id_Double");
+		PLSAP_DADTYPE_MAP.put("s", "id_Double");
+		PLSAP_DADTYPE_MAP.put("N", "id_String");
+		PLSAP_DADTYPE_MAP.put("S", "id_String");
+		PLSAP_DADTYPE_MAP.put("T", "id_String");
+		PLSAP_DADTYPE_MAP.put("X", "id_String");
+
+		SAP_KEY_IDENTIFIER.put(" ", false);
+		SAP_KEY_IDENTIFIER.put("X", true);
+		SAP_KEY_IDENTIFIER.put("", false);
+	}
 
 	/**
 	 * @param client
@@ -55,15 +84,12 @@ public class SapUtil {
 	 * @throws Throwable
 	 * 
 	 */
-	public static boolean connectSAPserver(String client, String language,
-			String sysNumber, String host, String userName, String password)
+	public static boolean connectSAPserver(String client, String language, String sysNumber, String host, String userName, String password)
 			throws Throwable {
-		registerSAPServerDetails(client, language, sysNumber, host, userName,
-				password);
+		registerSAPServerDetails(client, language, sysNumber, host, userName, password);
 		boolean connected = false;
 		try {
-			JCoDestination dest = JCoDestinationManager
-					.getDestination(SapCustomDataProvider.SAP_SERVER);
+			JCoDestination dest = JCoDestinationManager.getDestination(SapCustomDataProvider.SAP_SERVER);
 			connected = dest.getAttributes() != null;
 		} catch (Exception exception) {
 			connected = false;
@@ -75,36 +101,26 @@ public class SapUtil {
 		return connected;
 	}
 
-	private static void registerSAPServerDetails(String client,
-			String language, String sysNumber, String host, String userName,
-			String password) {
+	private static void registerSAPServerDetails(String client, String language, String sysNumber, String host, String userName, String password) {
 		if (customDataProvider != null) {
 			Environment.unregisterDestinationDataProvider(customDataProvider);
 		}
-		customDataProvider = new SapCustomDataProvider(client, language,
-				sysNumber, host, userName, password);
+		customDataProvider = new SapCustomDataProvider(client, language, sysNumber, host, userName, password);
 		Environment.registerDestinationDataProvider(customDataProvider);
 	}
 
-	public static SAPFunctionUnit createFunctionForGivenTable(String tableName,
-			SAPConnection connection) throws Exception {
-		registerSAPServerDetails(connection.getClient(), connection
-				.getLanguage(), connection.getSystemNumber(), connection
-				.getHost(), connection.getUsername(), connection.getPassword());
+	public static SAPFunctionUnit createFunctionForGivenTable(String tableName, SAPConnection connection) throws Exception {
+		registerSAPServerDetails(connection.getClient(), connection.getLanguage(), connection.getSystemNumber(), connection.getHost(),
+				connection.getUsername(), connection.getPassword());
 		JCoDestination destination = null;
 		try {
-			destination = JCoDestinationManager
-					.getDestination(SapCustomDataProvider.SAP_SERVER);
-			JCoFunction function = destination.getRepository().getFunction(
-					"DDIF_FIELDINFO_GET");
+			destination = JCoDestinationManager.getDestination(SapCustomDataProvider.SAP_SERVER);
+			JCoFunction function = destination.getRepository().getFunction("DDIF_FIELDINFO_GET");
 			if (function == null) {
-				throw new RuntimeException(
-						"DDIF_FIELDINFO_GET not found in SAP.");
+				throw new RuntimeException("DDIF_FIELDINFO_GET not found in SAP.");
 			}
-			function.getImportParameterList().setValue("TABNAME",
-					tableName.trim());
-			function.getImportParameterList().setValue("LANGU",
-					connection.getLanguage().trim().toUpperCase());
+			function.getImportParameterList().setValue("TABNAME", tableName.trim());
+			function.getImportParameterList().setValue("LANGU", connection.getLanguage().trim().toUpperCase());
 			function.execute(destination);
 
 			return createFunctionUnit(tableName, connection, function);
@@ -114,8 +130,7 @@ public class SapUtil {
 		}
 	}
 
-	private static SAPFunctionUnit createFunctionUnit(String tableName,
-			SAPConnection connection, JCoFunction function) {
+	private static SAPFunctionUnit createFunctionUnit(String tableName, SAPConnection connection, JCoFunction function) {
 
 		SAPFunctionUnit functionUnit;
 		OutputSAPFunctionParameterTable outputParameterTable;
@@ -123,37 +138,31 @@ public class SapUtil {
 		MetadataTable metadataTable;
 		SAPTestInputParameterTable testInputParameterTable;
 
-		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory
-				.getInstance();
+		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
 
 		functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
 		functionUnit.setName(tableName);
-		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE
-				.getDisplayLabel());
+		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
 		functionUnit.setConnection(connection);
 		functionUnit.setId(proxyRepositoryFactory.getNextId());
 
 		// New Input parameter table
-		inputParameterTable = ConnectionFactory.eINSTANCE
-				.createInputSAPFunctionParameterTable();
+		inputParameterTable = ConnectionFactory.eINSTANCE.createInputSAPFunctionParameterTable();
 		inputParameterTable.setFunctionUnit(functionUnit);
 		inputParameterTable.setId(proxyRepositoryFactory.getNextId());
 		inputParameterTable.setLabel(functionUnit.getName());
 		// createParamsForFunction(inputParameterTable, function, 0);
 
 		// New out parameter table
-		outputParameterTable = ConnectionFactory.eINSTANCE
-				.createOutputSAPFunctionParameterTable();
+		outputParameterTable = ConnectionFactory.eINSTANCE.createOutputSAPFunctionParameterTable();
 		outputParameterTable.setFunctionUnit(functionUnit);
 		outputParameterTable.setId(proxyRepositoryFactory.getNextId());
 		outputParameterTable.setLabel(functionUnit.getName());
 
-		createSingleParameterColumn(outputParameterTable, function, function
-				.getName());
+		createSingleParameterColumn(outputParameterTable, function, function.getName());
 
 		// New Test parameter table
-		testInputParameterTable = ConnectionFactory.eINSTANCE
-				.createSAPTestInputParameterTable();
+		testInputParameterTable = ConnectionFactory.eINSTANCE.createSAPTestInputParameterTable();
 		testInputParameterTable.setFunctionUnit(functionUnit);
 		testInputParameterTable.setId(proxyRepositoryFactory.getNextId());
 		testInputParameterTable.setLabel(function.getName());
@@ -162,7 +171,8 @@ public class SapUtil {
 		// New Metadata table
 		metadataTable = ConnectionFactory.eINSTANCE.createMetadataTable();
 		metadataTable.setId(proxyRepositoryFactory.getNextId());
-		metadataTable.setLabel(function.getName());
+		metadataTable.setLabel(tableName);
+		metadataTable.getColumns().addAll(getColumns(function));
 		// FIXME
 		// metadataTable.setConnection(connection);
 		functionUnit.setInputParameterTable(inputParameterTable);
@@ -170,7 +180,45 @@ public class SapUtil {
 		functionUnit.setMetadataTable(metadataTable);
 		functionUnit.setTestInputParameterTable(testInputParameterTable);
 		connection.getFuntions().add(functionUnit);
+		// functionUnit.getTables().add(metadataTable);
 		return functionUnit;
+	}
+
+	private static List<MetadataColumn> getColumns(JCoFunction function) {
+		JCoTable data = function.getTableParameterList().getTable("DFIES_TAB");
+		data.firstRow();
+		Set<String> columnsAlreadyAdded = new HashSet<String>();
+		List<MetadataColumn> columns = new ArrayList<MetadataColumn>();
+		for (int i = 0; i < data.getNumRows(); i++, data.nextRow()) {
+
+			final MetadataColumn metadataColumn = ConnectionFactory.eINSTANCE.createMetadataColumn();
+
+			metadataColumn.setLabel(MetadataToolHelper.validateColumnName(data.getString("FIELDNAME"), 0));
+			metadataColumn.setKey(SAP_KEY_IDENTIFIER.get(data.getString("KEYFLAG")));
+			metadataColumn.setTalendType(PLSAP_DADTYPE_MAP.get(data.getString("INTTYPE")));
+			metadataColumn.setSourceType("");
+			try {
+				metadataColumn.setLength(Integer.parseInt(data.getString("LENG")));
+			} catch (final NumberFormatException e) {
+				metadataColumn.setLength(0);
+			}
+			try {
+				metadataColumn.setPrecision(Integer.parseInt("-1"));
+			} catch (final NumberFormatException e) {
+				metadataColumn.setPrecision(0);
+			}
+			metadataColumn.setNullable(true);
+			metadataColumn.setDefaultValue("");
+			metadataColumn.setComment(data.getString("FIELDTEXT"));
+			metadataColumn.setPattern(data.getString("INTTYPE").equals("D") ? "yyyyMMdd" : "");
+			metadataColumn.setOriginalField(data.getString("FIELDNAME"));
+
+			if (!columnsAlreadyAdded.contains(metadataColumn.getLabel())) {
+				columns.add(metadataColumn);
+				columnsAlreadyAdded.add(metadataColumn.getLabel());
+			}
+		}
+		return columns;
 	}
 
 	/**
@@ -179,28 +227,23 @@ public class SapUtil {
 	 * @param paramTyrpe
 	 * @param structOrTableName
 	 */
-	private static void createSingleParameterColumn(
-			SAPFunctionParameterTable sapFunctionParameterTable,
-			JCoFunction function, String structOrTableName) {
+	private static void createSingleParameterColumn(SAPFunctionParameterTable sapFunctionParameterTable, JCoFunction function,
+			String structOrTableName) {
 		JCoTable data = function.getTableParameterList().getTable("DFIES_TAB");
 		data.firstRow();
 
 		for (int i = 0; i < data.getNumRows(); i++, data.nextRow()) {
 
-			SAPFunctionParameterColumn sapFunctionParameterColumn = ConnectionFactory.eINSTANCE
-					.createSAPFunctionParameterColumn();
+			SAPFunctionParameterColumn sapFunctionParameterColumn = ConnectionFactory.eINSTANCE.createSAPFunctionParameterColumn();
 			sapFunctionParameterColumn.setName(data.getString("FIELDNAME"));
 			sapFunctionParameterColumn.setDataType(data.getString("DATATYPE"));
 			sapFunctionParameterColumn.setParameterType("");
 			sapFunctionParameterColumn.setLength(data.getString("LENG"));
-			ModelElementHelper.getFirstDescription(sapFunctionParameterColumn)
-					.setBody(data.getString("FIELDTEXT"));
+			ModelElementHelper.getFirstDescription(sapFunctionParameterColumn).setBody(data.getString("FIELDTEXT"));
 			if (structOrTableName != null) {
-				sapFunctionParameterColumn
-						.setStructureOrTableName(structOrTableName);
+				sapFunctionParameterColumn.setStructureOrTableName(structOrTableName);
 			}
-			sapFunctionParameterTable.getColumns().add(
-					sapFunctionParameterColumn);
+			sapFunctionParameterTable.getColumns().add(sapFunctionParameterColumn);
 
 		}
 
