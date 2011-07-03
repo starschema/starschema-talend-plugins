@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension-point id="service" name="Service Registration" schema="schema/service.exsd"/>
+   <extension-point id="dq_EMFModel_provider" name="dq emf model" schema="schema/dq_EMFModel_provider.exsd"/>
+   <extension-point id="filepreview_provider" name="File Preview Provider" schema="schema/filepreview_provider.exsd"/>
+
+</plugin>

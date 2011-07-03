@@ -1,0 +1,693 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+	<extension-point id="generators" name="Controller Generators" schema="schema/generators.exsd"/>
+ <extension-point id="process_provider" name="Process Provider" schema="schema/process_provider.exsd"/>
+ <extension-point id="replace_nodes" name="Replace Nodes when generating code" schema="schema/replace_nodes.exsd"/>
+ <extension-point id="brms_provider" name="Brms provider" schema="schema/brms_provider.exsd"/>
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            class="org.talend.designer.core.ui.MultiPageTalendEditor"
+            contributorClass="org.talend.designer.core.ui.MultiPageEditorContributor"
+            icon="icons/empty.gif"
+            id="org.talend.designer.core.ui.MultiPageTalendEditor"
+            name="Designer">
+      </editor>
+      <editor
+            class="org.talend.designer.core.ui.editor.StandAloneTalendJavaEditor"
+            extensions="java"
+            icon="icons/java.gif"
+            id="org.talend.designer.core.ui.editor.StandAloneTalendJavaEditor"
+            name="Java Editor">
+      </editor> 
+   </extension>
+   <extension  point="org.eclipse.ui.startup">
+	   <startup class="org.eclipse.update.internal.scheduler.SchedulerStartup"/>
+	</extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            category="org.talend.designer.core.ui.preferences.AppearancePreferencePage"
+            class="org.talend.designer.core.ui.preferences.DesignerPreferencePage"
+            id="org.talend.designer.core.ui.preferences.TalendPreferencePage"
+            name="%designer">
+      </page>
+      <page
+            category="org.talend.designer.core.ui.preferences.TalendPreferencePage"
+            class="org.talend.designer.core.ui.preferences.DesignerColorsPreferencePage"
+            id="org.talend.designer.core.ui.preferences.DesignerColorsPreferencePage"
+            name="%colors">
+      </page>
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.PerformancePreferencePage"
+            id="org.talend.designer.core.ui.preferences.PerformancePreferencePage"
+            name="%performance">
+      </page>
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.RepositoryPreferencePage"
+            id="org.talend.designer.core.ui.preferences.RepositoryPreferencePage"
+            name="%Repository">
+      </page>      
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.SpecificSettingPreferencePage"
+            id="org.talend.designer.core.ui.preferences.SpecificSettingPreferencePage"
+            name="%specificSetting">
+      </page>
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.ImportExportPreferencePage"
+            id="org.talend.designer.core.ui.preferences.ImportExportPreferencePage"
+            name="%importExport">
+      </page>
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.AppearancePreferencePage"
+            id="org.talend.designer.core.ui.preferences.AppearancePreferencePage"
+            name="%appearance">
+      </page>
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.I18nPreferencePage"
+            id="org.talend.designer.core.internationalization"
+            name="%internationalization">
+      </page>
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.DocumentationPreferencePage"
+            id="org.talend.repository.prefs.documentation"
+            name="%documentation">
+      </page>
+      
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="org.talend.designer.core.ui.preferences.PreferenceInitializer">
+      </initializer>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views.properties.tabbed.propertyContributor">
+      <propertyContributor
+            contributorId="org.talend.repository.views.repository"
+            labelProvider="org.talend.designer.core.ui.editor.properties.GefEditorLabelProvider"
+            typeMapper="org.talend.designer.core.ui.editor.properties.GefEditorTypeMapper">
+         <propertyCategory category="TalendEditor"/>
+      </propertyContributor>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views.properties.tabbed.propertyTabs">
+      <propertyTabs contributorId="org.talend.repository.views.repository">
+      <!--
+         <propertyTab
+               category="TalendEditor"
+               id="mainTab"
+               indented="false"
+               label="%main"/>
+         <propertyTab
+               afterTab="mainTab"
+               category="TalendEditor"
+               id="propertyTab"
+               indented="false"
+               label="%properties"/>
+             
+         <propertyTab
+               afterTab="propertyTab"
+               category="TalendEditor"
+               id="viewTab"
+               label="%view"/>
+               
+         <propertyTab
+               afterTab="viewTab"
+               category="TalendEditor"
+               id="docTab"
+               label="%documentation"/>  -->
+         <propertyTab
+               afterTab="contextTab"
+               category="TalendEditor"
+               id="versionsTab"
+               label="%versions"/>
+         <propertyTab
+               afterTab="versionsTab"
+               category="TalendEditor"
+               id="logsTab"
+               label="%logs"/>
+         <propertyTab
+               afterTab="repository.versiontab"
+               category="logsandstats"
+               id="statsAndLogsTab"
+               label="%statsAndLogs"/>
+         <propertyTab
+               afterTab="repository.versiontab"
+               category="logsandstats"
+               id="emptyStatsAndLogsTab"
+               label="%statsAndLogs"/>
+      </propertyTabs>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+       
+      <view
+            allowMultiple="false"
+            category="org.talend.core.root"
+            class="org.talend.designer.core.ui.views.CodeView"
+            icon="icons/codeViewer_view.gif"
+            id="org.talend.designer.core.codeView"
+            name="%codeViewer"/>
+                  <view
+                        allowMultiple="false"
+                        category="org.talend.core.root"
+                        class="org.talend.designer.core.ui.views.problems.ProblemsView"
+                        icon="icons/problems_view.gif"
+                        id="org.talend.designer.core.ui.views.ProblemsView"
+                        name="%problems"/>
+                  <view
+                        category="org.talend.core.root"
+                        class="org.talend.designer.core.ui.views.contexts.ContextsView"
+                        icon="platform:/plugin/org.talend.common.ui.runtime/icons1/context_icon.gif"
+                        id="org.talend.designer.core.ui.views.ContextsView"
+                        name="%contexts"/>
+                  <view
+                        allowMultiple="false"
+                        category="org.talend.core.root"
+                        class="org.talend.designer.core.ui.views.properties.ComponentSettingsView"
+                        icon="icons/palette_view.gif"
+                        id="org.talend.designer.core.ui.views.properties.ComponentSettingsView"
+                        name="%componentSettingsView">
+                  </view>
+                  <view
+                        allowMultiple="false"
+                        category="org.talend.core.root"
+                        class="org.talend.designer.core.ui.views.jobsettings.JobSettingsView"
+                        icon="platform:/plugin/org.talend.common.ui.runtime/icons1/process_icon.gif"
+                        id="org.talend.designer.core.ui.views.jobsettings.JobSettingsView"
+                        name="%jobSettingsView">
+                  </view>
+                  
+                  <view
+                        allowMultiple="false"
+                        category="org.talend.core.root"
+                        class="org.talend.designer.core.ui.hierarchy.JobHierarchyViewPart"
+                        icon="platform:/plugin/org.eclipse.jdt.ui/icons/full/eview16/class_hi.gif"
+                        id="org.talend.designer.core.ui.hierarchy.JobHierarchyViewPart"
+                        name="%jobHierarchyView">
+                  </view>
+                  
+   </extension>
+   
+   
+   <extension
+         point="org.talend.core.repositoryContextualsActions">
+      <Action
+            class="org.talend.designer.core.ui.action.EditProcess"
+            id="org.talend.designer.core.actions.editprocess"
+            isEditAction="true"
+            level="10"
+            name="Edit process"/>
+      <Action
+            class="org.talend.designer.core.ui.action.RunProcess"
+            id="org.talend.designer.core.actions.runprocess"
+            isEditAction="true"
+            level="99"
+            name="Run process"/>
+      <Action
+            class="org.talend.designer.core.ui.action.ReadProcess"
+            id="org.talend.designer.core.actions.readprocess"
+            isReadAction="true"
+            level="11"
+            name="Read process"/>
+      <Action
+            class="org.talend.designer.core.ui.action.OpenExistVersionProcessAction"
+            id="org.talend.designer.core.ui.action.OpenExistVersionProcessAction"
+            isReadAction="true"
+            level="12"
+            name="Open an other version job"/>
+      <Action
+            class="org.talend.designer.core.ui.action.CreateProcess"
+            id="org.talend.designer.core.actions.createprocess"
+            level="10"
+            name="Create process"/>
+      <Action
+            class="org.talend.designer.core.ui.hierarchy.OpenRepositoryJobHierarchyAction"
+            id="org.talend.designer.core.ui.hierarchy.OpenRepositoryJobHierarchyAction"
+            isReadAction="true"
+            level="12"
+            name="Open Job Hierarchy"/>
+      <Action
+            class="org.talend.designer.core.ui.action.SetupProcessDependenciesRoutinesAction"
+            id="org.talend.designer.core.ui.action.SetupProcessDependenciesRoutinesAction"
+            isEditAction="false"
+            isPropertiesAction="false"
+            isReadAction="false"
+            level="12"
+            name="Setup routine dependencies">
+      </Action>
+            
+            
+      
+   </extension>
+   <extension
+         point="org.eclipse.ui.contexts">
+      <context
+            id="talend.modules"
+            name="Modules view"
+            parentId="org.eclipse.ui.contexts.window"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            id="Talend"
+            name="Talend"/>
+     <command
+				name="Palette" 
+				categoryId="org.eclipse.ui.category.views" 
+				id="org.eclipse.gef.ui.palette_view"> 
+		</command>
+   <command
+         categoryId="talend"
+         id="showComponentSettingView"
+         name="Show Component Setting View"/>
+   <command
+         categoryId="talend"
+         id="showProblemsView"
+         name="Show problems view"/>
+   <command
+         categoryId="talend"
+         id="showEditorCodePage"
+         name="Show editor code page"/>
+   <command
+         categoryId="talend"
+         id="showEditorDesignerPage"
+         name="Show designer code page"/>
+         
+   <command
+            name="Open Job"
+            categoryId="talend"
+            id="org.talend.designer.core.ui.open.type">
+   </command>
+      
+   </extension>
+   <extension
+         point="org.eclipse.ui.bindings">
+
+   <key
+         commandId="showComponentSettingView"
+         contextId="talend.global"
+         schemeId="org.talend.core.scheme"
+         sequence="F2"/>
+   <key
+         commandId="showProblemsView"
+         contextId="talend.global"
+         schemeId="org.talend.core.scheme"
+         sequence="CTRL+F3"/>
+   <key
+         commandId="showEditorCodePage"
+         contextId="talend.global"
+         schemeId="org.talend.core.scheme"
+         sequence="CTRL+G"/>
+   <key
+         commandId="showEditorDesignerPage"
+         contextId="talend.global"
+         schemeId="org.talend.core.scheme"
+         sequence="CTRL+H"/>
+   <key
+         contextId="org.eclipse.ui.contexts.window"
+         schemeId="org.talend.core.scheme"
+         sequence="F2">
+   </key>
+   <key
+         contextId="org.eclipse.ui.textEditorScope"
+         schemeId="org.talend.core.scheme"
+         sequence="F2">
+   </key>
+   <key
+         contextId="org.eclipse.jdt.ui.javaEditorScope"
+         schemeId="org.talend.core.scheme"
+         sequence="CTRL+F3">
+   </key>
+   <key
+            sequence="M1+M2+J"
+            commandId="org.talend.designer.core.ui.open.type"
+            schemeId="org.talend.core.scheme"/>
+   </extension>
+   <extension
+         point="org.talend.core.global_actions">
+      <GlobalAction class="org.talend.designer.core.ui.action.ShowComponentSettingView"/>
+      <GlobalAction class="org.talend.designer.core.ui.action.ShowProblemsViewAction"/>
+      <GlobalAction class="org.talend.designer.core.ui.action.ShowEditorPageAction"/>
+      <GlobalAction class="org.talend.designer.core.ui.action.ShowDesignerPageAction"/>
+   </extension>
+      <extension
+            point="org.talend.designer.core.generators">
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.SchemaTypeGenerator"
+            mapping="SCHEMA_TYPE"
+            name="Schema Type"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.TextGenerator"
+            mapping="TEXT"
+            name="Text"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ComboGenerator"
+            mapping="CLOSED_LIST"
+            name="Combo"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.OpenedListGenerator"
+            mapping="OPENED_LIST"
+            name="Opened List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.MemoGenerator"
+            mapping="MEMO"
+            name="Memo"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.MessageMemoGenerator"
+            mapping="MEMO_MESSAGE"
+            name="Message Memo"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ColumnListGenerator"
+            mapping="COLUMN_LIST"
+            name="Column List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ConnectionListGenerator"
+            mapping="CONNECTION_LIST"
+            name="Connection List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ColumnListGenerator"
+            mapping="PREV_COLUMN_LIST"
+            name="Pre Column List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ColumnListGenerator"
+            mapping="LOOKUP_COLUMN_LIST"
+            name="Lookup Column List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ComponentListGenerator"
+            mapping="COMPONENT_LIST"
+            name="Component List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.SqlMemoGenerator"
+            mapping="MEMO_SQL"
+            name="Sql Memo"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.PerlMemoGenerator"
+            mapping="MEMO_PERL"
+            name="Perl Memo"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.CheckGenerator"
+            mapping="CHECK"
+            name="Check"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.FileGenerator"
+            mapping="FILE"
+            name="File"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.DirectoryGenerator"
+            mapping="DIRECTORY"
+            name="Directory"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.VersionGenerator"
+            mapping="VERSION"
+            name="Version"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.TableGenerator"
+            mapping="TABLE"
+            name="Table"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ImageGenerator"
+            mapping="IMAGE"
+            name="Image"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ExternalGenerator"
+            mapping="EXTERNAL"
+            name="External"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.JavaMemoGenerator"
+            mapping="MEMO_JAVA"
+            name="Java Memo"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ProcessGenerator"
+            mapping="PROCESS_TYPE"
+            name="Process Type"/>
+      <generator 
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.EncodingTypeControllerGenerator" 
+            mapping="ENCODING_TYPE" 
+            name="Encoding type" />
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.MappingTypeControllerGenerator"
+            mapping="MAPPING_TYPE"
+            name="Mapping Type"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ColorControllerGenerator"
+            mapping="COLOR"
+            name="Color"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.DbTableControllerGenerator"
+            mapping="DBTABLE"
+            name="Db Table"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.DateControllerGenerator"
+            mapping="DATE"
+            name="Date"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.DbTypeListGenerator"
+            mapping="DBTYPE_LIST"
+            name="Db Type List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.ModuleListGenerator"
+            mapping="MODULE_LIST"
+            name="Module List"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.LabelGenerator"
+            mapping="LABEL"
+            name="Label"/>
+      <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.AS400CheckGenerator"
+            mapping="AS400_CHECK"
+            name="AS400 SqlSyntax"/>
+     <generator
+            class="org.talend.designer.core.ui.editor.properties.controllers.generator.CommandGenerator"
+            mapping="COMMAND"
+            name="Command"/>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.JavaMemoGenerator"
+           mapping="MEMO_IMPORT"
+           name="Java Import Memo">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.RadioGenerator"
+           mapping="RADIO"
+           name="Radio">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.GuessSchemaGenerator"
+           mapping="GUESS_SCHEMA"
+           name="Guess Schema">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.PropertyTypeControllerGenerator"
+           mapping="PROPERTY_TYPE"
+           name="Property Type">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.QueryTypeControllerGenerator"
+           mapping="QUERYSTORE_TYPE"
+           name="Query Type">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.WSDL2JAVAGenerator"
+           mapping="WSDL2JAVA"
+           name="WSDL2Java launcher">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.IconSelectionGenerator"
+           mapping="ICON_SELECTION"
+           name="Icon Selection">
+     </generator>     
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.TNSEditorGenerator"
+           mapping="TNS_EDITOR"
+           name="Tns Deitor">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.JavaCommandGenerator"
+           mapping="JAVA_COMMAND"
+           name="Java Command">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.ValidationRuleTypeGenerator"
+           mapping="VALIDATION_RULE_TYPE"
+           name="Validation Rule Type">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.GenerateGrammarControllerGenerator"
+           mapping="GENERATEGRAMMARCONTROLLER"
+           name="GenerateGrammarController launcher">
+     </generator>     
+	 <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.DCSchemaGenerator"
+           mapping="DCSCHEMA"
+           name="DCSchema">
+     </generator>   
+   </extension>
+   <extension
+         point="org.talend.core.runtime.service">
+      <Service
+      		serviceId="IDesignerCoreService"
+      		class="org.talend.designer.core.DesignerCoreService"/>
+      <Service
+            class="org.talend.designer.core.ui.editor.TalendEditor"
+            serviceId="ITalendEditorService"/>
+      <Service
+            class="org.talend.designer.core.ManagementService"
+            serviceId="IManagementService">
+      </Service>
+   </extension>
+   
+   <extension
+	         id="org.talend.designer.runprocess.debug"
+	         name="Talend Job Debugger"
+	         point="org.eclipse.debug.core.launchConfigurationTypes">
+	      <launchConfigurationType
+	            name="Perl Local"
+	            delegate="org.talend.designer.core.debug.JobLaunchConfigurationDelegate"
+	            modes="run"
+	            public="true"
+	            id="org.talend.designer.runprocess.jobLaunchConfiguration">
+	      </launchConfigurationType>
+	</extension>
+	
+	<extension
+         point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+      <launchConfigurationTypeImage
+            icon="icons/process_icon.gif"
+            configTypeID="org.talend.designer.runprocess.jobLaunchConfiguration"
+            id="org.talend.designer.runprocess.launchImage">
+      </launchConfigurationTypeImage>
+   </extension>
+
+	<extension
+         point="org.eclipse.debug.ui.launchShortcuts">
+      <shortcut
+            class="org.talend.designer.core.debug.JobLaunchShortcut"
+            icon="platform:/plugin/org.talend.core/icons/process_icon.gif"
+            id="org.talend.designer.runprocess.debug.JobLaunchShortcut"
+            label="Job"
+            modes="run">
+          
+          <contextualLaunch>
+           <enablement>
+             <with variable="selection">
+               <count value="1"/>
+             
+              <!--iterate>
+                 <or>
+                   <test property="org.eclipse.debug.ui.matchesPattern" value="*.pl"/>
+                   <test property="org.eclipse.debug.ui.matchesPattern" value="*.pm"/>
+                 </or>
+               </iterate-->
+               
+             </with>
+           </enablement>
+  		 </contextualLaunch>
+   
+	  </shortcut>
+   </extension>
+    <extension point="org.eclipse.ui.actionSets">
+    <actionSet
+            label="Talend Run History"
+            visible="false"
+            id="org.talend.debug.ui.launchActionSet">
+         <menu
+               label="%RunMenu.label"
+               path="additions"
+               id="org.talend.ui.run">
+            <separator
+                  name="relaunchGroup">
+            </separator>
+            <separator
+                  name="runGroup">
+            </separator>
+            <separator
+                  name="debugGroup">
+            </separator>
+            <separator
+                  name="emptyLaunchGroup">
+            </separator>
+         </menu>
+    
+         <action
+               id="org.eclipse.debug.internal.ui.actions.RunDropDownAction"
+               toolbarPath="debug"
+               hoverIcon="platform:/plugin/org.eclipse.debug.ui/icons/full/etool16/run_exc.gif"
+               class="org.talend.designer.core.debug.TalendLaunchToolbarAction"
+               disabledIcon="platform:/plugin/org.eclipse.debug.ui/icons/full/dtool16/run_exc.gif"
+               icon="platform:/plugin/org.eclipse.debug.ui/icons/full/etool16/run_exc.gif"
+               helpContextId="run_action_context"
+               label="%RunDropDownAction.label"
+               style="pulldown">
+         </action>
+    	
+    	 <action
+               id="org.talend.designer.core.ui.action.OpenJobAction"
+               toolbarPath="debug"
+               class="org.talend.designer.core.ui.action.OpenJobAction"
+               definitionId="org.talend.designer.core.ui.open.type"
+               icon="icons/find_job.png"
+               label="%findJob.title"
+               tooltip="%findJob.tootip">
+         </action>
+    		
+      </actionSet>
+   </extension>
+    <extension
+          point="org.talend.core.migrationTask">
+       <projecttask
+             beforeLogon="false"
+             class="org.talend.designer.core.utils.UpgradeRepositoryReferenceParametersMigrationTask"
+             description="Upgrade repository references for Process Type."
+             id="org.talend.repository.migration.UpgradeRepositoryReferenceParameters"
+             name="Upgrade the parameters reference">
+       </projecttask>
+       <projecttask
+             beforeLogon="false"
+             class="org.talend.designer.core.ui.views.statsandlogs.migration.UseOracleSIDAsDefaultOracleTypeMigrationTask"
+             id="org.talend.designer.core.ui.views.statsandlogs.migration.UseOracleSIDAsDefaultOracleTypeMigrationTask"
+             name="Use Oracle SID as DB type when use Oracle in Stats and Logs">
+       </projecttask>
+       <workspacetask
+             class="org.talend.designer.core.ui.preferences.migration.AddQuotesForStatLogsPreference"
+             id="org.talend.designer.core.ui.preferences.migration.AddQuotesForStatLogsPreference"
+             name="Add quotes for stats and logs preference page.">
+       </workspacetask>
+    </extension>
+    <extension
+          point="org.talend.repository.projectsetting_page">
+       <page
+             class="org.talend.designer.core.ui.projectsetting.JobSettingProjectSettingPage"
+             id="jobsettings"
+             order="3"
+             title="%jobSettings">
+       </page>
+       <page
+             category="jobsettings"
+             class="org.talend.designer.core.ui.projectsetting.StatLogsProjectSettingPage"
+             id="jobsettings.statusAndLogs"
+             title="%statsAndLogs">
+       </page>
+       <page
+             category="jobsettings"
+             class="org.talend.designer.core.ui.projectsetting.ImplicitContextLoadProjectSettingPage"
+             id="jobsettings.implicitcontextload"
+             title="%implicitContextLoad">
+       </page>
+       <page
+             category="jobsettings"
+             class="org.talend.designer.core.ui.projectsetting.StatLogsAndImplicitcontextTreeViewPage"
+             description="%selectitem.useprojectsettings"
+             id="jobsettings.treeview"
+             title="%useProjectSetting">
+       </page>
+    </extension>
+</plugin>

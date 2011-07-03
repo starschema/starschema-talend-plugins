@@ -1,0 +1,3769 @@
+// ============================================================================
+//
+// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+//
+// This source code is available under agreement available at
+// %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
+//
+// You should have received a copy of the agreement
+// along with this program; if not, write to Talend SA
+// 9 rue Pages 92150 Suresnes, France
+//
+// ============================================================================
+package org.talend.designer.core.ui.editor.process;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.oro.text.regex.MalformedPatternException;
+import org.apache.oro.text.regex.Pattern;
+import org.apache.oro.text.regex.Perl5Compiler;
+import org.apache.oro.text.regex.Perl5Matcher;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.draw2d.geometry.Dimension;
+import org.eclipse.draw2d.geometry.Point;
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.gef.GraphicalViewer;
+import org.eclipse.gef.SnapToGeometry;
+import org.eclipse.gef.SnapToGrid;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.gef.commands.CommandStack;
+import org.eclipse.gef.commands.CommandStackEvent;
+import org.eclipse.gef.commands.CommandStackEventListener;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IViewPart;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.PlatformUI;
+import org.talend.commons.CommonsPlugin;
+import org.talend.commons.emf.EmfHelper;
+import org.talend.commons.exception.PersistenceException;
+import org.talend.commons.ui.runtime.exception.ExceptionHandler;
+import org.talend.commons.ui.runtime.image.ImageUtils;
+import org.talend.commons.utils.VersionUtils;
+import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.PluginChecker;
+import org.talend.core.language.ECodeLanguage;
+import org.talend.core.language.LanguageManager;
+import org.talend.core.model.components.IComponent;
+import org.talend.core.model.context.ContextUtils;
+import org.talend.core.model.context.JobContextManager;
+import org.talend.core.model.general.Project;
+import org.talend.core.model.metadata.IEbcdicConstant;
+import org.talend.core.model.metadata.IMetadataColumn;
+import org.talend.core.model.metadata.IMetadataTable;
+import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.process.EComponentCategory;
+import org.talend.core.model.process.EConnectionType;
+import org.talend.core.model.process.EParameterFieldType;
+import org.talend.core.model.process.Element;
+import org.talend.core.model.process.IConnection;
+import org.talend.core.model.process.IConnectionCategory;
+import org.talend.core.model.process.IContext;
+import org.talend.core.model.process.IContextManager;
+import org.talend.core.model.process.IContextParameter;
+import org.talend.core.model.process.IElementParameter;
+import org.talend.core.model.process.IExternalData;
+import org.talend.core.model.process.INode;
+import org.talend.core.model.process.INodeConnector;
+import org.talend.core.model.process.IProcess;
+import org.talend.core.model.process.IProcess2;
+import org.talend.core.model.process.ISubjobContainer;
+import org.talend.core.model.process.UniqueNodeNameGenerator;
+import org.talend.core.model.process.node.IExternalMapEntry;
+import org.talend.core.model.process.node.IExternalMapTable;
+import org.talend.core.model.properties.ContextItem;
+import org.talend.core.model.properties.Item;
+import org.talend.core.model.properties.ItemState;
+import org.talend.core.model.properties.JobletProcessItem;
+import org.talend.core.model.properties.ProcessItem;
+import org.talend.core.model.properties.Property;
+import org.talend.core.model.properties.RoutineItem;
+import org.talend.core.model.properties.User;
+import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.routines.RoutinesUtil;
+import org.talend.core.model.update.IUpdateManager;
+import org.talend.core.model.utils.TalendTextUtils;
+import org.talend.core.repository.model.ProxyRepositoryFactory;
+import org.talend.core.service.IDesignerMapperService;
+import org.talend.core.ui.IJobletProviderService;
+import org.talend.core.ui.ILastVersionChecker;
+import org.talend.core.utils.KeywordsValidator;
+import org.talend.designer.core.DesignerPlugin;
+import org.talend.designer.core.ICamelDesignerCoreService;
+import org.talend.designer.core.i18n.Messages;
+import org.talend.designer.core.model.components.DummyComponent;
+import org.talend.designer.core.model.components.EParameterName;
+import org.talend.designer.core.model.components.ElementParameter;
+import org.talend.designer.core.model.components.EmfComponent;
+import org.talend.designer.core.model.metadata.MetadataEmfFactory;
+import org.talend.designer.core.model.process.DataNode;
+import org.talend.designer.core.model.process.DataProcess;
+import org.talend.designer.core.model.process.jobsettings.JobSettingsConstants;
+import org.talend.designer.core.model.process.jobsettings.JobSettingsManager;
+import org.talend.designer.core.model.utils.emf.talendfile.ConnectionType;
+import org.talend.designer.core.model.utils.emf.talendfile.ElementParameterType;
+import org.talend.designer.core.model.utils.emf.talendfile.ElementValueType;
+import org.talend.designer.core.model.utils.emf.talendfile.MetadataType;
+import org.talend.designer.core.model.utils.emf.talendfile.NodeContainerType;
+import org.talend.designer.core.model.utils.emf.talendfile.NodeType;
+import org.talend.designer.core.model.utils.emf.talendfile.NoteType;
+import org.talend.designer.core.model.utils.emf.talendfile.ParametersType;
+import org.talend.designer.core.model.utils.emf.talendfile.ProcessType;
+import org.talend.designer.core.model.utils.emf.talendfile.RoutinesParameterType;
+import org.talend.designer.core.model.utils.emf.talendfile.SubjobType;
+import org.talend.designer.core.model.utils.emf.talendfile.TalendFileFactory;
+import org.talend.designer.core.ui.AbstractMultiPageTalendEditor;
+import org.talend.designer.core.ui.editor.connections.Connection;
+import org.talend.designer.core.ui.editor.jobletcontainer.JobletContainer;
+import org.talend.designer.core.ui.editor.jobletcontainer.JobletUtil;
+import org.talend.designer.core.ui.editor.nodecontainer.NodeContainer;
+import org.talend.designer.core.ui.editor.nodes.Node;
+import org.talend.designer.core.ui.editor.notes.Note;
+import org.talend.designer.core.ui.editor.properties.controllers.ColumnListController;
+import org.talend.designer.core.ui.editor.properties.controllers.ConnectionListController;
+import org.talend.designer.core.ui.editor.subjobcontainer.SubjobContainer;
+import org.talend.designer.core.ui.preferences.StatsAndLogsConstants;
+import org.talend.designer.core.ui.preferences.TalendDesignerPrefConstants;
+import org.talend.designer.core.ui.views.contexts.ContextsView;
+import org.talend.designer.core.ui.views.problems.Problems;
+import org.talend.designer.core.utils.DesignerUtilities;
+import org.talend.designer.core.utils.JavaProcessUtil;
+import org.talend.designer.core.utils.ValidationRulesUtil;
+import org.talend.designer.runprocess.IRunProcessService;
+import org.talend.designer.runprocess.ItemCacheManager;
+import org.talend.repository.ProjectManager;
+import org.talend.repository.model.ComponentsFactoryProvider;
+import org.talend.repository.model.ERepositoryStatus;
+import org.talend.repository.model.IProxyRepositoryFactory;
+import org.talend.repository.model.IRepositoryNode;
+import org.talend.repository.model.RepositoryNode;
+import org.talend.repository.model.migration.UpdateTheJobsActionsOnTable;
+
+/**
+ * The diagram will contain all elements (nodes, connections) The xml that describes the diagram will be saved from the
+ * information of this class. <br/>
+ * 
+ * $Id: Process.java 62885 2011-06-20 11:13:09Z hywang $
+ * 
+ */
+public class Process extends Element implements IProcess2, ILastVersionChecker {
+
+    protected List<INode> nodes = new ArrayList<INode>();
+
+    protected List<Element> elem = new ArrayList<Element>();
+
+    protected List<SubjobContainer> subjobContainers = new ArrayList<SubjobContainer>();
+
+    protected List<Note> notes = new ArrayList<Note>();
+
+    private List<RoutinesParameterType> routinesDependencies;
+
+    private final String name = new String(Messages.getString("Process.Job")); //$NON-NLS-1$
+
+    private boolean activate = true;
+
+    // list where is stored each unique name for the connections
+    private final List<String> uniqueConnectionNameList = new ArrayList<String>();
+
+    // list where is stored each unique name for the nodes
+    private final List<String> uniqueNodeNameList = new ArrayList<String>();
+
+    private boolean readOnly;
+
+    private GraphicalViewer viewer = null;
+
+    private IContextManager contextManager;
+
+    public static final int BREAKPOINT_STATUS = 1;
+
+    public static final int ERROR_STATUS = 2;
+
+    public static final int WARNING_STATUS = 4;
+
+    public static final int INFO_STATUS = 16;
+
+    public static final int VALIDATION_RULE_STATUS = 32;
+
+    public static final int PARALLEL_STATUS = 8;
+
+    private Property property;
+
+    private boolean initDone = false;
+
+    private AbstractMultiPageTalendEditor editor;
+
+    private Map<Node, SubjobContainer> mapSubjobStarts = new HashMap<Node, SubjobContainer>();
+
+    private boolean duplicate = false;
+
+    protected IUpdateManager updateManager;
+
+    protected byte[] screenshot = null;
+
+    private List<byte[]> externalInnerContents = new ArrayList<byte[]>();
+
+    private Set<String> neededRoutines;
+
+    public Process(Property property) {
+        this.property = property;
+        contextManager = new JobContextManager();
+        updateManager = new ProcessUpdateManager(this);
+        createProcessParameters();
+        init();
+        //
+    }
+
+    public void updateProperties() {
+        try {
+            setId(property.getId());
+            setLabel(property.getLabel());
+            setVersion(property.getVersion());
+            setAuthor(property.getAuthor());
+            setStatusCode(property.getStatusCode());
+            setDescription(property.getDescription());
+            setPurpose(property.getPurpose());
+            if (getStatusCode() == null) {
+                setStatusCode(""); //$NON-NLS-1$
+            }
+        } catch (Exception ex) {
+            ExceptionHandler.process(ex);
+        }
+    }
+
+    private void init() {
+        if (!initDone) {
+            updateProperties();
+            initDone = true;
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((this.getId() == null) ? 0 : this.getId().hashCode());
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Process other = (Process) obj;
+        if (!this.getId().equals(other.getId())) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Add all parameters for a process.
+     */
+    private void createProcessParameters() {
+        createMainParameters();
+        createJobSettingsParameters();
+    }
+
+    /**
+     * create parameters for tabbed page 'Job Settings'.
+     */
+    private void createJobSettingsParameters() {
+        JobSettingsManager.createJobSettingsParemeters(this);
+    }
+
+    /**
+     * Creates parameters for tabbed page 'Main'.
+     */
+    private void createMainParameters() {
+        ElementParameter param;
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.COMP_DEFAULT_FILE_DIR.getName());
+        param.setCategory(EComponentCategory.MAIN);
+        param.setFieldType(EParameterFieldType.DIRECTORY);
+        param.setDisplayName(EParameterName.COMP_DEFAULT_FILE_DIR.getDisplayName());
+        param.setNumRow(99);
+        param.setShow(false);
+        param.setValue(DesignerPlugin.getDefault().getPreferenceStore()
+                .getString(TalendDesignerPrefConstants.COMP_DEFAULT_FILE_DIR));
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        // MOD by zshen for TDQ_INSTALL_DIR bug 17622
+        param = new ElementParameter(this);
+        param.setName(EParameterName.PRODUCT_ROOT_DIR.getName());
+        param.setCategory(EComponentCategory.MAIN);
+        param.setFieldType(EParameterFieldType.DIRECTORY);
+        param.setDisplayName(EParameterName.PRODUCT_ROOT_DIR.getDisplayName());
+        param.setNumRow(99);
+        param.setShow(false);
+        param.setValue(DesignerPlugin.getDefault().getPreferenceStore().getString(TalendDesignerPrefConstants.PRODUCT_ROOT_DIR));
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.COMP_DEFAULT_PROJECT_DIR.getName());
+        param.setCategory(EComponentCategory.MAIN);
+        param.setFieldType(EParameterFieldType.DIRECTORY);
+        param.setDisplayName(EParameterName.COMP_DEFAULT_PROJECT_DIR.getDisplayName());
+        param.setNumRow(99);
+        param.setShow(false);
+        param.setValue(DesignerPlugin.getDefault().getPreferenceStore()
+                .getString(TalendDesignerPrefConstants.COMP_DEFAULT_PROJECT_DIR));
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.JOB_RUN_VM_ARGUMENTS.getName());
+        param.setCategory(EComponentCategory.MAIN);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.JOB_RUN_VM_ARGUMENTS.getDisplayName());
+        param.setNumRow(99);
+        param.setShow(false);
+        IRunProcessService service = DesignerPlugin.getDefault().getRunProcessService();
+        if (service != null) {
+            param.setValue(service.getPreferenceStore().getString("vmarguments")); //$NON-NLS-1$
+        }
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.JOB_RUN_VM_ARGUMENTS_OPTION.getName());
+        param.setCategory(EComponentCategory.MAIN);
+        param.setFieldType(EParameterFieldType.CHECK);
+        param.setDisplayName(EParameterName.JOB_RUN_VM_ARGUMENTS_OPTION.getDisplayName());
+        param.setNumRow(99);
+        param.setShow(false);
+        param.setValue(false);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.AUTHOR.getName());
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.AUTHOR.getDisplayName());
+        param.setShow(false);
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.STATUS.getName());
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.STATUS.getDisplayName());
+        param.setShow(false);
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.NAME.getName());
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.NAME.getDisplayName());
+        param.setShow(false);
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.VERSION.getName());
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.VERSION.getDisplayName());
+        param.setShow(false);
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.PURPOSE.getName());
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.PURPOSE.getDisplayName());
+        param.setShow(false);
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.DESCRIPTION.getName());
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.DESCRIPTION.getDisplayName());
+        param.setShow(false);
+        param.setReadOnly(true);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(SCREEN_OFFSET_X);
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setShow(false);
+        param.setReadOnly(false);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(SCREEN_OFFSET_Y);
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setShow(false);
+        param.setReadOnly(false);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName(EParameterName.SCHEMA_OPTIONS.getName());
+        param.setCategory(EComponentCategory.MAIN);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setDisplayName(EParameterName.SCHEMA_OPTIONS.getDisplayName());
+        param.setShow(false);
+        param.setValue(DesignerPlugin.getDefault().getPluginPreferences().getString(TalendDesignerPrefConstants.SCHEMA_OPTIONS));
+        param.setReadOnly(true);
+        addElementParameter(param);
+    }
+
+    /**
+     * Add a new node to the diagram.
+     * 
+     * @param node
+     */
+    public void addNodeContainer(final NodeContainer nodeContainer) {
+        elem.add(nodeContainer);
+        nodes.add(nodeContainer.getNode());
+
+        // fireStructureChange(NEED_UPDATE_JOB, elem);
+    }
+
+    /**
+     * Remove a node to the diagram.
+     * 
+     * @param node
+     */
+    public void removeNodeContainer(final NodeContainer nodeContainer) {
+        removeUniqueNodeName(nodeContainer.getNode().getUniqueName());
+        nodes.remove(nodeContainer.getNode());
+        Element toRemove = nodeContainer;
+        List<Element> toAdd = new ArrayList<Element>();
+        for (Object o : elem) {
+            if (o instanceof SubjobContainer) {
+                SubjobContainer sjc = (SubjobContainer) o;
+                if (sjc.deleteNodeContainer(nodeContainer)) {
+                    if (nodeContainer.getNode().isDesignSubjobStartNode()) {
+                        subjobContainers.remove(sjc);
+                        toAdd.addAll(sjc.getNodeContainers());
+                        toRemove = sjc;
+                        break;
+                    }
+                }
+            }
+        }
+
+        elem.remove(toRemove);
+        elem.addAll(toAdd);
+
+        // fireStructureChange(NEED_UPDATE_JOB, elem);
+    }
+
+    /**
+     * Get the list of all elements, Node and Connection.
+     * 
+     * @return
+     */
+    public List getElements() {
+        return this.elem;
+    }
+
+    public List<? extends INode> getGraphicalNodes() {
+        return this.nodes;
+    }
+
+    DataProcess generatingProcess = null;
+
+    public List<? extends INode> getGeneratingNodes() {
+        if (generatingProcess == null) {
+            generatingProcess = new DataProcess(this);
+        }
+        List<INode> generatedNodeList = generatingProcess.getNodeList();
+        if (isProcessModified() || routinesDependencies == null || routinesDependencies.isEmpty()) {
+            checkRoutineDependencies();
+        }
+        if (isProcessModified()) {
+            List<INode> sortedFlow = sortNodes(nodes);
+            if (sortedFlow.size() != nodes.size()) {
+                sortedFlow = nodes;
+            }
+            generatingProcess.buildFromGraphicalProcess(sortedFlow);
+            generatedNodeList = generatingProcess.getNodeList();
+            processModified = false;
+        }
+        return generatedNodeList;
+    }
+
+    /**
+     * 
+     * DOC yexiaowei Comment method "sortNodes".
+     * 
+     * @param nodes
+     * @return
+     */
+    private List<INode> sortNodes(List<INode> nodes) {
+
+        if (nodes == null || nodes.size() <= 1) {
+            return nodes;
+        }
+
+        List<INode> res = new ArrayList<INode>();
+
+        List<List<INode>> mainStart = new ArrayList<List<INode>>();
+
+        List<List<INode>> notMainStart = new ArrayList<List<INode>>();
+
+        List<INode> starts = new ArrayList<INode>();
+
+        for (INode node : nodes) {
+            if (node.isStart() || node.isSubProcessStart()) {
+                starts.add(node);
+            }
+        }
+
+        for (INode node : starts) {
+            List<INode> branch = new ArrayList<INode>();
+            branch.add(node);
+            findTargetAll(branch, node);
+            if (node.isStart() && node.isSubProcessStart()) {
+                mainStart.add(branch);
+            } else {
+                notMainStart.add(branch);
+            }
+
+        }
+
+        // Must sort the mainStart first...
+        List<List<INode>> tempStart = new ArrayList<List<INode>>();
+        tempStart.addAll(mainStart);
+        for (List<INode> preview : mainStart) {
+            for (List<INode> now : mainStart) {
+                if (!preview.equals(now) && now.contains(preview.get(0))) {
+                    tempStart.remove(preview);
+                    tempStart.add(tempStart.indexOf(now) + 1, preview);
+                }
+            }
+        }
+
+        for (List<INode> branch : tempStart) {
+            for (INode n : branch) {
+                if (!res.contains(n)) {
+                    res.add(n);
+                }
+            }
+
+            for (List<INode> ns : notMainStart) {
+
+                for (INode node : ns) {
+                    if (branch.contains(node)) {
+                        for (INode nodeadd : ns) {
+                            if (!res.contains(nodeadd)) {
+                                res.add(nodeadd);
+                            }
+                            break;
+                        }
+                    }
+                }
+
+            }
+        }
+        return res;
+    }
+
+    private void findTargetAll(List<INode> res, INode current) {
+
+        List conns = current.getOutgoingConnections();
+
+        if (conns == null || conns.size() == 0) {
+            return;
+        } else {
+            for (Object obj : conns) {
+                IConnection con = (IConnection) obj;
+                INode target = con.getTarget();
+                if (target.getJobletNode() != null) {
+                    target = target.getJobletNode();
+                }
+                if (!res.contains(target)) {
+                    res.add(target);
+                    findTargetAll(res, target);
+                }
+            }
+        }
+    }
+
+    boolean processModified = true;
+
+    private boolean loadScreenshots;
+
+    public boolean isProcessModified() {
+        if (generatingProcess == null) {
+            return true;
+        }
+        List<INode> generatedNodeList = generatingProcess.getNodeList();
+        if (generatedNodeList == null || generatedNodeList.isEmpty() || (this.getEditor() == null && processModified)) {
+            return true;
+        }
+        return processModified;
+    }
+
+    /*
+     * public double getZoom() { return zoom; }
+     */
+    private void retrieveAttachedViewer() {
+        IEditorPart editorPart = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor();
+        if (editorPart instanceof AbstractMultiPageTalendEditor) {
+            viewer = ((AbstractMultiPageTalendEditor) editorPart).getTalendEditor().getViewer();
+        }
+    }
+
+    public void setViewer(GraphicalViewer viewer) {
+        this.viewer = viewer;
+    }
+
+    /**
+     * Returns true if the grid is enabled.
+     * 
+     * @return
+     */
+    public boolean isGridEnabled() {
+        if (viewer == null) {
+            retrieveAttachedViewer();
+            if (viewer != null) {
+                return (Boolean) viewer.getProperty(SnapToGrid.PROPERTY_GRID_ENABLED);
+            }
+        } else {
+            return (Boolean) viewer.getProperty(SnapToGrid.PROPERTY_GRID_ENABLED);
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if the SnapToGeometry is enabled.
+     * 
+     * @return
+     */
+    public boolean isSnapToGeometryEnabled() {
+        if (viewer == null) {
+            retrieveAttachedViewer();
+            if (viewer != null) {
+                return (Boolean) viewer.getProperty(SnapToGeometry.PROPERTY_SNAP_ENABLED);
+            }
+        } else {
+            return (Boolean) viewer.getProperty(SnapToGeometry.PROPERTY_SNAP_ENABLED);
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void saveElementParameters(TalendFileFactory fileFact, List<? extends IElementParameter> paramList,
+            EList listParamType, ProcessType process) {
+        IElementParameter param;
+        for (int j = 0; j < paramList.size(); j++) {
+            param = paramList.get(j);
+            saveElementParameter(param, process, fileFact, paramList, listParamType);
+            for (String key : param.getChildParameters().keySet()) {
+                saveElementParameter(param.getChildParameters().get(key), process, fileFact, paramList, listParamType);
+            }
+            // accept only one level of child parameters.
+        }
+    }
+
+    private void saveElementParameters(TalendFileFactory fileFact, List<? extends IElementParameter> paramList,
+            EList listParamType, NodeType process) {
+        IElementParameter param;
+        ElementParameterType pType;
+        for (int j = 0; j < paramList.size(); j++) {
+            param = paramList.get(j);
+            pType = fileFact.createElementParameterType();
+            pType.setName(param.getName());
+            Object value = param.getValue();
+            if (value instanceof Boolean) {
+                pType.setValue(((Boolean) value).toString());
+            } else {
+                if (value instanceof String) {
+                    pType.setValue((String) value);
+                }
+            }
+            listParamType.add(pType);
+            // saveElementParameter(param, process, fileFact, paramList, listParamType);
+            // for (String key : param.getChildParameters().keySet()) {
+            // saveElementParameter(param.getChildParameters().get(key), process, fileFact, paramList, listParamType);
+            // }
+            // accept only one level of child parameters.
+        }
+    }
+
+    private void saveElementParameter(IElementParameter param, ProcessType process, TalendFileFactory fileFact,
+            List<? extends IElementParameter> paramList, EList listParamType) {
+        ElementParameterType pType;
+        boolean isJoblet = false;
+        if (param.getElement() instanceof INode && PluginChecker.isJobLetPluginLoaded()) {
+            IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
+                    IJobletProviderService.class);
+            if (service != null && service.isJobletComponent((INode) param.getElement())) {
+                isJoblet = true;
+            }
+        }
+
+        if (param.getFieldType().equals(EParameterFieldType.SCHEMA_TYPE)
+                || param.getFieldType().equals(EParameterFieldType.PROPERTY_TYPE)
+                || param.getFieldType().equals(EParameterFieldType.VALIDATION_RULE_TYPE)
+                || param.getName().equals(EParameterName.UPDATE_COMPONENTS.getName())) {
+            return;
+        }
+        if (param.getParentParameter() != null) {
+            if (param.getParentParameter().getFieldType().equals(EParameterFieldType.PROPERTY_TYPE)) {
+                IElementParameter paramBuiltInRepository = param.getParentParameter().getChildParameters()
+                        .get(EParameterName.PROPERTY_TYPE.getName());
+                if (paramBuiltInRepository.getValue().equals(EmfComponent.BUILTIN)) {
+                    return;
+                }
+            }
+            if (param.getParentParameter().getFieldType().equals(EParameterFieldType.SCHEMA_TYPE)) {
+                IElementParameter paramBuiltInRepository = param.getParentParameter().getChildParameters()
+                        .get(EParameterName.SCHEMA_TYPE.getName());
+                if (isJoblet && param.getName().equals(EParameterName.CONNECTION.getName())) {
+                    // save conenction value
+                } else if (paramBuiltInRepository.getValue().equals(EmfComponent.BUILTIN)) {
+                    return;
+                }
+            }
+            if (param.getParentParameter().getFieldType().equals(EParameterFieldType.VALIDATION_RULE_TYPE)) {
+                IElementParameter paramBuiltInRepository = param.getParentParameter().getChildParameters()
+                        .get(EParameterName.VALIDATION_RULE_TYPE.getName());
+                if (paramBuiltInRepository.getValue().equals(EmfComponent.BUILTIN)) {
+                    return;
+                }
+            }
+        }
+
+        if (param.getElement() instanceof Process) {
+            // achen modify to fix bug 0006107
+            // Process tempProcess = new Process(this.property);
+            // IElementParameter tmpParam = tempProcess.getElementParameter(param.getName());
+            // IElementParameter tmpParam = param.getElement().getElementParameter(param.getName());
+            // if (tmpParam != null && tmpParam.getValue() != null && tmpParam.getValue().equals(param.getValue())) {
+            // return;
+            // }
+            if (isJoblet) {
+                if (param != null && !(param.getName().equals(EParameterName.STARTABLE.getName()))) {
+                    return;
+                }
+            }
+        }
+        if (param.getElement() instanceof Node) {
+            Node curNode = (Node) param.getElement();
+            IComponent component = ComponentsFactoryProvider.getInstance().get(curNode.getComponent().getName());
+            if (param != null && param.getName().equals(EParameterName.REPOSITORY_ALLOW_AUTO_SWITCH.getName())) {
+                return;
+            }
+            if (component instanceof EmfComponent) {
+                DataNode tempNode = new DataNode();
+                tempNode.setElementParameters(new ArrayList<IElementParameter>());
+                ((EmfComponent) component).addMainParameters((List<ElementParameter>) tempNode.getElementParameters(), tempNode);
+                ((EmfComponent) component).addViewParameters((List<ElementParameter>) tempNode.getElementParameters(), tempNode);
+                IElementParameter tmpParam1 = tempNode.getElementParameter(param.getName());
+                if (tmpParam1 != null && tmpParam1.getValue() != null && tmpParam1.getValue().equals(param.getValue())) {
+                    return;
+                }
+                if (tmpParam1 != null
+                        && StringUtils.equals(tmpParam1.getValue() == null ? null : tmpParam1.getValue().toString(),
+                                param.getValue() == null ? null : param.getValue().toString())) {
+
+                    return;
+                }
+            }
+        }
+        if (param.getElement() instanceof SubjobContainer) {
+            SubjobContainer subjob = new SubjobContainer(this);
+            IElementParameter subjobParam = subjob.getElementParameter(param.getName());
+            if (subjobParam != null && subjobParam.getValue() != null && subjobParam.getValue().equals(param.getValue())) {
+                // don't save this parameter as this parameter got the default value for the component
+                return;
+            }
+        }
+        // always save the connections parameters.
+
+        // if (param.getElement() instanceof Connection) {
+        // Connection connection = (Connection) param.getElement();
+        // IElementParameter connectionParam = connection.getElementParameter(param.getName());
+        // if (connectionParam != null && connectionParam.getValue() != null
+        // && connectionParam.getValue().equals(param.getValue())) {
+        // return;
+        // }
+        // }
+        pType = fileFact.createElementParameterType();
+        if (param.getParentParameter() != null) {
+            pType.setName(param.getParentParameter().getName() + ":" + param.getName()); //$NON-NLS-1$
+        } else {
+            pType.setName(param.getName());
+        }
+        pType.setField(param.getFieldType().getName());
+        if (param.isContextMode()) {
+            pType.setContextMode(param.isContextMode());
+        }
+        Object value = param.getValue();
+        if (param.getFieldType().equals(EParameterFieldType.TABLE) && value != null) {
+            List<Map<String, Object>> tableValues = (List<Map<String, Object>>) value;
+            for (Map<String, Object> currentLine : tableValues) {
+                for (int i = 0; i < param.getListItemsDisplayCodeName().length; i++) {
+                    ElementValueType elementValue = fileFact.createElementValueType();
+                    elementValue.setElementRef(param.getListItemsDisplayCodeName()[i]);
+                    Object o = currentLine.get(param.getListItemsDisplayCodeName()[i]);
+                    String strValue = ""; //$NON-NLS-1$
+                    if (o instanceof Integer) {
+                        IElementParameter tmpParam = (IElementParameter) param.getListItemsValue()[i];
+                        if (tmpParam.getListItemsValue().length == 0) {
+                            strValue = ""; //$NON-NLS-1$
+                        } else {
+                            strValue = (String) tmpParam.getListItemsValue()[(Integer) o];
+                        }
+                    } else {
+                        if (o instanceof String) {
+                            strValue = (String) o;
+                        } else {
+                            if (o instanceof Boolean) {
+                                strValue = ((Boolean) o).toString();
+                            }
+                        }
+                    }
+                    elementValue.setValue(strValue);
+                    //
+                    Object object = currentLine.get(param.getListItemsDisplayCodeName()[i] + IEbcdicConstant.REF_TYPE);
+                    if (object != null) {
+                        elementValue.setType((String) object);
+                    }
+                    pType.getElementValue().add(elementValue);
+                }
+            }
+        } else {
+            if (value == null) {
+                pType.setValue(""); //$NON-NLS-1$
+            } else {
+                if (value instanceof Boolean) {
+                    pType.setValue(((Boolean) value).toString());
+                } else {
+                    if (value instanceof String) {
+                        pType.setValue((String) value);
+                    }
+                }
+            }
+        }
+
+        listParamType.add(pType);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void loadElementParameters(Element elemParam, EList listParamType) {
+        boolean flag = false;
+        ElementParameterType pType;
+
+        for (int j = 0; j < listParamType.size(); j++) {
+            pType = (ElementParameterType) listParamType.get(j);
+            if (pType != null) {
+                IElementParameter param = elemParam.getElementParameter(pType.getName());
+                if (param != null) {
+                    if (pType.isSetContextMode()) {
+                        param.setContextMode(pType.isContextMode());
+                    } else {
+                        param.setContextMode(false);
+                    }
+                    if (param.isReadOnly()
+                            && !(param.getName().equals(EParameterName.UNIQUE_NAME.getName()) || param.getName().equals(
+                                    EParameterName.VERSION.getName()))) {
+                        continue; // if the parameter is read only, don't load
+                        // it (this will prevent to overwrite the
+                        // value)
+                    }
+                    String value = pType.getValue();
+                    if (param.getFieldType().equals(EParameterFieldType.CHECK)
+                            || param.getFieldType().equals(EParameterFieldType.RADIO)) {
+                        if ("false".equalsIgnoreCase(value) || "true".equalsIgnoreCase(value) || !pType.isContextMode()) { //$NON-NLS-1$ //$NON-NLS-2$
+                            Boolean boolean1 = new Boolean(value);
+                            elemParam.setPropertyValue(pType.getName(), boolean1);
+                        } else {
+                            elemParam.setPropertyValue(pType.getName(), value);
+                        }
+                        // if (EParameterName.ACTIVATE.getName().equals(param.getName())) {
+                        // if ((elemParam instanceof Node) && !boolean1) {
+                        // ((Node) elemParam).setDummy(!boolean1);
+                        // }
+                        // }
+                    } else if (param.getFieldType().equals(EParameterFieldType.CLOSED_LIST)) {
+                        boolean valueSet = false;
+                        if (!ArrayUtils.contains(param.getListItemsValue(), value)) {
+                            if (ArrayUtils.contains(param.getListItemsDisplayName(), value)) {
+                                valueSet = true;
+                                int index = ArrayUtils.indexOf(param.getListItemsDisplayName(), value);
+                                elemParam.setPropertyValue(pType.getName(), param.getListItemsValue()[index]);
+                            }
+                        }
+                        if (!valueSet) {
+                            elemParam.setPropertyValue(pType.getName(), value);
+                        }
+                        if (param.getName().equals(EParameterName.DB_TYPE.getName())) {
+                            IElementParameter elementParameter = elemParam.getElementParameter(EParameterName.DB_VERSION
+                                    .getName());
+                            setDbVersion(elementParameter, value);
+                            IElementParameter elementParameter2 = elemParam.getElementParameter(EParameterName.SCHEMA_DB
+                                    .getName());
+                            DesignerUtilities.setSchemaDB(elementParameter2, param.getValue());
+                        } else if (param.getName().equals(
+                                JobSettingsConstants.getExtraParameterName(EParameterName.DB_TYPE.getName()))) {
+                            IElementParameter elementParameter = elemParam.getElementParameter(JobSettingsConstants
+                                    .getExtraParameterName(EParameterName.DB_VERSION.getName()));
+                            setDbVersion(elementParameter, value);
+                            IElementParameter elementParameter2 = elemParam.getElementParameter(JobSettingsConstants
+                                    .getExtraParameterName(EParameterName.SCHEMA_DB.getName()));
+                            DesignerUtilities.setSchemaDB(elementParameter2, param.getValue());
+                        }
+                    } else if (param.getFieldType().equals(EParameterFieldType.TABLE)) {
+                        List<Map<String, Object>> tableValues = new ArrayList<Map<String, Object>>();
+                        String[] codeList = param.getListItemsDisplayCodeName();
+                        Map<String, Object> lineValues = null;
+                        for (ElementValueType elementValue : (List<ElementValueType>) pType.getElementValue()) {
+                            boolean found = false;
+                            for (int i = 0; i < codeList.length && !found; i++) {
+                                if (codeList[i].equals(elementValue.getElementRef())) {
+                                    found = true;
+                                }
+                            }
+                            if (found) {
+                                if ((lineValues == null) || (lineValues.get(elementValue.getElementRef()) != null)) {
+                                    lineValues = new HashMap<String, Object>();
+                                    tableValues.add(lineValues);
+                                }
+                                boolean needRemoveQuotes = false;
+                                for (Object o : param.getListItemsValue()) {
+                                    if (o instanceof IElementParameter) {
+                                        IElementParameter tableParam = (IElementParameter) o;
+                                        if (tableParam.getName().equals(elementValue.getElementRef())
+                                                && (tableParam.getFieldType() == EParameterFieldType.CONNECTION_LIST)) {
+                                            needRemoveQuotes = true;
+                                        }
+                                    }
+                                }
+
+                                if (needRemoveQuotes) {
+                                    lineValues.put(elementValue.getElementRef(),
+                                            TalendTextUtils.removeQuotes(elementValue.getValue()));
+                                } else {
+                                    lineValues.put(elementValue.getElementRef(), elementValue.getValue());
+                                }
+                                if (elementValue.getType() != null) {
+                                    lineValues.put(elementValue.getElementRef() + IEbcdicConstant.REF_TYPE,
+                                            elementValue.getType());
+                                }
+                            }
+                        }
+                        // check missing codes in the table to have the default values.
+                        for (Map<String, Object> line : tableValues) {
+                            for (int i = 0; i < codeList.length; i++) {
+                                if (!line.containsKey(codeList[i])) {
+                                    IElementParameter itemParam = (IElementParameter) param.getListItemsValue()[i];
+                                    line.put(codeList[i], itemParam.getValue());
+                                }
+                            }
+                        }
+
+                        elemParam.setPropertyValue(pType.getName(), tableValues);
+                    } else if (param.getFieldType().equals(EParameterFieldType.ENCODING_TYPE)) {
+                        // fix for bug 2193
+                        boolean setToCustom = false;
+                        if (EmfComponent.REPOSITORY.equals(elemParam.getPropertyValue(EParameterName.PROPERTY_TYPE.getName()))
+                                && param.getRepositoryValue() != null && param.getRepositoryValue().equals("ENCODING")) { //$NON-NLS-1$
+                            setToCustom = true;
+                        }
+                        String tempValue = (String) param.getChildParameters().get(EParameterName.ENCODING_TYPE.getName())
+                                .getValue();
+                        if (!tempValue.equals(EmfComponent.ENCODING_TYPE_CUSTOM)) {
+                            tempValue = tempValue.replaceAll("'", ""); //$NON-NLS-1$ //$NON-NLS-2$
+                            tempValue = tempValue.replaceAll("\"", ""); //$NON-NLS-1$ //$NON-NLS-2$
+                            tempValue = TalendTextUtils.addQuotes(tempValue);
+                            if (!tempValue.equals(value)) {
+                                setToCustom = true;
+                            }
+                        }
+
+                        if (setToCustom) {
+                            param.getChildParameters().get(EParameterName.ENCODING_TYPE.getName())
+                                    .setValue(EmfComponent.ENCODING_TYPE_CUSTOM);
+                        }
+                        elemParam.setPropertyValue(pType.getName(), value);
+                        // end of fix for bug 2193
+                    } else if (!param.getFieldType().equals(EParameterFieldType.SCHEMA_TYPE)) {
+                        if (param.getFieldType().equals(EParameterFieldType.COLOR)) {
+                            if (value != null && value.length() > 2) {
+                                elemParam.setPropertyValue(pType.getName(), TalendTextUtils.removeQuotesIfExist(value)); // value.substring(1,
+                            }
+                        } else {
+                            elemParam.setPropertyValue(pType.getName(), value);
+                        }
+                    }
+                } else if (UpdateTheJobsActionsOnTable.isClear && "CLEAR_TABLE".equals(pType.getName()) //$NON-NLS-1$
+                        && "true".equals(pType.getValue()) //$NON-NLS-1$
+                        && "NONE".equals(elemParam.getElementParameter(Process.TABLE_ACTION).getValue())) { //$NON-NLS-1$
+                    elemParam.setPropertyValue(Process.TABLE_ACTION, "CLEAR"); //$NON-NLS-1$
+                    UpdateTheJobsActionsOnTable.isClear = false;
+                }
+            }
+        }
+    }
+
+    private void setDbVersion(IElementParameter elementParameter, String value) {
+        if (value == null) {
+            elementParameter.setValue(null);
+            return;
+        }
+        if (value.indexOf("Access") != -1) {//$NON-NLS-1$
+            elementParameter.setValue(StatsAndLogsConstants.ACCESS_VERSION_DRIVER[1]);
+            elementParameter.setListItemsDisplayName(StatsAndLogsConstants.ACCESS_VERSION_DISPLAY);
+            elementParameter.setListItemsValue(StatsAndLogsConstants.ACCESS_VERSION_DRIVER);
+        } else if (value.indexOf("Oracle") != -1) {//$NON-NLS-1$
+            elementParameter.setValue(StatsAndLogsConstants.ORACLE_VERSION_DRIVER[1]);
+            elementParameter.setListItemsDisplayName(StatsAndLogsConstants.ORACLE_VERSION_DISPLAY);
+            elementParameter.setListItemsValue(StatsAndLogsConstants.ORACLE_VERSION_DRIVER);
+        } else if (value.indexOf("AS400") != -1) {//$NON-NLS-1$
+            elementParameter.setValue(StatsAndLogsConstants.AS400_VERSION_DRIVER[1]);
+            elementParameter.setListItemsDisplayName(StatsAndLogsConstants.AS400_VERSION_DISPLAY);
+            elementParameter.setListItemsValue(StatsAndLogsConstants.AS400_VERSION_DRIVER);
+        } else if (value.indexOf("Mysql") != -1) {//$NON-NLS-1$
+            elementParameter.setValue(StatsAndLogsConstants.MYSQL_VERSION_DRIVER[1]);
+            elementParameter.setListItemsDisplayName(StatsAndLogsConstants.MYSQL_VERSION_DISPLAY);
+            elementParameter.setListItemsValue(StatsAndLogsConstants.MYSQL_VERSION_DRIVER);
+        }
+    }
+
+    protected ProcessType createProcessType(TalendFileFactory fileFact) {
+        return fileFact.createProcessType();
+    }
+
+    /**
+     * Save the diagram in a Xml File.
+     * 
+     * @param file
+     * @return
+     * @throws IOException
+     */
+    public ProcessType saveXmlFile() throws IOException {
+        init();
+
+        TalendFileFactory fileFact = TalendFileFactory.eINSTANCE;
+        ProcessType processType = createProcessType(fileFact);
+
+        ParametersType params = fileFact.createParametersType();
+        processType.setParameters(params);
+
+        saveElementParameters(fileFact, this.getElementParameters(), processType.getParameters().getElementParameter(),
+                processType);
+        saveRoutinesDependencies(processType);
+
+        EList nList = processType.getNode();
+        EList cList = processType.getConnection();
+        MetadataEmfFactory factory = new MetadataEmfFactory();
+        JobletUtil jutil = new JobletUtil();
+        // save according to elem order to keep zorder (children insertion) in
+        // diagram
+        for (Element element : elem) {
+            if (element instanceof SubjobContainer) {
+                saveSubjob(fileFact, processType, (SubjobContainer) element);
+                for (NodeContainer container : ((SubjobContainer) element).getNodeContainers()) {
+                    if (container instanceof JobletContainer) {
+                        JobletContainer jobletCon = (JobletContainer) container;
+                        saveNode(fileFact, processType, nList, cList, ((NodeContainer) container).getNode(), factory);
+                        // IJobletProviderService service = (IJobletProviderService)
+                        // GlobalServiceRegister.getDefault().getService(
+                        // IJobletProviderService.class);
+                        // boolean isReadOnly = false;
+                        // if (service != null) {
+                        // isReadOnly = service.isReadOnly(jobletCon.getNode());
+                        // }
+                        boolean needUpdate = jutil.checkModify(jobletCon);
+                        // if (!isReadOnly) {
+                        saveJobletNode(jobletCon, needUpdate);
+                        // } else {
+                        // if (service != null) {
+                        // if (needUpdate) {
+                        // service.reloadJobletProcess(jobletCon.getNode());
+                        // service.updateJobletCom(jobletCon.getNode());
+                        // } else {
+                        // needUpdate = service.checkModify(jobletCon);
+                        // if (needUpdate) {
+                        // service.reloadJobletProcess(jobletCon.getNode());
+                        // service.updateJobletCom(jobletCon.getNode());
+                        // }
+                        // }
+                        //
+                        // }
+                        // }
+                        // addNewJobletNode(jobletCon);
+                    } else {
+                        saveNode(fileFact, processType, nList, cList, container.getNode(), factory);
+                    }
+                }
+            }
+            if (element instanceof JobletContainer) {
+                JobletContainer jobletCon = (JobletContainer) element;
+                saveNode(fileFact, processType, nList, cList, ((NodeContainer) element).getNode(), factory);
+
+                // IJobletProviderService service = (IJobletProviderService)
+                // GlobalServiceRegister.getDefault().getService(
+                // IJobletProviderService.class);
+                // boolean isReadOnly = false;
+                // if (service != null) {
+                // isReadOnly = service.isReadOnly(jobletCon.getNode());
+                // }
+                boolean needUpdate = jutil.checkModify(jobletCon);
+                // if (!isReadOnly) {
+                saveJobletNode(jobletCon, needUpdate);
+                // } else {
+                // if (service != null) {
+                // if (needUpdate) {
+                // service.reloadJobletProcess(jobletCon.getNode());
+                // service.updateJobletCom(jobletCon.getNode());
+                // } else {
+                // needUpdate = service.checkModify(jobletCon);
+                // if (needUpdate) {
+                // service.reloadJobletProcess(jobletCon.getNode());
+                // service.updateJobletCom(jobletCon.getNode());
+                // }
+                // }
+                // }
+                // }
+            } else if (element instanceof NodeContainer) {
+                saveNode(fileFact, processType, nList, cList, ((NodeContainer) element).getNode(), factory);
+            } else if (element instanceof Note) {
+                saveNote(fileFact, processType, (Note) element);
+            }
+        }
+
+        /**
+         * Save the contexts informations
+         */
+        processType.setDefaultContext(contextManager.getDefaultContext().getName());
+        processType.setScreenshot(getScreenshot());
+        setScreenshot(null); // once be saved, set the screenshot to null to free memory
+        contextManager.saveToEmf(processType.getContext());
+        return processType;
+    }
+
+    private void saveSubjob(TalendFileFactory fileFact, ProcessType process, SubjobContainer subjobContainer) {
+        SubjobType sj = fileFact.createSubjobType();
+
+        process.getSubjob().add(sj);
+
+        List<? extends IElementParameter> paramList = subjobContainer.getElementParameters();
+        saveElementParameters(fileFact, paramList, sj.getElementParameter(), process);
+    }
+
+    private void saveNote(TalendFileFactory fileFact, ProcessType process, Note note) {
+        NoteType noteType = fileFact.createNoteType();
+        noteType.setPosX(note.getLocation().x);
+        noteType.setPosY(note.getLocation().y);
+        noteType.setSizeWidth(note.getSize().width);
+        noteType.setSizeHeight(note.getSize().height);
+        noteType.setOpaque(note.isOpaque());
+        noteType.setText(note.getText());
+        List<? extends IElementParameter> paramList = note.getElementParameters();
+        saveElementParameters(fileFact, paramList, noteType.getElementParameter(), process);
+        process.getNote().add(noteType);
+    }
+
+    private void saveNode(TalendFileFactory fileFact, ProcessType process, EList nList, EList cList, Node node,
+            MetadataEmfFactory factory) {
+        NodeType nType;
+        List<Connection> connList;
+        Connection connec;
+        ConnectionType cType;
+        List<? extends IElementParameter> paramList;
+        List<IMetadataTable> listMetaData;
+        EList listParamType;
+        EList listMetaType;
+        IMetadataTable metaData;
+        nType = createNodeType(fileFact, process, nList, node);
+        nType.setComponentVersion(node.getComponent().getVersion());
+        nType.setComponentName(node.getComponent().getName());
+        nType.setPosX(node.getLocation().x);
+        nType.setPosY(node.getLocation().y);
+        nType.setOffsetLabelX(node.getNodeLabel().getOffset().x);
+        nType.setOffsetLabelY(node.getNodeLabel().getOffset().y);
+        if ((node.getSize().width != Node.DEFAULT_SIZE) || (node.getSize().height != Node.DEFAULT_SIZE)) {
+            nType.setSizeX(node.getSize().width);
+            nType.setSizeY(node.getSize().height);
+        }
+        if (node.getExternalNode() != null) {
+            nType.setNodeData(node.getExternalNode().getExternalEmfData());
+        }
+        // if (node.getNodeContainer() != null) {
+        // NodeContainerType ncType = createNodeContainerType(fileFact);
+        // nType.setNodeContainer(ncType);
+        // EList ncParaType = ncType.getElementParameter();
+        // List<? extends IElementParameter> ncParaist = node.getNodeContainer().getElementParameters();
+        // saveElementParameters(fileFact, ncParaist, ncParaType, nType);
+        // }
+        listParamType = nType.getElementParameter();
+        paramList = node.getElementParameters();
+
+        saveElementParameters(fileFact, paramList, listParamType, process);
+        listMetaType = nType.getMetadata();
+        listMetaData = node.getMetadataList();
+        for (int j = 0; j < listMetaData.size(); j++) {
+            metaData = listMetaData.get(j);
+            factory.setMetadataTable(metaData);
+            listMetaType.add(factory.getMetadataType());
+        }
+
+        List<? extends IConnection> outgoingConnections = node.getOutgoingConnections();
+        connList = new ArrayList<Connection>();
+        for (IConnection connection : outgoingConnections) {
+            if (connection instanceof Connection) {
+                connList.add((Connection) connection);
+            }
+        }
+        for (int j = 0; j < connList.size(); j++) {
+            connec = connList.get(j);
+            cType = fileFact.createConnectionType();
+            cType.setSource(node.getUniqueName());
+            INode jTarget = connec.getTarget();
+            String targetUniqueName = jTarget.getUniqueName();
+            if (jTarget instanceof Node) {
+                Node jn = (Node) jTarget.getJobletNode();
+                if (jn != null) {
+                    targetUniqueName = jn.getUniqueName();
+                }
+            }
+            cType.setTarget(targetUniqueName);
+            cType.setLabel(connec.getName());
+            cType.setLineStyle(connec.getLineStyleId());
+            cType.setConnectorName(connec.getConnectorName());
+            cType.setOffsetLabelX(connec.getConnectionLabel().getOffset().x);
+            cType.setOffsetLabelY(connec.getConnectionLabel().getOffset().y);
+            cType.setMetaname(connec.getMetaName());
+            int id = connec.getOutputId();
+            if (id >= 0) {
+                cType.setOutputId(id);
+            }
+            INode connTarget = connec.getTarget();
+            if (connTarget.getJobletNode() != null) {
+                connTarget = connTarget.getJobletNode();
+            }
+            if (connTarget.getComponent().useMerge()) {
+                cType.setMergeOrder(connec.getInputId());
+            }
+            listParamType = cType.getElementParameter();
+            paramList = connec.getElementParameters();
+            saveElementParameters(fileFact, paramList, listParamType, process);
+            cList.add(cType);
+        }
+
+        if (node.getExternalNode() != null && node.getExternalNode().getScreenshot() != null) {
+            byte[] saveImageToData = ImageUtils.saveImageToData(node.getExternalNode().getScreenshot());
+            nType.setScreenshot(saveImageToData);
+        }
+    }
+
+    private void checkRoutineDependencies() {
+        if (routinesDependencies == null) {
+            routinesDependencies = new ArrayList<RoutinesParameterType>();
+        }
+        try {
+            List<String> possibleRoutines = new ArrayList<String>();
+            List<String> routinesToAdd = new ArrayList<String>();
+            String additionalString = LanguageManager.getCurrentLanguage() == ECodeLanguage.JAVA ? "." : "";
+
+            List<String> routinesAlreadySetup = new ArrayList<String>();
+
+            for (RoutinesParameterType routine : routinesDependencies) {
+                routinesAlreadySetup.add(routine.getName());
+            }
+
+            IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
+            List<IRepositoryViewObject> routines = factory.getAll(ProjectManager.getInstance().getCurrentProject(),
+                    ERepositoryObjectType.ROUTINES);
+            for (Project project : ProjectManager.getInstance().getAllReferencedProjects()) {
+                List<IRepositoryViewObject> refRoutines = factory.getAll(project, ERepositoryObjectType.ROUTINES);
+                for (IRepositoryViewObject object : refRoutines) {
+                    if (!((RoutineItem) object.getProperty().getItem()).isBuiltIn()) {
+                        if (!possibleRoutines.contains(object.getLabel()) && !routinesAlreadySetup.contains(object.getLabel())) {
+                            possibleRoutines.add(object.getLabel());
+                            routines.add(object);
+                        }
+                    }
+                }
+            }
+            // always add the system, others must be checked
+            for (IRepositoryViewObject object : routines) {
+                if (((RoutineItem) object.getProperty().getItem()).isBuiltIn() && routinesDependencies.isEmpty()) {
+                    routinesToAdd.add(object.getLabel());
+                } else if (!routinesAlreadySetup.contains(object.getLabel())) {
+                    possibleRoutines.add(object.getLabel());
+                }
+            }
+            for (Project project : ProjectManager.getInstance().getAllReferencedProjects()) {
+                List<IRepositoryViewObject> refRoutines = factory.getAll(project, ERepositoryObjectType.ROUTINES);
+                for (IRepositoryViewObject object : refRoutines) {
+                    if (!((RoutineItem) object.getProperty().getItem()).isBuiltIn()) {
+                        if (!possibleRoutines.contains(object.getLabel()) && !routinesAlreadySetup.contains(object.getLabel())) {
+                            possibleRoutines.add(object.getLabel());
+                            routines.add(object);
+                        }
+                    }
+                }
+            }
+
+            // check possible routines to setup in process
+            for (IElementParameter param : (List<IElementParameter>) getElementParametersWithChildrens()) {
+                for (String routine : possibleRoutines) {
+                    if (!routinesToAdd.contains(routine) && param.getValue() != null && param.getValue() instanceof String
+                            && ((String) param.getValue()).contains(routine + additionalString)) {
+                        routinesToAdd.add(routine);
+                    }
+                    checkRoutinesInTable(routinesToAdd, additionalString, param, routine);
+                }
+            }
+
+            // check possible routines to setup in nodes
+            for (INode node : ((List<INode>) getGraphicalNodes())) {
+                String componentName = node.getComponent().getName();
+                if (componentName.equals("tMap")) {//$NON-NLS-N$
+                    IExternalData data = node.getExternalData();
+                    for (String routine : possibleRoutines) {
+                        List<IExternalMapTable> listOutput = (List<IExternalMapTable>) data.getOutputTables();
+                        if (listOutput != null && !listOutput.isEmpty()) {
+                            for (IExternalMapTable outTable : listOutput) {
+                                List<IExternalMapEntry> listOutEntry = (List<IExternalMapEntry>) outTable.returnTableEntries();
+                                for (IExternalMapEntry outEntry : listOutEntry) {
+                                    String expression = outEntry.getExpression();
+                                    if (expression != null && !routinesToAdd.contains(routine)
+                                            && expression.contains(routine + additionalString)) {
+                                        routinesToAdd.add(routine);
+                                    }
+                                }
+                            }
+                        }
+                        List<IExternalMapTable> listInput = (List<IExternalMapTable>) data.getInputTables();
+                        for (IExternalMapTable inputTable : listInput) {
+                            List<IExternalMapEntry> listInEntry = (List<IExternalMapEntry>) inputTable.returnTableEntries();
+                            if (listInEntry != null && !listInEntry.isEmpty()) {
+                                for (IExternalMapEntry inEntry : listInEntry) {
+                                    String expression = inEntry.getExpression();
+                                    if (expression != null && !routinesToAdd.contains(routine)
+                                            && expression.contains(routine + additionalString)) {
+                                        routinesToAdd.add(routine);
+                                    }
+                                }
+                            }
+                        }
+                        List<IExternalMapTable> listVar = (List<IExternalMapTable>) data.getVarsTables();
+                        for (IExternalMapTable varTable : listVar) {
+                            List<IExternalMapEntry> listVarEntry = (List<IExternalMapEntry>) varTable.returnTableEntries();
+                            if (listVarEntry != null && !listVarEntry.isEmpty()) {
+                                for (IExternalMapEntry varEntry : listVarEntry) {
+                                    String expression = varEntry.getExpression();
+                                    if (expression != null && !routinesToAdd.contains(routine)
+                                            && expression.contains(routine + additionalString)) {
+                                        routinesToAdd.add(routine);
+                                    }
+                                }
+                            }
+                        }
+                        if (GlobalServiceRegister.getDefault().isServiceRegistered(IDesignerMapperService.class)) {
+                            IDesignerMapperService service = (IDesignerMapperService) GlobalServiceRegister.getDefault()
+                                    .getService(IDesignerMapperService.class);
+                            List<String> ExperssionFilters = service.getExpressionFilter(data);
+                            if (!ExperssionFilters.isEmpty()) {
+                                for (String experssion : ExperssionFilters) {
+                                    if (experssion != null && !routinesToAdd.contains(routine)
+                                            && experssion.contains(routine + additionalString)) {
+                                        routinesToAdd.add(routine);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                for (IElementParameter param : (List<IElementParameter>) node.getElementParametersWithChildrens()) {
+                    for (String routine : possibleRoutines) {
+                        if (!routinesToAdd.contains(routine) && param.getValue() != null && param.getValue() instanceof String
+                                && ((String) param.getValue()).contains(routine + additionalString)) {
+                            routinesToAdd.add(routine);
+                        }
+                        checkRoutinesInTable(routinesToAdd, additionalString, param, routine);
+                    }
+                }
+                // check possible routines to setup in connections
+                for (IConnection connection : ((List<IConnection>) node.getOutgoingSortedConnections())) {
+                    for (IElementParameter param : (List<IElementParameter>) connection.getElementParametersWithChildrens()) {
+                        for (String routine : possibleRoutines) {
+                            if (!routinesToAdd.contains(routine) && param.getValue() != null
+                                    && param.getValue() instanceof String
+                                    && ((String) param.getValue()).contains(routine + additionalString)) {
+                                routinesToAdd.add(routine);
+                            }
+                            checkRoutinesInTable(routinesToAdd, additionalString, param, routine);
+                        }
+                    }
+                }
+            }
+
+            for (IRepositoryViewObject object : routines) {
+                if (routinesToAdd.contains(object.getLabel())) {
+                    RoutinesParameterType routinesParameterType = TalendFileFactory.eINSTANCE.createRoutinesParameterType();
+                    routinesParameterType.setId(object.getId());
+                    routinesParameterType.setName(object.getLabel());
+                    routinesDependencies.add(routinesParameterType);
+                }
+            }
+        } catch (PersistenceException e) {
+            ExceptionHandler.process(e);
+        }
+    }
+
+    private void checkRoutinesInTable(List<String> routinesToAdd, String additionalString, IElementParameter param, String routine) {
+        if (param.getFieldType().equals(EParameterFieldType.TABLE) && param.getValue() != null) {
+            List<Map<String, Object>> tableValues = (List<Map<String, Object>>) param.getValue();
+            for (Map<String, Object> currentLine : tableValues) {
+                for (int i = 0; i < param.getListItemsDisplayCodeName().length; i++) {
+                    Object o = currentLine.get(param.getListItemsDisplayCodeName()[i]);
+                    String strValue = ""; //$NON-NLS-1$
+                    if (o instanceof Integer) {
+                        IElementParameter tmpParam = (IElementParameter) param.getListItemsValue()[i];
+                        if (tmpParam.getListItemsValue().length == 0) {
+                            strValue = ""; //$NON-NLS-1$
+                        } else {
+                            strValue = (String) tmpParam.getListItemsValue()[(Integer) o];
+                        }
+                    } else {
+                        if (o instanceof String) {
+                            strValue = (String) o;
+                        } else {
+                            if (o instanceof Boolean) {
+                                strValue = ((Boolean) o).toString();
+                            }
+                        }
+                    }
+                    if (!routinesToAdd.contains(routine) && strValue.contains(routine + additionalString)) {
+                        routinesToAdd.add(routine);
+                    }
+                }
+            }
+        }
+    }
+
+    private void saveRoutinesDependencies(ProcessType process) {
+        /* if process is joblet,parameters will be null,so that create a new parametertype for joblet */
+        if (process.getParameters() == null) {
+            ParametersType parameterType = TalendFileFactory.eINSTANCE.createParametersType();
+            process.setParameters(parameterType);
+        }
+        checkRoutineDependencies();
+        process.getParameters().getRoutinesParameter().addAll(routinesDependencies);
+    }
+
+    public void addGeneratingRoutines(List<RoutinesParameterType> routinesParameters) {
+        if (routinesParameters != null) {
+            List<RoutinesParameterType> needList = new ArrayList<RoutinesParameterType>();
+            boolean found = false;
+            for (RoutinesParameterType type : routinesParameters) {
+                found = false;
+                for (RoutinesParameterType existedType : routinesDependencies) {
+                    if (type.getId().equals(existedType.getId()) || type.getName().equals(existedType.getName())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    needList.add(type);
+                }
+            }
+            routinesDependencies.addAll(needList);
+        }
+    }
+
+    /**
+     * DOC qzhang Comment method "createNodeType".
+     * 
+     * @param fileFact
+     * @param process
+     * @param nList
+     * @param node
+     * @return
+     */
+    protected NodeType createNodeType(TalendFileFactory fileFact, ProcessType process, EList nList, Node node) {
+        NodeType nType;
+        nType = fileFact.createNodeType();
+        nList.add(nType);
+        return nType;
+    }
+
+    protected NodeContainerType createNodeContainerType(TalendFileFactory fileFact) {
+        NodeContainerType ncType;
+        ncType = fileFact.createNodeContainerType();
+        return ncType;
+    }
+
+    protected ProcessType getProcessType() {
+        ProcessType processType = null;
+        Item processItem = property.getItem();
+        if (GlobalServiceRegister.getDefault().isServiceRegistered(ICamelDesignerCoreService.class)) {
+            ICamelDesignerCoreService camelService = (ICamelDesignerCoreService) GlobalServiceRegister.getDefault().getService(
+                    ICamelDesignerCoreService.class);
+            processType = camelService.getCamelProcessType(processItem);
+        }
+        if (processItem instanceof ProcessItem) {
+            ProcessItem item = (ProcessItem) processItem;
+            processType = item.getProcess();
+        }
+
+        return processType;
+    }
+
+    /**
+     * DOC mhelleboid Comment method "loadXmlFile".
+     * 
+     * @param process
+     */
+    public void loadXmlFile() {
+        loadXmlFile(false);
+    }
+
+    public void loadXmlFile(boolean loadScreenshots) {
+        this.loadScreenshots = loadScreenshots;
+        init();
+        Hashtable<String, Node> nodesHashtable = new Hashtable<String, Node>();
+
+        setActivate(false);
+
+        ProcessType processType = getProcessType();
+        EmfHelper.visitChilds(processType);
+
+        if (processType.getParameters() != null) {
+            routinesDependencies = new ArrayList<RoutinesParameterType>(processType.getParameters().getRoutinesParameter());
+        }
+
+        loadProjectParameters(processType);
+
+        try {
+            loadNodes(processType, nodesHashtable);
+        } catch (PersistenceException e) {
+            // there are some components unloaded.
+            return;
+        }
+
+        repositoryId = processType.getRepositoryContextId();
+
+        loadConnections(processType, nodesHashtable);
+
+        loadRejectConnector(nodesHashtable);
+
+        loadContexts(processType);
+        // feature 7410
+        loadNotes(processType);
+        loadSubjobs(processType);
+
+        initExternalComponents();
+        setActivate(true);
+        checkStartNodes();
+        // (bug 5365)
+        checkNodeTableParameters();
+
+        // this fix caused another problem 14736 , project settings should be reload in
+        // ImportItemUtil.importItemRecord()
+        // bug 16351
+        // checkProjectsettingParameters();
+
+        // loadNodeContainer(processType);
+        // bug 6158
+        this.updateManager.retrieveRefInformation();
+    }
+
+    private void loadRejectConnector(Hashtable<String, Node> nodesHashtable) {
+        Collection<Node> nodes = nodesHashtable.values();
+        for (Node node : nodes) {
+            ValidationRulesUtil.updateRejectMetatable(node, null);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void checkNodeTableParameters() {
+        for (INode node : getGraphicalNodes()) {
+            ColumnListController.updateColumnList(node, null);
+
+            for (IElementParameter param : node.getElementParameters()) {
+                if (param.getFieldType() == EParameterFieldType.TABLE) {
+                    Object[] itemsValue = param.getListItemsValue();
+                    if (itemsValue != null && param.getValue() != null && param.getValue() instanceof List) {
+                        List<Map<String, Object>> values = (List<Map<String, Object>>) param.getValue();
+                        for (int i = 0; i < itemsValue.length; i++) {
+                            if (itemsValue[i] instanceof IElementParameter) {
+                                IElementParameter columnParam = (IElementParameter) itemsValue[i];
+                                if (columnParam.getFieldType() == EParameterFieldType.COLUMN_LIST
+                                        || columnParam.getFieldType() == EParameterFieldType.PREV_COLUMN_LIST
+                                        || columnParam.getFieldType() == EParameterFieldType.LOOKUP_COLUMN_LIST) {
+                                    for (Map<String, Object> columnMap : values) {
+                                        Object column = columnMap.get(columnParam.getName());
+                                        if (column == null || "".equals(column)) { //$NON-NLS-1$
+                                            columnMap.put(columnParam.getName(), columnParam.getDefaultClosedListValue());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * DOC nrousseau Comment method "loadSubjobs".
+     * 
+     * @param processType
+     */
+    private void loadSubjobs(ProcessType processType) {
+        for (Iterator iter = processType.getSubjob().iterator(); iter.hasNext();) {
+            SubjobType subjobType = (SubjobType) iter.next();
+
+            SubjobContainer subjobContainer = new SubjobContainer(this);
+            loadElementParameters(subjobContainer, subjobType.getElementParameter());
+            // look for the related node
+            Node subjobStartNode = subjobContainer.getSubjobStartNode();
+            if (subjobStartNode != null) {
+                subjobContainer.addNodeContainer(subjobStartNode.getNodeContainer());
+                subjobContainers.add(subjobContainer);
+                elem.remove(subjobStartNode.getNodeContainer());
+                elem.add(subjobContainer);
+                mapSubjobStarts.put(subjobStartNode, subjobContainer);
+            }
+        }
+    }
+
+    private void loadNotes(ProcessType process) {
+        for (Iterator iter = process.getNote().iterator(); iter.hasNext();) {
+            NoteType noteType = (NoteType) iter.next();
+            Note note = new Note();
+            note.setLocation(new Point(noteType.getPosX(), noteType.getPosY()));
+            note.setSize(new Dimension(noteType.getSizeWidth(), noteType.getSizeHeight()));
+            note.setOpaque(noteType.isOpaque());
+            note.setText(noteType.getText());
+            note.setProcess(this);
+            loadElementParameters(note, noteType.getElementParameter());
+            addNote(note);
+        }
+    }
+
+    private void initExternalComponents() {
+        for (INode node : nodes) {
+            if (node.isExternalNode()) {
+                node.getExternalNode().initialize();
+            }
+        }
+    }
+
+    // private void checkProjectsettingParameters() {
+    // boolean statsLog = (Boolean) this.getElementParameter(EParameterName.STATANDLOG_USE_PROJECT_SETTINGS.getName())
+    // .getValue();
+    // if (statsLog) {
+    // LoadProjectSettingsCommand command = new LoadProjectSettingsCommand(this,
+    // EParameterName.STATANDLOG_USE_PROJECT_SETTINGS.getName(), statsLog);
+    // command.execute();
+    // }
+    // boolean implicit = (Boolean)
+    // this.getElementParameter(EParameterName.IMPLICITCONTEXT_USE_PROJECT_SETTINGS.getName())
+    // .getValue();
+    // if (implicit) {
+    // LoadProjectSettingsCommand command = new LoadProjectSettingsCommand(this,
+    // EParameterName.IMPLICITCONTEXT_USE_PROJECT_SETTINGS.getName(), implicit);
+    // command.execute();
+    // }
+    // }
+
+    private List<NodeType> unloadedNode = null;
+
+    protected void loadNodes(ProcessType process, Hashtable<String, Node> nodesHashtable) throws PersistenceException {
+        EList nodeList;
+        NodeType nType;
+        nodeList = process.getNode();
+        Node nc;
+
+        EList listParamType;
+
+        unloadedNode = new ArrayList<NodeType>();
+        for (int i = 0; i < nodeList.size(); i++) {
+            nType = (NodeType) nodeList.get(i);
+            listParamType = nType.getElementParameter();
+            IComponent component = ComponentsFactoryProvider.getInstance().get(nType.getComponentName());
+            if (component == null) {
+                unloadedNode.add(nType);
+                continue;
+            }
+            nc = loadNode(nType, component, nodesHashtable, listParamType);
+
+        }
+
+        for (int i = 0; i < unloadedNode.size(); i++) {
+            createDummyNode(unloadedNode.get(i), nodesHashtable);
+        }
+    }
+
+    protected Node createDummyNode(NodeType nType, Hashtable<String, Node> nodesHashtable) {
+        DummyComponent component = new DummyComponent(nType);
+        Node nc;
+        nc = new Node(component, this);
+        nc.setLocation(new Point(nType.getPosX(), nType.getPosY()));
+        Point offset = new Point(nType.getOffsetLabelX(), nType.getOffsetLabelY());
+        nc.getNodeLabel().setOffset(offset);
+        if (nType.isSetSizeX()) {
+            nc.setSize(new Dimension(nType.getSizeX(), nType.getSizeY()));
+        }
+
+        NodeContainer nodec = null;
+        if (nc.isJoblet()) {
+            nodec = new JobletContainer(nc);
+        } else {
+            nodec = new NodeContainer(nc);
+        }
+        addNodeContainer(nodec);
+        nodesHashtable.put(nc.getUniqueName(), nc);
+        return nc;
+    }
+
+    /**
+     * DOC qzhang Comment method "loadNode".
+     * 
+     * @param nType
+     * @param component
+     * @return
+     */
+    protected Node loadNode(NodeType nType, IComponent component, Hashtable<String, Node> nodesHashtable, EList listParamType) {
+        Node nc;
+        nc = new Node(component, this);
+        nc.setLocation(new Point(nType.getPosX(), nType.getPosY()));
+        Point offset = new Point(nType.getOffsetLabelX(), nType.getOffsetLabelY());
+        nc.getNodeLabel().setOffset(offset);
+        if (nType.isSetSizeX()) {
+            nc.setSize(new Dimension(nType.getSizeX(), nType.getSizeY()));
+        }
+
+        loadElementParameters(nc, listParamType);
+
+        // update the value of process type
+        IElementParameter processParam = nc.getElementParameterFromField(EParameterFieldType.PROCESS_TYPE);
+
+        if (processParam != null) {
+            IElementParameter processIdParam = processParam.getChildParameters().get(
+                    EParameterName.PROCESS_TYPE_PROCESS.getName());
+            IElementParameter processVersionParam = processParam.getChildParameters().get(
+                    EParameterName.PROCESS_TYPE_VERSION.getName());
+            ProcessItem processItem = null;
+            if (processVersionParam != null) {
+                processItem = ItemCacheManager.getProcessItem((String) processIdParam.getValue(),
+                        (String) processVersionParam.getValue());
+            } else {
+                processItem = ItemCacheManager.getProcessItem((String) processIdParam.getValue());
+            }
+            if (processItem != null) {
+                nc.setPropertyValue(processParam.getName(), processItem.getProperty().getLabel());
+            }
+        }
+        // nc.setData(nType.getBinaryData(), nType.getStringData());
+        if (nc.getExternalNode() != null && nType.getNodeData() != null) {
+            nc.getExternalNode().buildExternalData(nType.getNodeData());
+            nc.setExternalData(nc.getExternalNode().getExternalData());
+        }
+
+        loadSchema(nc, nType);
+
+        // add a reject connector if the node has validation rule.
+        ValidationRulesUtil.createRejectConnector(nc);
+
+        loadColumnsBasedOnSchema(nc, listParamType);
+        NodeContainer nodeContainer = null;// loadNodeContainer(nc, nType);
+        if (nc.isJoblet()) {
+            nodeContainer = new JobletContainer(nc);
+        } else {
+            nodeContainer = new NodeContainer(nc);
+        }
+
+        addNodeContainer(nodeContainer);
+        nodesHashtable.put(nc.getUniqueName(), nc);
+        updateAllMappingTypes();
+
+        if (loadScreenshots) {
+            byte[] innerContent = nType.getScreenshot();
+            if (nc.getExternalNode() != null && !CommonsPlugin.isHeadless()) {
+                nc.getExternalNode().setScreenshot(ImageUtils.createImageFromData(innerContent));
+            }
+            externalInnerContents.add(innerContent);
+        }
+        nc.setNeedLoadLib(false);
+        //
+        return nc;
+    }
+
+    private void loadNodeContainer(ProcessType processType) {
+        EList nodeList = processType.getNode();
+        NodeType nType;
+        for (int i = 0; i < nodeList.size(); i++) {
+            nType = (NodeType) nodeList.get(i);
+            EList paras = nType.getElementParameter();
+            String uniquateName = null;
+            for (Object obj : paras) {
+                ElementParameterType para = (ElementParameterType) obj;
+                if (para.getName().equals("UNIQUE_NAME")) {
+                    uniquateName = para.getValue();
+                    break;
+                }
+            }
+            List<? extends INode> nodes = this.getGraphicalNodes();
+            for (INode node : nodes) {
+                if (((Node) node).isJoblet() && uniquateName != null && node.getUniqueName().equals(uniquateName)) {
+                    NodeContainer nodeContainer = ((Node) node).getNodeContainer();
+                    NodeContainerType nodeContainerType = nType.getNodeContainer();
+                    if (nodeContainerType != null) {
+                        EList listParamType = nodeContainerType.getElementParameter();
+                        loadElementParameters(nodeContainer, listParamType);
+                        break;
+                    }
+                }
+            }
+
+        }
+        // NodeContainerType nodeContainerType = nType.getNodeContainer();
+        // if (nodeContainerType != null) {
+        // EList listParamType = nodeContainerType.getElementParameter();
+        // loadElementParameters(nodeContainer, listParamType);
+        // }
+        // return nodeContainer;
+    }
+
+    private void loadColumnsBasedOnSchema(Node nc, EList listParamType) {
+        List<IMetadataTable> metadataList = nc.getMetadataList();
+        if (listParamType == null || metadataList == null || metadataList.size() == 0) {
+            return;
+        }
+        List<IMetadataColumn> listColumns = metadataList.get(0).getListColumns();
+        if (listColumns == null) {
+            return;
+        }
+        for (IElementParameter parameter : nc.getElementParameters()) {
+            if (EParameterFieldType.TABLE.equals(parameter.getFieldType()) && parameter.isColumnsBasedOnSchema()) {
+
+                String[] listItemsDisplayValue = new String[listColumns.size()];
+                String[] listItemsDisplayCodeValue = new String[listColumns.size()];
+                Object[] listItemsValue = new Object[listColumns.size()];
+                ElementParameter newParam = null;
+                for (int i = 0; i < listColumns.size(); i++) {
+                    IMetadataColumn column = listColumns.get(i);
+                    listItemsDisplayCodeValue[i] = column.getLabel();
+                    listItemsDisplayValue[i] = column.getLabel();
+                    newParam = new ElementParameter(nc);
+                    newParam.setName(column.getLabel()); //$NON-NLS-1$
+                    newParam.setDisplayName(""); //$NON-NLS-1$
+                    newParam.setFieldType(EParameterFieldType.TEXT);
+                    newParam.setValue(""); //$NON-NLS-1$
+                    listItemsValue[i] = newParam;
+                }
+                parameter.setListItemsDisplayName(listItemsDisplayValue);
+                parameter.setListItemsDisplayCodeName(listItemsDisplayCodeValue);
+                parameter.setListItemsValue(listItemsValue);
+
+                for (int j = 0; j < listParamType.size(); j++) {
+                    ElementParameterType pType = (ElementParameterType) listParamType.get(j);
+                    if (pType != null) {
+                        if (parameter.getFieldType().getName().equals(pType.getField())
+                                && parameter.getName().equals(pType.getName())) {
+                            List<Map<String, Object>> tableValues = new ArrayList<Map<String, Object>>();
+                            String[] codeList = parameter.getListItemsDisplayCodeName();
+                            Map<String, Object> lineValues = null;
+                            for (ElementValueType elementValue : (List<ElementValueType>) pType.getElementValue()) {
+                                boolean found = false;
+                                for (int i = 0; i < codeList.length && !found; i++) {
+                                    if (codeList[i].equals(elementValue.getElementRef())) {
+                                        found = true;
+                                    }
+                                }
+                                if (found) {
+                                    if ((lineValues == null) || (lineValues.get(elementValue.getElementRef()) != null)) {
+                                        lineValues = new HashMap<String, Object>();
+                                        tableValues.add(lineValues);
+                                    }
+                                    lineValues.put(elementValue.getElementRef(), elementValue.getValue());
+                                    if (elementValue.getType() != null) {
+                                        lineValues.put(elementValue.getElementRef() + IEbcdicConstant.REF_TYPE,
+                                                elementValue.getType());
+                                    }
+                                }
+                            }
+                            // check missing codes in the table to have the default values.
+                            for (Map<String, Object> line : tableValues) {
+                                for (int i = 0; i < codeList.length; i++) {
+                                    if (!line.containsKey(codeList[i])) {
+                                        IElementParameter itemParam = (IElementParameter) parameter.getListItemsValue()[i];
+                                        line.put(codeList[i], itemParam.getValue());
+                                    }
+                                }
+                            }
+
+                            nc.setPropertyValue(pType.getName(), tableValues);
+                        }
+                    }
+                }
+
+            }
+
+        }
+
+    }
+
+    /**
+     * to optimize.
+     */
+    private void updateAllMappingTypes() {
+        for (INode node : this.getGraphicalNodes()) {
+            for (IElementParameter param : node.getElementParameters()) {
+                if (param.getFieldType().equals(EParameterFieldType.MAPPING_TYPE)) {
+                    for (IMetadataTable table : node.getMetadataList()) {
+                        table.setDbms((String) param.getValue());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if there are unloaded nodes.If there are some nodes unloaded, throws PersistenceException.
+     * 
+     * @throws PersistenceException PersistenceException
+     */
+    public void checkLoadNodes() throws PersistenceException {
+        if (unloadedNode == null || unloadedNode.isEmpty()) {
+            return;
+        }
+        String errorMessage = null;
+        if (unloadedNode.size() == 1) {
+            errorMessage = Messages.getString("Process.component.notloaded", unloadedNode.get(0)); //$NON-NLS-1$
+        } else {
+            StringBuilder curentName = new StringBuilder();
+            for (NodeType component : unloadedNode) {
+                curentName.append(component.getComponentName()).append(","); //$NON-NLS-1$
+            }
+            curentName.deleteCharAt(curentName.length() - 1);
+
+            errorMessage = Messages.getString("Process.components.notloaded", curentName.toString()); //$NON-NLS-1$
+
+        }
+        PersistenceException ex = new PersistenceException(errorMessage);
+        throw ex;
+    }
+
+    private void loadSchema(Node nc, NodeType nType) {
+        MetadataEmfFactory factory = new MetadataEmfFactory();
+        MetadataType mType;
+        EList listMetaType;
+
+        List<IMetadataTable> listMetaData;
+        listMetaType = nType.getMetadata();
+        IMetadataTable metadataTable;
+        listMetaData = new ArrayList<IMetadataTable>();
+        // bug 6086
+        Set<String> listNames = new HashSet<String>();
+
+        for (int j = 0; j < listMetaType.size(); j++) {
+            mType = (MetadataType) listMetaType.get(j);
+            factory.setMetadataType(mType);
+            metadataTable = factory.getMetadataTable();
+            // add by wzhang
+            // if a schema exist in node,won't add it again
+            if (!listNames.contains(metadataTable.getTableName())) {
+                listNames.add(metadataTable.getTableName());
+                listMetaData.add(metadataTable);
+                if (nc.getConnectorFromType(EConnectionType.FLOW_MAIN).isMultiSchema()
+                        && checkValidConnectionName(metadataTable.getTableName())) {
+                    addUniqueConnectionName(metadataTable.getTableName());
+                    // for tmap 11884
+                    if (nc.getExternalData() != null) {
+                        List<String> joinedTableNames = nc.getExternalData().getJoinedTableNames(metadataTable.getTableName());
+                        if (joinedTableNames != null) {
+                            for (String joinTableName : joinedTableNames) {
+                                addUniqueConnectionName(joinTableName);
+                            }
+                        }
+                    }
+                } else {
+                    if (metadataTable.getTableName() == null) {
+                        metadataTable.setTableName(nc.getUniqueName());
+                    }
+                }
+                MetadataTool.initilializeSchemaFromElementParameters(metadataTable,
+                        (List<IElementParameter>) nc.getElementParameters());
+            }
+        }
+        List<IMetadataTable> oldComponentMetadataList = new ArrayList<IMetadataTable>(nc.getMetadataList());
+        nc.setMetadataList(listMetaData);
+
+        for (IMetadataTable table : oldComponentMetadataList) {
+            if (nc.getMetadataFromConnector(table.getAttachedConnector()) == null) {
+                // if there is any new connector, then add the table to the
+                // list.
+                INodeConnector nodeC = nc.getConnectorFromName(table.getAttachedConnector());
+                if (nodeC != null) {
+                    String baseSchema = nc.getConnectorFromName(table.getAttachedConnector()).getBaseSchema();
+                    IMetadataTable metadataFromConnector = nc.getMetadataFromConnector(baseSchema);
+                    if (!table.getAttachedConnector().equals(baseSchema) && metadataFromConnector != null) {
+                        MetadataTool.copyTable(metadataFromConnector, table);
+                    }
+                }
+                nc.getMetadataList().add(table);
+            }
+        }
+    }
+
+    /**
+     * 
+     * DOC nrousseau Comment method "checkDifferenceWithRepository".
+     * 
+     * @return true if a difference has been detected
+     */
+    public boolean checkDifferenceWithRepository() {
+        return getUpdateManager().updateAll();
+    }
+
+    public CommandStack getCommandStack() {
+        if (getEditor() != null) {
+            Object adapter = ((AbstractMultiPageTalendEditor) getEditor()).getTalendEditor().getAdapter(CommandStack.class);
+            return (CommandStack) adapter;
+        } else {
+            return new CommandStack() {
+
+                /*
+                 * (non-Javadoc)
+                 * 
+                 * @see org.eclipse.gef.commands.CommandStack#execute(org.eclipse.gef.commands.Command)
+                 */
+                @Override
+                public void execute(Command command) {
+                    command.execute();
+                }
+            };
+        }
+    }
+
+    private void loadConnections(ProcessType process, Hashtable<String, Node> nodesHashtable) {
+        EList listParamType;
+        EList connecList;
+        ConnectionType cType;
+        connecList = process.getConnection();
+        Connection connec;
+        Node source, target;
+
+        List<String> connectionsProblems = new ArrayList<String>();
+
+        Hashtable<ConnectionType, Connection> connectionsHashtable = new Hashtable<ConnectionType, Connection>();
+
+        for (int i = 0; i < connecList.size(); i++) {
+            cType = (ConnectionType) connecList.get(i);
+            source = nodesHashtable.get(cType.getSource());
+            target = nodesHashtable.get(cType.getTarget());
+            // see the feature 6294
+            // qli
+            if (source == null || target == null) {
+                continue;
+            }
+            Integer lineStyleId = new Integer(cType.getLineStyle());
+            String connectorName = cType.getConnectorName();
+            boolean connectionTypeFound = false;
+            if (connectorName != null) {
+                // check if the connector exists and if the line style is
+                // correct
+                // (used for automatic component upgrade, to avoid migration
+                // each time)
+                if (source.getConnectorFromName(connectorName) != null
+                        && (source.getConnectorFromName(connectorName).getConnectionProperty(
+                                EConnectionType.getTypeFromId(lineStyleId)) != null)) {
+                    connectionTypeFound = true;
+                }
+            }
+
+            // fix to correct the bug of the metaname after renaming the output of a tMap
+            String metaname = cType.getMetaname();
+            if ((source.getComponent().getName().equals("tMap")) && (source.getMetadataTable(metaname) == null)) { //$NON-NLS-1$
+                metaname = cType.getLabel();
+                // the label should be the original name of the metadata
+                if (source.getMetadataTable(metaname) == null) {
+                    // this problem should never appear, just in case.
+                    if (source.getMetadataList().size() > 0) {
+                        metaname = source.getMetadataList().get(0).getTableName();
+                    }
+                    connectionsProblems.add(cType.getLabel());
+                }
+            }
+            // end of fix
+
+            boolean monitorConnection = getConnectionMonitorProperty(cType);
+            if (connectionTypeFound) {
+                connec = new Connection(source, target, EConnectionType.getTypeFromId(lineStyleId), connectorName, metaname,
+                        cType.getLabel(), cType.getMetaname(), monitorConnection);
+            } else {
+                if (PluginChecker.isJobLetPluginLoaded()) { // bug 12764
+                    IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
+                            IJobletProviderService.class);
+                    if (service != null && service.isJobletComponent(source)) {
+                        continue;
+                    }
+                }
+                EConnectionType type = EConnectionType.getTypeFromId(lineStyleId);
+                connec = new Connection(source, target, type, source.getConnectorFromType(type).getName(), metaname,
+                        cType.getLabel(), cType.getMetaname(), monitorConnection);
+            }
+            // if ((!source.isActivate()) || (!target.isActivate())) {
+            // connec.setActivate(false);
+            // }
+            connectionsHashtable.put(cType, connec);
+            listParamType = cType.getElementParameter();
+            loadElementParameters(connec, listParamType);
+
+            Point offset = new Point(cType.getOffsetLabelX(), cType.getOffsetLabelY());
+            INodeConnector nodeConnectorSource = connec.getSourceNodeConnector();
+            nodeConnectorSource.setCurLinkNbOutput(nodeConnectorSource.getCurLinkNbOutput() + 1);
+            INodeConnector nodeConnectorTarget = connec.getTargetNodeConnector();
+            nodeConnectorTarget.setCurLinkNbInput(nodeConnectorTarget.getCurLinkNbInput() + 1);
+            connec.getConnectionLabel().setOffset(offset);
+        }
+
+        for (INode node : nodes) {
+            if (node.getComponent().useMerge()) {
+                for (int i = 0; i < connecList.size(); i++) {
+                    cType = (ConnectionType) connecList.get(i);
+                    if (cType.getTarget().equals(node.getUniqueName())) {
+                        if (cType.isSetMergeOrder()) {
+                            Connection connection = connectionsHashtable.get(cType);
+                            connection.setInputId(cType.getMergeOrder());
+                            connection.updateName();
+                        }
+                    }
+                }
+            }
+        }
+
+        if (connectionsProblems.size() > 0) {
+            String message = this.getLabel() + ":" + Messages.getString("Process.errorLoadingConnectionMessage"); //$NON-NLS-1$
+            for (int i = 0; i < connectionsProblems.size(); i++) {
+                message += connectionsProblems.get(i);
+                if (i < (connectionsProblems.size() - 1)) {
+                    message += ","; //$NON-NLS-1$
+                }
+            }
+            final String message2 = message;
+            if (!CommonsPlugin.isHeadless()) {
+                final Display display = PlatformUI.getWorkbench().getDisplay();
+                display.syncExec(new Runnable() {
+
+                    public void run() {
+                        MessageBox mb = new MessageBox(new Shell(display), SWT.ICON_ERROR);
+                        mb.setText(getLabel() + ":" + Messages.getString("Process.errorLoadingConnectionTitle")); //$NON-NLS-1$
+                        mb.setMessage(message2);
+                        mb.open();
+                    }
+                });
+
+            } else {
+                IStatus status = new Status(IStatus.WARNING, DesignerPlugin.ID, message);
+                DesignerPlugin.getDefault().getLog().log(status);
+            }
+        }
+    }
+
+    /**
+     * 
+     * DOC YeXiaowei Comment method "getConnectionMonitorProperty".
+     * 
+     * @param type
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    private boolean getConnectionMonitorProperty(ConnectionType type) {
+        EList params = type.getElementParameter();
+        if (params == null || params.isEmpty()) {
+            return false;
+        }
+        for (int i = 0, size = params.size(); i < size; i++) {
+            ElementParameterType param = (ElementParameterType) params.get(i);
+            if (param != null) {
+                if (param.getName() != null && param.getName().equals(EParameterName.MONITOR_CONNECTION.getName())) {
+                    return Boolean.valueOf(param.getValue());
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void loadContexts(ProcessType process) {
+        /**
+         * Load the contexts informations
+         */
+        String defaultContextToLoad;
+        defaultContextToLoad = process.getDefaultContext();
+
+        EList contextList = process.getContext();
+        if (contextList == null || contextList.isEmpty()) {
+            contextManager = new JobContextManager();
+        } else {
+            contextManager = new JobContextManager(contextList, defaultContextToLoad);
+        }
+        updateContextBefore(contextManager);
+    }
+
+    /**
+     * 
+     * this method work for the repositoryId existed in process before v2.2.
+     * 
+     */
+    private void updateContextBefore(IContextManager contextManager) {
+        if (repositoryId != null && !"".equals(repositoryId)) { //$NON-NLS-1$
+
+            ContextItem item = ContextUtils.getContextItemById(ContextUtils.getAllContextItem(), repositoryId);
+
+            for (IContext context : contextManager.getListContext()) {
+                for (IContextParameter param : context.getContextParameterList()) {
+                    if (item != null && ContextUtils.updateParameterFromRepository(item, param, context.getName())) {
+                        param.setSource(item.getProperty().getId());
+                    } else {
+                        param.setSource(IContextParameter.BUILT_IN);
+                    }
+                }
+            }
+        }
+
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    public boolean checkReadOnly() {
+        IProxyRepositoryFactory repFactory = DesignerPlugin.getDefault().getProxyRepositoryFactory();
+        boolean readOnlyLocal = !repFactory.isEditableAndLockIfPossible(property.getItem()) || !isLastVersion(property.getItem());
+        this.setReadOnly(readOnlyLocal);
+        return readOnlyLocal;
+    }
+
+    @SuppressWarnings("unchecked")
+    public void setReadOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+
+        for (INode node : nodes) {
+            node.setReadOnly(readOnly);
+            for (IConnection connec : (List<IConnection>) node.getOutgoingConnections()) {
+                connec.setReadOnly(readOnly);
+            }
+        }
+
+        for (Note note : notes) {
+            note.setReadOnly(readOnly);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.designer.core.ui.editor.Element#getElementName()
+     */
+    @Override
+    public String getElementName() {
+        return name;
+    }
+
+    public String getName() {
+        return this.getProperty().getLabel();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#getAuthor()
+     */
+    public User getAuthor() {
+        return getProperty().getAuthor();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#getId()
+     */
+    public String getId() {
+        return getProperty().getId();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#getLabel()
+     */
+    public String getLabel() {
+        return getProperty().getLabel();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#getStatus()
+     */
+    public String getStatusCode() {
+        return getProperty().getStatusCode();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#getVersion()
+     */
+    public String getVersion() {
+        return getProperty().getVersion();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#setAuthor(org.talend.core.model.temp.User)
+     */
+    public void setAuthor(User author) {
+        if (!getProperty().getAuthor().equals(author)) {
+            getProperty().setAuthor(author);
+        }
+        setPropertyValue(EParameterName.AUTHOR.getName(), author.toString());
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#setId(int)
+     */
+    public void setId(String id) {
+        if (!getProperty().getId().equals(id)) {
+            getProperty().setId(id);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#setLabel(java.lang.String)
+     */
+    public void setLabel(String label) {
+        if (!getProperty().getLabel().equals(label)) {
+            getProperty().setLabel(label);
+        }
+        setPropertyValue(EParameterName.NAME.getName(), label);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#setStatus(org.talend.core.model.process.EProcessStatus)
+     */
+    public void setStatusCode(String statusCode) {
+        if (getProperty().getStatusCode() == null && statusCode != null || getProperty().getStatusCode() != null
+                && !getProperty().getStatusCode().equals(statusCode)) {
+            getProperty().setStatusCode(statusCode);
+        }
+        setPropertyValue(EParameterName.STATUS.getName(), statusCode);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IRepositoryProcess#setVersion(int)
+     */
+    public void setVersion(String version) {
+        if (!getProperty().getVersion().equals(version)) {
+            getProperty().setVersion(version);
+        }
+        setPropertyValue(EParameterName.VERSION.getName(), version);
+    }
+
+    // private InputStream content;
+    private byte[] content;
+
+    private String repositoryId;
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.temp.IXmlSerializable#getXmlStream()
+     */
+    public InputStream getXmlStream() {
+        return new ByteArrayInputStream(content);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.temp.IXmlSerializable#setXmlStream(java.io.InputStream)
+     */
+    public void setXmlStream(InputStream xmlStream) {
+        ByteArrayOutputStream st = new ByteArrayOutputStream();
+
+        int byteLu;
+        try {
+            while ((byteLu = xmlStream.read()) != -1) {
+                st.write(byteLu);
+            }
+        } catch (IOException e) {
+            // TODO SML Auto-generated catch block
+            // e.printStackTrace();
+            ExceptionHandler.process(e);
+        } finally {
+            try {
+                xmlStream.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        this.content = st.toByteArray();
+    }
+
+    public boolean isActivate() {
+        return activate;
+    }
+
+    public void setActivate(boolean activate) {
+        this.activate = activate;
+    }
+
+    /**
+     * Check if the given name will be unique in the process. If another link already exists with that name, false will
+     * be returned.
+     * 
+     * @param uniqueName
+     * @param checkEsists
+     * @return true if the name is unique
+     */
+    public boolean checkValidConnectionName(String connectionName, boolean checkExists) {
+        // test if name already exist but with ignore case (contains test only with same case)
+
+        if (checkExists && checkIgnoreCase(connectionName)) {
+            return false;
+        }
+        Perl5Matcher matcher = new Perl5Matcher();
+        Perl5Compiler compiler = new Perl5Compiler();
+        Pattern pattern;
+
+        try {
+            pattern = compiler.compile("^[A-Za-z_][A-Za-z0-9_]*$"); //$NON-NLS-1$
+            if (!matcher.matches(connectionName, pattern)) {
+                return false;
+            }
+        } catch (MalformedPatternException e) {
+            throw new RuntimeException(e);
+        }
+
+        return !KeywordsValidator.isKeyword(connectionName);
+    }
+
+    // hshen
+    // qli modified to fix the bug "7312".
+    public boolean checkIgnoreCase(String connectionName) {
+        if (connectionName.equals("")) {//$NON-NLS-1$
+            return true;
+        }
+        if (uniqueConnectionNameList != null) {
+            for (String value : uniqueConnectionNameList) {
+                if (value.equalsIgnoreCase(connectionName)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if the given name will be unique in the process. If another link already exists with that name, false will
+     * be returned.
+     * 
+     * @param uniqueName
+     * @return true if the name is unique
+     */
+    public boolean checkValidConnectionName(String connectionName) {
+        return checkValidConnectionName(connectionName, true);
+    }
+
+    /**
+     * Manage to find a unique name with the given name.
+     * 
+     * @param titleName
+     */
+    public String generateUniqueConnectionName(String baseName) {
+        if (baseName == null) {
+            throw new IllegalArgumentException("baseName can't be null"); //$NON-NLS-1$
+        }
+        String uniqueName = baseName + 1;
+
+        int counter = 1;
+        boolean exists = true;
+        while (exists) {
+            exists = !checkValidConnectionName(uniqueName);
+            if (!exists) {
+                break;
+            }
+            uniqueName = baseName + counter++;
+        }
+        return uniqueName;
+    }
+
+    public String generateUniqueConnectionName(String baseName, String tableName) {
+        if (baseName == null || tableName == null) {
+            throw new IllegalArgumentException("baseName or tableName can't be null"); //$NON-NLS-1$
+        }
+        String uniqueName = baseName + 1;
+
+        int counter = 1;
+        boolean exists = true;
+        String fullName = "";
+        while (exists) {
+            fullName = uniqueName + "_" + tableName;
+            exists = !checkValidConnectionName(fullName);
+            if (!exists) {
+                break;
+            }
+            uniqueName = baseName + counter++;
+        }
+        return fullName;
+    }
+
+    public void addUniqueConnectionName(String uniqueConnectionName) {
+        if (uniqueConnectionName != null) {
+            if (checkValidConnectionName(uniqueConnectionName)) {
+                uniqueConnectionNameList.add(uniqueConnectionName);
+            } else {
+                throw new IllegalArgumentException("The name of the connection is not valid: " + uniqueConnectionName); //$NON-NLS-1$
+            }
+        }
+    }
+
+    public void removeUniqueConnectionName(String uniqueConnectionName) {
+        if (uniqueConnectionName != null) {
+            uniqueConnectionNameList.remove(uniqueConnectionName);
+        }
+    }
+
+    public String generateUniqueNodeName(INode node) {
+        String baseName = node.getComponent().getName();
+        return UniqueNodeNameGenerator.generateUniqueNodeName(baseName, uniqueNodeNameList);
+    }
+
+    /**
+     * This function will take a unique name and update the list with the given name. This function should be private
+     * only and should be called only when the xml file is loaded.
+     * 
+     * @param uniqueName
+     */
+    public void addUniqueNodeName(final String uniqueName) {
+        if (!uniqueNodeNameList.contains(uniqueName)) {
+            uniqueNodeNameList.add(uniqueName);
+        }
+    }
+
+    public void removeUniqueNodeName(final String uniqueName) {
+        if (uniqueName != null && !uniqueName.equals("")) { //$NON-NLS-1$
+            uniqueNodeNameList.remove(uniqueName);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void setActivateSubjob(INode node, boolean active, INode activateNode, boolean oneComponent) {
+        INode mainSubProcess = node.getSubProcessStartNode(false);
+
+        // if the selected node is the start node, then everything will be
+        // desacticated
+        if (activateNode.isStart()) {
+            for (Connection connec : (List<Connection>) node.getIncomingConnections()) {
+                if (connec.getSource().isActivate() != active) {
+                    if (connec.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)
+                            || connec.getLineStyle().hasConnectionCategory(IConnectionCategory.USE_ITERATE)) {
+                        if (connec.getSource().getSubProcessStartNode(false).isActivate() != active) {
+                            setActivateSubjob(connec.getSource().getSubProcessStartNode(false), active, activateNode,
+                                    oneComponent);
+                        }
+                    }
+                }
+            }
+            ((Element) node).setPropertyValue(EParameterName.ACTIVATE.getName(), new Boolean(active));
+            for (Connection connec : (List<Connection>) node.getOutgoingConnections()) {
+                if (!oneComponent) {
+                    if (connec.getTarget().isActivate() != active) {
+                        setActivateSubjob(connec.getTarget(), active, activateNode, oneComponent);
+                    }
+                } else {
+                    if (connec.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)
+                            || connec.getLineStyle().hasConnectionCategory(IConnectionCategory.USE_ITERATE)) {
+                        if (connec.getTarget().isActivate() != active) {
+                            setActivateSubjob(connec.getTarget(), active, activateNode, oneComponent);
+                        }
+                    }
+                }
+
+            }
+
+        } else {
+            if (node.getSubProcessStartNode(false).equals(mainSubProcess)) {
+                ((Element) node).setPropertyValue(EParameterName.ACTIVATE.getName(), new Boolean(active));
+                for (Connection connec : (List<Connection>) node.getIncomingConnections()) {
+                    if (connec.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)
+                            || connec.getLineStyle().hasConnectionCategory(IConnectionCategory.USE_ITERATE)) {
+                        if (connec.getSource().isActivate() != active) {
+                            setActivateSubjob(connec.getSource(), active, activateNode, oneComponent);
+                        }
+                    }
+                }
+                for (Connection connec : (List<Connection>) node.getOutgoingConnections()) {
+                    if (connec.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)
+                            || connec.getLineStyle().hasConnectionCategory(IConnectionCategory.USE_ITERATE)) {
+                        if (connec.getTarget().isActivate() != active) {
+                            setActivateSubjob(connec.getTarget(), active, activateNode, oneComponent);
+                        }
+                    }
+                }
+            }
+            ((Element) node).setPropertyValue(EParameterName.ACTIVATE.getName(), new Boolean(active));
+        }
+    }
+
+    public void setActivateSubjob(Node node, boolean active, boolean oneComponent) {
+        // desactive first the process to avoid to check the process during the
+        // activation / desactivation
+        setActivate(false);
+        setActivateSubjob(node, active, node, oneComponent);
+        // now that everything is set, reactivate the process
+        setActivate(true);
+    }
+
+    public void checkStartNodes() {
+        for (INode node : nodes) {
+            if ((Boolean) node.getPropertyValue(EParameterName.STARTABLE.getName())) {
+                if (node.isActivate()) {
+                    boolean checkIfCanBeStart = node.checkIfCanBeStart();
+                    node.setStart(checkIfCanBeStart);
+                }
+            }
+        }
+        if (!isDuplicate()) {
+            ConnectionListController.updateConnectionList(this);
+            updateSubjobContainers();
+        }
+    }
+
+    public int getMergelinkOrder(final INode node) {
+        return getMergelinkOrder(node, new HashSet<INode>());
+    }
+
+    /**
+     * If the node link with the merge node, it will return the merge link order, or it will return -1 Purpose: only in
+     * the branch of the first merge link can be as a start node.
+     * 
+     * @param node
+     * @return
+     */
+    private int getMergelinkOrder(final INode node, final Set<INode> checkedNode) {
+
+        List<? extends IConnection> outgoingConnections = node.getOutgoingConnections();
+        int returnValue = -1;
+        checkedNode.add(node);
+        for (int i = 0; (i < outgoingConnections.size()) && (returnValue == -1); i++) {
+            IConnection connec = outgoingConnections.get(i);
+            if (connec.isActivate()) {
+                if (connec.getLineStyle().hasConnectionCategory(EConnectionType.MERGE)) {
+                    returnValue = connec.getInputId();
+                    break;
+                } else if (connec.getLineStyle().hasConnectionCategory(EConnectionType.MAIN) && connec.getTarget() != null
+                        && (!connec.getTarget().equals(node)) && (!checkedNode.contains(connec.getTarget()))) {
+                    returnValue = getMergelinkOrder(connec.getTarget(), checkedNode);
+                }
+            }
+        }
+
+        return returnValue;
+    }
+
+    public boolean isThereLinkWithHash(final INode node) {
+        return isThereLinkWithHash(node, new HashSet<INode>());
+    }
+
+    /**
+     * This function check if in this subprocess there should be a start or not depends on the ref links. If in this
+     * subprocess there is only one main flow and one ref then this function will return true. If there is several flow
+     * in the output of one component in this subprocess,it'll return false.
+     * 
+     * @param node
+     * @return
+     */
+    public boolean isThereLinkWithHash(final INode node, final Set<INode> checkedNode) {
+        boolean refLink = false;
+
+        if (checkedNode.contains(node)) {
+            return false;
+        }
+        checkedNode.add(node);
+
+        for (int i = 0; i < node.getOutgoingConnections().size() && !refLink; i++) {
+            IConnection connec = node.getOutgoingConnections().get(i);
+            if (connec.isActivate()) {
+                if (connec.getLineStyle().hasConnectionCategory(IConnectionCategory.USE_HASH)) {
+                    refLink = true;
+                } else {
+                    if (connec.getLineStyle().equals(EConnectionType.FLOW_MAIN)
+                            || connec.getLineStyle().equals(EConnectionType.FLOW_MERGE)
+                            || connec.getLineStyle().equals(EConnectionType.ITERATE)
+                            || connec.getLineStyle().hasConnectionCategory(IConnectionCategory.EXECUTION_ORDER)) {
+                        INode nodeTarget = connec.getTarget();
+                        if (nodeTarget.getJobletNode() != null) {
+                            nodeTarget = nodeTarget.getJobletNode();
+                        }
+                        refLink = isThereLinkWithHash(nodeTarget, checkedNode);
+                    }
+                }
+            }
+        }
+        return refLink;
+    }
+
+    /**
+     * DOC nrousseau Comment method "checkProcess".
+     * 
+     * @param propagate
+     */
+    public void checkProcess() {
+        if (isActivate()) {
+            checkProblems();
+        }
+    }
+
+    private void checkProblems() {
+        Problems.removeProblemsByProcess(this);
+
+        for (INode node : nodes) {
+            if (node.isActivate()) {
+                node.checkNode();
+            }
+        }
+        Problems.refreshProcessAllNodesStatus(this);
+        Problems.refreshProblemTreeView();
+    }
+
+    /**
+     * check the problems of node.compare with the checkProblems(),this method can't refresh problems view.
+     */
+    public void checkNodeProblems() {
+        if (isActivate()) {
+            Problems.removeProblemsByProcess(this);
+
+            for (INode node : nodes) {
+                if (node.isActivate()) {
+                    node.checkNode();
+                }
+            }
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "Process:" + getLabel(); //$NON-NLS-1$
+    }
+
+    public ERepositoryObjectType getRepositoryObjectType() {
+        return ERepositoryObjectType.PROCESS;
+    }
+
+    public IContextManager getContextManager() {
+        return contextManager;
+    }
+
+    // PTODO mhelleboid remove
+    public Date getCreationDate() {
+        return getProperty().getCreationDate();
+    }
+
+    public String getDescription() {
+        return getProperty().getDescription();
+    }
+
+    public Date getModificationDate() {
+        return getProperty().getModificationDate();
+    }
+
+    public String getPurpose() {
+        return getProperty().getPurpose();
+    }
+
+    public void setCreationDate(Date value) {
+    }
+
+    public void setDescription(String value) {
+        if (getProperty().getDescription() == null) {
+            if (value != null) {
+                getProperty().setDescription(value);
+            }
+        } else {
+            if (!getProperty().getDescription().equals(value)) {
+                getProperty().setDescription(value);
+            }
+        }
+        setPropertyValue(EParameterName.DESCRIPTION.getName(), value);
+    }
+
+    public void setModificationDate(Date value) {
+    }
+
+    public void setPurpose(String value) {
+        if (getProperty().getPurpose() == null) {
+            if (value != null) {
+                getProperty().setPurpose(value);
+            }
+        } else {
+            if (!getProperty().getPurpose().equals(value)) {
+                getProperty().setPurpose(value);
+            }
+        }
+        setPropertyValue(EParameterName.PURPOSE.getName(), value);
+    }
+
+    @Override
+    public void setPropertyValue(String id, Object value) {
+        if (id.equals(EParameterName.SCHEMA_TYPE.getName()) || id.equals(EParameterName.QUERYSTORE_TYPE.getName())
+                || id.equals(EParameterName.PROPERTY_TYPE.getName())
+                // || id.equals(JobSettingsConstants.getExtraParameterName(EParameterName.PROPERTY_TYPE.getName()))
+                || id.equals(EParameterName.PROCESS_TYPE_PROCESS.getName())) {
+            String updataComponentParamName = null;
+            // if (JobSettingsConstants.isExtraParameter(id)) {
+            // updataComponentParamName =
+            // JobSettingsConstants.getExtraParameterName(EParameterName.UPDATE_COMPONENTS.getName());
+            // } else {
+            updataComponentParamName = EParameterName.UPDATE_COMPONENTS.getName();
+            // }
+            setPropertyValue(updataComponentParamName, Boolean.TRUE);
+        }
+
+        super.setPropertyValue(id, value);
+    }
+
+    public Property getProperty() {
+        return property;
+    }
+
+    public void setProperty(Property property) {
+        this.property = property;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.repository.IRepositoryObject#getChildren()
+     */
+    public List<IRepositoryViewObject> getChildren() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public List<INode> getNodesOfType(String componentName) {
+        List<INode> matchingNodes = new ArrayList<INode>();
+        List<INode> generatingNodes = new ArrayList<INode>();
+        // wzhang added to fix bug 11621
+        // if (flag) {
+        // generatingNodes = (List<INode>) getGraphicalNodes();
+        // } else {
+        generatingNodes = (List<INode>) getGeneratingNodes();
+        // }
+        for (INode node : generatingNodes) {
+            if (node.isActivate()) {
+                if (componentName == null) { // means all nodes will be
+                    // returned
+                    matchingNodes.add(node);
+                } else if (componentName.startsWith("FAMILY:")) { //$NON-NLS-1$
+                    String familly = componentName.substring("FAMILY:".length()); //$NON-NLS-1$
+                    if (node.getComponent().getOriginalFamilyName().startsWith(familly)) {
+                        matchingNodes.add(node);
+                    }
+                } else if (componentName.startsWith("REGEXP:")) { //$NON-NLS-1$
+                    Perl5Matcher matcher = new Perl5Matcher();
+                    Perl5Compiler compiler = new Perl5Compiler();
+                    Pattern pattern;
+
+                    String regexp = componentName.substring("REGEXP:".length()); //$NON-NLS-1$
+                    try {
+                        pattern = compiler.compile(regexp);
+                        if (matcher.matches(node.getComponent().getName(), pattern)) {
+                            matchingNodes.add(node);
+                        }
+                    } catch (MalformedPatternException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if ((node.getComponent().getName() != null)
+                        && (node.getComponent().getName().compareTo(componentName)) == 0) {
+                    matchingNodes.add(node);
+                }
+            }
+        }
+        return matchingNodes;
+    }
+
+    // /**
+    // * Return all Nodes of Component type componentName.
+    // *
+    // * @param componentName the component name
+    // * @return all the activated matching nodes in the process
+    // */
+    // public List<INode> getNodesOfType(String componentName) {
+    // return getNodesOfType(componentName, false);
+    // }
+
+    /**
+     * Comment method "getAllConnections".
+     * 
+     * @param filter only return the filter matched connections
+     * @return
+     */
+    public IConnection[] getAllConnections(String filter) {
+        List<? extends INode> nodes = getGraphicalNodes();
+        Set<IConnection> conns = new HashSet<IConnection>();
+
+        for (INode node : nodes) {
+            if (node.isActivate()) {
+                conns.addAll(node.getIncomingConnections());
+                conns.addAll(node.getOutgoingConnections());
+            }
+        }
+
+        if ((filter != null) && (filter.startsWith("TYPE:"))) { //$NON-NLS-1$
+            // construct filter array
+            String[] f = filter.substring("TYPE:".length()).split("\\|"); //$NON-NLS-1$ //$NON-NLS-2$
+            List<String> filterArray = new ArrayList<String>(f.length);
+            for (int i = 0; i < f.length; i++) {
+                filterArray.add(f[i].trim());
+            }
+
+            for (Iterator<IConnection> iter = conns.iterator(); iter.hasNext();) {
+                IConnection con = iter.next();
+                if (!filterArray.contains(con.getLineStyle().toString())) {
+                    iter.remove();
+                }
+            }
+        }
+        return conns.toArray(new IConnection[conns.size()]);
+    }
+
+    public Project getProject() {
+        return ProjectManager.getInstance().getCurrentProject();
+    }
+
+    public void setAsMasterJob() {
+        getProject().setMasterJobId(this.getId());
+    }
+
+    public ProcessItem getMasterJob() {
+        ProcessItem item = null;
+        IProxyRepositoryFactory factory = DesignerPlugin.getDefault().getProxyRepositoryFactory();
+
+        try {
+            IRepositoryViewObject repositoryObject = factory.getMetadata(ERepositoryObjectType.PROCESS).getMember(
+                    getProject().getMasterJobId());
+            if (repositoryObject.getRepositoryObjectType() == ERepositoryObjectType.PROCESS) {
+                item = (ProcessItem) repositoryObject.getProperty().getItem();
+            }
+        } catch (PersistenceException e) {
+            // TODO Auto-generated catch block
+            // e.printStackTrace();
+            ExceptionHandler.process(e);
+        }
+
+        return item;
+    }
+
+    public String getRepositoryId() {
+        return repositoryId;
+    }
+
+    public void setRepositoryId(String repositoryId) {
+        this.repositoryId = repositoryId;
+    }
+
+    public void addNote(Note note) {
+        elem.add(note);
+        notes.add(note);
+        fireStructureChange(NEED_UPDATE_JOB, elem);
+    }
+
+    public void removeNote(Note note) {
+        elem.remove(note);
+        notes.remove(note);
+        fireStructureChange(NEED_UPDATE_JOB, elem);
+    }
+
+    public Set<String> getNeededLibraries(boolean withChildrens) {
+        return JavaProcessUtil.getNeededLibraries(this, withChildrens);
+    }
+
+    /**
+     * Getter for notes.
+     * 
+     * @return the notes
+     */
+    public List<Note> getNotes() {
+        return notes;
+    }
+
+    /**
+     * Getter for editor.
+     * 
+     * @return the editor
+     */
+    public IEditorPart getEditor() {
+        if (this.editor instanceof AbstractMultiPageTalendEditor) {
+            return this.editor;
+        }
+        return null;
+    }
+
+    CommandStackEventListener commandStackEventListener = new CommandStackEventListener() {
+
+        public void stackChanged(CommandStackEvent event) {
+            processModified = true;
+            setNeedRegenerateCode(true);
+        }
+    };
+
+    private IContext lastRunContext;
+
+    private boolean needRegenerateCode;
+
+    private Map<INode, SubjobContainer> copySubjobMap;
+
+    private Boolean lastVersion;
+
+    /**
+     * Sets the editor.
+     * 
+     * @param editor the editor to set
+     */
+    public void setEditor(AbstractMultiPageTalendEditor editor) {
+        this.editor = editor;
+        if (editor != null && !duplicate) {
+            CommandStack commandStack = (CommandStack) editor.getTalendEditor().getAdapter(CommandStack.class);
+            commandStack.addCommandStackEventListener(commandStackEventListener);
+            getUpdateManager().updateAll();
+
+        }
+    }
+
+    public void dispose() {
+        if (editor != null && !duplicate) {
+            CommandStack commandStack = (CommandStack) editor.getTalendEditor().getAdapter(CommandStack.class);
+            commandStack.removeCommandStackEventListener(commandStackEventListener);
+        }
+        generatingProcess = null;
+        editor = null;
+        viewer = null;
+        for (byte data[] : externalInnerContents) {
+            ImageUtils.disposeImages(data);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess2#disableRunJobView()
+     */
+    public boolean disableRunJobView() {
+        return false;
+    }
+
+    /**
+     * Sets the processModified.
+     * 
+     * @param processModified the processModified to set
+     */
+    public void setProcessModified(boolean processModified) {
+        this.processModified = processModified;
+    }
+
+    /**
+     * Sets the contextManager.
+     * 
+     * @param contextManager the contextManager to set
+     */
+    public void setContextManager(IContextManager contextManager) {
+        this.contextManager = contextManager;
+    }
+
+    /**
+     * Sets the generatingProcess.
+     * 
+     * @param generatingProcess the generatingProcess to set
+     */
+    public void setGeneratingProcess(DataProcess generatingProcess) {
+        this.generatingProcess = generatingProcess;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess#getNodesWithImport()
+     */
+    public List<INode> getNodesWithImport() {
+        List<INode> nodesWithImport = new ArrayList<INode>();
+        for (INode node : getGeneratingNodes()) {
+            if (node.getComponent().useImport()) {
+                nodesWithImport.add(node);
+            }
+        }
+        return nodesWithImport;
+    }
+
+    public void updateSubjobContainers() {
+        // check all old subjobStart to see if their status changed (to remove the subjob if needed)
+        Set<SubjobContainer> updatedSubjobContainers = new HashSet<SubjobContainer>();
+        for (SubjobContainer sjc : new ArrayList<SubjobContainer>(subjobContainers)) {
+            Node node = sjc.getSubjobStartNode();
+            // if this node is not anymore a subjob start, then set it back to the element list.
+            // this one will be reaffected to a new subjob after
+            if (node == null || !node.isDesignSubjobStartNode()) {
+                // for bug 13314
+                if (node == null
+                        || !(node.getOutgoingConnections(EConnectionType.TABLE).size() != 0 || node.getIncomingConnections(
+                                EConnectionType.TABLE).size() != 0)) {
+                    elem.addAll(sjc.getNodeContainers());
+                    sjc.getNodeContainers().clear();
+                    elem.remove(sjc);
+                    subjobContainers.remove(sjc);
+                }
+                // subjob are never removed from the map, so if the user do any "undo"
+                // the name of the subjob or configuration will be kept.
+            } else {
+                for (NodeContainer nodeContainer : new ArrayList<NodeContainer>(sjc.getNodeContainers())) {
+                    if (!nodeContainer.getNode().getDesignSubjobStartNode().equals(node)) {
+                        sjc.getNodeContainers().remove(nodeContainer);
+                        elem.add(nodeContainer);
+                        updatedSubjobContainers.add(sjc);
+                    }
+                }
+            }
+        }
+
+        // make one loop first for the subjob starts
+        // once all the subjobs are created, make another loop for the other nodes
+        for (Element element : new ArrayList<Element>(elem)) {
+            // if there is any NodeContainer, need to reaffect them to a new subjob
+            if (element instanceof NodeContainer) {
+                Node node = ((NodeContainer) element).getNode();
+                if (node.isDesignSubjobStartNode()) {
+                    // if the subjob already exist in the list take it, or if not exist create a new one.
+                    SubjobContainer sjc = mapSubjobStarts.get(node);
+                    if (sjc == null) {
+                        sjc = new SubjobContainer(this);
+                        sjc.setSubjobStartNode(node);
+                        fillSubjobTitle(node, sjc);
+                        mapSubjobStarts.put(node, sjc);
+                    }
+                    sjc.getNodeContainers().clear();
+                    sjc.addNodeContainer(node.getNodeContainer());
+                    subjobContainers.add(sjc);
+                    updatedSubjobContainers.add(sjc);
+                    elem.remove(node.getNodeContainer());
+                    elem.add(sjc);
+                }
+            }
+        }
+
+        // if there is any NodeContainer, need to reaffect them to an existing subjob
+        for (Element element : new ArrayList<Element>(elem)) {
+            if (element instanceof NodeContainer) {
+                Node node = ((NodeContainer) element).getNode();
+                SubjobContainer sjc = mapSubjobStarts.get(node.getDesignSubjobStartNode());
+                if (sjc != null) {
+                    sjc.addNodeContainer(node.getNodeContainer());
+                    elem.remove(node.getNodeContainer());
+                    updatedSubjobContainers.add(sjc);
+                }
+            }
+        }
+        fireStructureChange(NEED_UPDATE_JOB, elem);
+        // update modified subjobs
+        int i = updatedSubjobContainers.size();
+        for (SubjobContainer sjc : updatedSubjobContainers) {
+            sjc.updateSubjobContainer();
+        }
+
+        // at the end, there should be no Node / NodeContainer without SubjobContainer
+    }
+
+    /**
+     * DOC bqian Comment method "fillSubjobTitle".
+     * 
+     * @param node
+     * @param sjc
+     */
+    private void fillSubjobTitle(Node node, SubjobContainer sjc) {
+        if (copySubjobMap == null) {
+            return;
+        }
+        SubjobContainer original = copySubjobMap.get(node);
+        if (original != null) {
+            sjc.getElementParameter(EParameterName.COLLAPSED.getName()).setValue(
+                    original.getElementParameter(EParameterName.COLLAPSED.getName()).getValue());
+            sjc.getElementParameter(EParameterName.SHOW_SUBJOB_TITLE.getName()).setValue(
+                    original.getElementParameter(EParameterName.SHOW_SUBJOB_TITLE.getName()).getValue());
+            sjc.getElementParameter(EParameterName.SUBJOB_TITLE.getName()).setValue(
+                    original.getElementParameter(EParameterName.SUBJOB_TITLE.getName()).getValue());
+
+            sjc.getElementParameter(EParameterName.SUBJOB_TITLE_COLOR.getName()).setValue(
+                    original.getElementParameter(EParameterName.SUBJOB_TITLE_COLOR.getName()).getValue());
+
+            sjc.getElementParameter(EParameterName.SUBJOB_COLOR.getName()).setValue(
+                    original.getElementParameter(EParameterName.SUBJOB_COLOR.getName()).getValue());
+        }
+    }
+
+    public List<NodeContainer> getAllNodeContainers() {
+        List<NodeContainer> list = new ArrayList<NodeContainer>();
+        for (SubjobContainer sjc : subjobContainers) {
+            list.addAll(sjc.getNodeContainers());
+        }
+        return list;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess#getLastRunContext()
+     */
+    public IContext getLastRunContext() {
+        return lastRunContext;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess#setLastRunContext(org.talend.core.model.process.IContext)
+     */
+    public void setLastRunContext(IContext context) {
+        this.lastRunContext = context;
+
+    }
+
+    /**
+     * Getter for duplicate.
+     * 
+     * @return the duplicate
+     */
+    public boolean isDuplicate() {
+        return this.duplicate;
+    }
+
+    /**
+     * Sets the duplicate.
+     * 
+     * @param duplicate the duplicate to set
+     */
+    public void setDuplicate(boolean duplicate) {
+        this.duplicate = duplicate;
+    }
+
+    /**
+     * Getter for subjobContainers.
+     * 
+     * @return the subjobContainers
+     */
+    public List<? extends ISubjobContainer> getSubjobContainers() {
+        return this.subjobContainers;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess2#getUpdateManager()
+     */
+    public IUpdateManager getUpdateManager() {
+        return this.updateManager;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess2#isNeedRegenerateCode()
+     */
+    public boolean isNeedRegenerateCode() {
+        if (editor == null) {
+            // if no editor linked, we just consider same as if there was all the time a modification
+            return true;
+        }
+        return needRegenerateCode;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess2#setNeedRegenerateCode(boolean)
+     */
+    public void setNeedRegenerateCode(boolean regenerateCode) {
+        this.needRegenerateCode = regenerateCode;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.repository.IRepositoryObject#getRepositoryNode()
+     */
+    public RepositoryNode getRepositoryNode() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * org.talend.core.model.repository.IRepositoryObject#setRepositoryNode(org.talend.repository.model.RepositoryNode)
+     */
+    public void setRepositoryNode(IRepositoryNode node) {
+        // TODO Auto-generated method stub
+
+    }
+
+    /**
+     * <br>
+     * see bug 0004882: Subjob title is not copied when copying/pasting subjobs from one job to another
+     * 
+     * @param mapping
+     */
+    public void setCopyPasteSubjobMappings(Map<INode, SubjobContainer> mapping) {
+        copySubjobMap = mapping;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess#getOutputMetadataTable()
+     */
+
+    // this function is create for feature 0006265
+    public IMetadataTable getOutputMetadataTable() {
+        List<? extends Node> nodes = (List<? extends Node>) this.getGeneratingNodes();
+        for (Node node : nodes) {
+            String name = node.getComponent().getName();
+            if (name.equals("tBufferOutput")) { //$NON-NLS-1$
+                return node.getMetadataTable(node.getUniqueName());
+            }
+        }
+        return null;
+
+    }
+
+    public byte[] getScreenshot() {
+        return this.screenshot;
+    }
+
+    public void setScreenshot(byte[] imagedata) {
+        this.screenshot = imagedata;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.ui.ILastVersionChecker#isLastVersion(org.talend.core.model.properties.Item)
+     */
+    public boolean isLastVersion(Item item) {
+        if (lastVersion != null) { // status can be known without check below, to continue to optimize later.
+            return lastVersion;
+        }
+        if (item.getProperty() != null) {
+            try {
+                List<IRepositoryViewObject> allVersion = null;
+                ItemState state = property.getItem().getState();
+                ERepositoryObjectType type = ERepositoryObjectType.PROCESS;
+                if (item instanceof JobletProcessItem) {
+                    type = ERepositoryObjectType.JOBLET;
+                }
+                boolean pathExist = false;
+                if (state != null) {
+                    String path = state.getPath();
+                    if (path != null) {
+                        File f = new File(path);
+                        if (f.exists()) {
+                            pathExist = true;
+                        }
+                    }
+                }
+                if (pathExist) {
+                    allVersion = CorePlugin.getDefault().getRepositoryService().getProxyRepositoryFactory()
+                            .getAllVersion(property.getId(), state.getPath(), type);
+                } else {
+                    allVersion = CorePlugin.getDefault().getRepositoryService().getProxyRepositoryFactory()
+                            .getAllVersion(property.getId());
+                }
+                if (allVersion == null || allVersion.isEmpty()) {
+                    return false;
+                }
+                String lastVersion = VersionUtils.DEFAULT_VERSION;
+
+                for (IRepositoryViewObject object : allVersion) {
+                    if (VersionUtils.compareTo(object.getVersion(), lastVersion) > 0) {
+                        lastVersion = object.getVersion();
+                    }
+                }
+                if (VersionUtils.compareTo(property.getVersion(), lastVersion) == 0) {
+                    return true;
+                }
+            } catch (PersistenceException e) {
+                ExceptionHandler.process(e);
+            }
+        }
+        return false;
+    }
+
+    public List<NodeType> getUnloadedNode() {
+        return this.unloadedNode;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.ui.ILastVersionChecker#setLastVersion(java.lang.Boolean)
+     */
+    public void setLastVersion(Boolean lastVersion) {
+        this.lastVersion = lastVersion;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.repository.IRepositoryViewObject#getInformationStatus()
+     */
+    public ERepositoryStatus getInformationStatus() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.repository.IRepositoryViewObject#getPath()
+     */
+    public String getPath() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.repository.IRepositoryViewObject#getProjectLabel()
+     */
+    public String getProjectLabel() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.repository.IRepositoryViewObject#getRepositoryStatus()
+     */
+    public ERepositoryStatus getRepositoryStatus() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.repository.IRepositoryViewObject#isDeleted()
+     */
+    public boolean isDeleted() {
+        return false;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.model.process.IProcess2#checkTableParameters()
+     */
+    public void checkTableParameters() {
+        checkNodeTableParameters();
+    }
+
+    private void refreshAllContextView() {
+        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+        IViewPart view2 = page.findView(ContextsView.ID);
+        if (view2 instanceof ContextsView) {
+            ((ContextsView) view2).updateAllContextView(true);
+        }
+    }
+
+    private void loadProjectParameters(ProcessType processType) {
+        ParametersType parameters = processType.getParameters();
+        if (parameters != null) {
+            loadElementParameters(this, parameters.getElementParameter());
+            loadRoutinesParameters(processType);
+        }
+    }
+
+    private void loadRoutinesParameters(ProcessType processType) {
+        ParametersType parameters = processType.getParameters();
+        if (parameters == null || parameters.getRoutinesParameter() == null) {
+            List<RoutinesParameterType> dependenciesInPreference;
+            try {
+                dependenciesInPreference = RoutinesUtil.createDependenciesInPreference();
+                ParametersType parameterType = TalendFileFactory.eINSTANCE.createParametersType();
+                parameterType.getRoutinesParameter().addAll(dependenciesInPreference);
+                processType.setParameters(parameterType);
+            } catch (PersistenceException e) {
+                ExceptionHandler.process(e);
+            }
+        }
+        // else {
+        // ProcessType process = this.getProcessType();
+        // process.getParameters().getRoutinesParameter().addAll(parameters.getRoutinesParameter());
+        // }
+
+    }
+
+    /**
+     * DOC Administrator Comment method "updateProcess".
+     * 
+     * @param processType
+     */
+    public void updateProcess(ProcessType processType) {
+        setActivate(false);
+
+        elem.clear();
+        nodes.clear();
+        notes.clear();
+        subjobContainers.clear();
+
+        // added for context
+        contextManager.getListContext().clear();
+        loadContexts(processType);
+        refreshAllContextView();
+
+        // added for projectSetting
+        loadProjectParameters(processType);
+
+        // ((ProcessItem) property.getItem()).setProcess(processType);
+
+        Hashtable<String, Node> nodesHashtable = new Hashtable<String, Node>();
+
+        try {
+            loadNodes(processType, nodesHashtable);
+        } catch (PersistenceException e) {
+            // there are some components unloaded.
+            return;
+        }
+
+        repositoryId = processType.getRepositoryContextId();
+
+        loadConnections(processType, nodesHashtable);
+
+        // added for notes
+        loadNotes(processType);
+        // added for subjobs
+        loadSubjobs(processType);
+
+        setActivate(true);
+        checkStartNodes();
+        fireStructureChange(NEED_UPDATE_JOB, elem);
+        checkProcess();
+    }
+
+    private void saveJobletNode(JobletContainer jobletContainer, boolean needUpdate) {
+        INode jobletNode = jobletContainer.getNode();
+        IProcess jobletProcess = jobletNode.getComponent().getProcess();
+        if (jobletProcess instanceof IProcess2) {
+            Item item = ((IProcess2) jobletProcess).getProperty().getItem();
+            if (item instanceof JobletProcessItem) {
+                JobletProcessItem jobletItem = ((JobletProcessItem) item);
+                IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
+                        IJobletProviderService.class);
+                if (service != null) {
+                    List<INode> addNodes = service.checkAddNodes(jobletContainer);
+                    List<INode> deleteNodes = new ArrayList<INode>();
+                    if (addNodes.size() <= 0) {
+                        deleteNodes.addAll(service.checkDeleteNodes(jobletContainer));
+                    } else {
+                        return;
+                    }
+                    if (needUpdate && (addNodes.size() <= 0) && (deleteNodes.size() <= 0)) {
+                        service.saveJobletNode(jobletItem, jobletContainer);
+                    }
+                }
+            }
+        }
+
+    }
+
+    private void addNewJobletNode(JobletContainer jobletContainer) {
+        IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
+                IJobletProviderService.class);
+        if (service != null) {
+            service.checkAddNodes(jobletContainer);
+            service.checkDeleteNodes(jobletContainer);
+        }
+
+    }
+
+    public Set<String> getNeededRoutines() {
+        // this value is initialized only for a duplicate process (for code generation)
+        if (neededRoutines != null && duplicate) {
+            return neededRoutines;
+        }
+        if (routinesDependencies == null || routinesDependencies.isEmpty()) {
+            checkRoutineDependencies();
+        }
+        // check in case routine dependencies hold invalid routines.
+        Iterator<RoutinesParameterType> iterator = routinesDependencies.iterator();
+        while (iterator.hasNext()) {
+            RoutinesParameterType routine = iterator.next();
+            if (StringUtils.isEmpty(routine.getId()) || StringUtils.isEmpty(routine.getName())) {
+                iterator.remove();
+            }
+        }
+        if (routinesDependencies.isEmpty()) {
+            checkRoutineDependencies();
+        }
+
+        Set<String> listRoutines = new HashSet<String>();
+        for (RoutinesParameterType routine : routinesDependencies) {
+            listRoutines.add(routine.getName());
+        }
+
+        IJobletProviderService jobletService = null;
+        if (PluginChecker.isJobLetPluginLoaded()) {
+            jobletService = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(IJobletProviderService.class);
+            for (INode node : getGraphicalNodes()) {
+                if (jobletService.isJobletComponent(node)) {
+                    listRoutines.addAll(getJobletRoutines(((JobletProcessItem) jobletService.getJobletComponentItem(node)
+                            .getItem()).getJobletProcess()));
+                }
+            }
+        }
+
+        // verify to remove non-existing routines from the list, just in case some have been deleted.
+        List<IRepositoryViewObject> routines;
+        try {
+            routines = ProxyRepositoryFactory.getInstance().getAll(ProjectManager.getInstance().getCurrentProject(),
+                    ERepositoryObjectType.ROUTINES);
+            for (Project project : ProjectManager.getInstance().getAllReferencedProjects()) {
+                List<IRepositoryViewObject> routinesFromRef = ProxyRepositoryFactory.getInstance().getAll(project,
+                        ERepositoryObjectType.ROUTINES);
+                for (IRepositoryViewObject routine : routinesFromRef) {
+                    if (!((RoutineItem) routine.getProperty().getItem()).isBuiltIn()) {
+                        routines.add(routine);
+                    }
+                }
+            }
+            // always add the system, others must be checked
+            Set<String> nonExistingRoutines = new HashSet<String>();
+
+            for (String routine : listRoutines) {
+                boolean found = false;
+                for (IRepositoryViewObject object : routines) {
+                    if (routine.equals(object.getLabel())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    nonExistingRoutines.add(routine);
+                }
+            }
+            listRoutines.removeAll(nonExistingRoutines);
+        } catch (PersistenceException e) {
+            ExceptionHandler.process(e);
+        }
+        return listRoutines;
+    }
+
+    private Set<String> getJobletRoutines(ProcessType processType) {
+        Set<String> listRoutines = new HashSet<String>();
+        for (RoutinesParameterType routine : (List<RoutinesParameterType>) processType.getParameters().getRoutinesParameter()) {
+            if (!StringUtils.isEmpty(routine.getId()) && !StringUtils.isEmpty(routine.getName())) {
+                listRoutines.add(routine.getName());
+            }
+        }
+
+        IJobletProviderService jobletService = null;
+        if (PluginChecker.isJobLetPluginLoaded()) {
+            jobletService = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(IJobletProviderService.class);
+            for (NodeType node : (List<NodeType>) processType.getNode()) {
+                ProcessType process = jobletService.getJobletProcess(node);
+                if (process != null) {
+                    listRoutines.addAll(getJobletRoutines(process));
+                }
+            }
+        }
+        return listRoutines;
+    }
+
+    public void setNeededRoutines(Set<String> neededRoutines) {
+        this.neededRoutines = neededRoutines;
+    }
+
+    public List<RoutinesParameterType> getRoutineDependencies() {
+        return routinesDependencies;
+    }
+
+    public void setRoutineDependencies(List<RoutinesParameterType> routinesDependencies) {
+        this.routinesDependencies = routinesDependencies;
+    }
+
+    public boolean isSubjobEnabled() {
+        if (GlobalServiceRegister.getDefault().isServiceRegistered(ICamelDesignerCoreService.class)) {
+            ICamelDesignerCoreService camelService = (ICamelDesignerCoreService) GlobalServiceRegister.getDefault().getService(
+                    ICamelDesignerCoreService.class);
+            if (camelService.isInstanceofCamelRoutes(getProperty().getItem())) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
