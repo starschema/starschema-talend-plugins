@@ -142,6 +142,7 @@ public class SapUtil {
 
 		functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
 		functionUnit.setName(tableName);
+		functionUnit.setLabel(tableName);
 		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
 		functionUnit.setConnection(connection);
 		functionUnit.setId(proxyRepositoryFactory.getNextId());
