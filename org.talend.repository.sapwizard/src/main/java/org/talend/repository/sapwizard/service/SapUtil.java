@@ -160,8 +160,6 @@ public class SapUtil {
 		outputParameterTable.setId(proxyRepositoryFactory.getNextId());
 		outputParameterTable.setLabel(functionUnit.getName());
 
-		createSingleParameterColumn(outputParameterTable, function, function.getName());
-
 		// New Test parameter table
 		testInputParameterTable = ConnectionFactory.eINSTANCE.createSAPTestInputParameterTable();
 		testInputParameterTable.setFunctionUnit(functionUnit);
@@ -220,34 +218,6 @@ public class SapUtil {
 			}
 		}
 		return columns;
-	}
-
-	/**
-	 * @param sapFunctionParameterTable
-	 * @param field
-	 * @param paramTyrpe
-	 * @param structOrTableName
-	 */
-	private static void createSingleParameterColumn(SAPFunctionParameterTable sapFunctionParameterTable, JCoFunction function,
-			String structOrTableName) {
-		JCoTable data = function.getTableParameterList().getTable("DFIES_TAB");
-		data.firstRow();
-
-		for (int i = 0; i < data.getNumRows(); i++, data.nextRow()) {
-
-			SAPFunctionParameterColumn sapFunctionParameterColumn = ConnectionFactory.eINSTANCE.createSAPFunctionParameterColumn();
-			sapFunctionParameterColumn.setName(data.getString("FIELDNAME"));
-			sapFunctionParameterColumn.setDataType(data.getString("DATATYPE"));
-			sapFunctionParameterColumn.setParameterType("");
-			sapFunctionParameterColumn.setLength(data.getString("LENG"));
-			ModelElementHelper.getFirstDescription(sapFunctionParameterColumn).setBody(data.getString("FIELDTEXT"));
-			if (structOrTableName != null) {
-				sapFunctionParameterColumn.setStructureOrTableName(structOrTableName);
-			}
-			sapFunctionParameterTable.getColumns().add(sapFunctionParameterColumn);
-
-		}
-
 	}
 
 }

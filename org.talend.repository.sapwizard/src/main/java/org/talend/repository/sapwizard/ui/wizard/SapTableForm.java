@@ -18,60 +18,36 @@
 package org.talend.repository.sapwizard.ui.wizard;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.layout.GridDataFactory;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.CellEditor;
-import org.eclipse.jface.viewers.ColumnViewerEditor;
-import org.eclipse.jface.viewers.ColumnViewerEditorActivationEvent;
-import org.eclipse.jface.viewers.ColumnViewerEditorActivationStrategy;
-import org.eclipse.jface.viewers.ColumnWeightData;
-import org.eclipse.jface.viewers.ComboBoxCellEditor;
-import org.eclipse.jface.viewers.ICellModifier;
-import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.SelectionChangedEvent;
-import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.viewers.TableLayout;
-import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.jface.viewers.TableViewerEditor;
-import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.KeyEvent;
-import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableColumn;
-import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.swt.widgets.ToolBar;
-import org.eclipse.swt.widgets.ToolItem;
-import org.talend.commons.ui.runtime.image.EImage;
-import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.commons.ui.swt.formtools.Form;
 import org.talend.commons.ui.swt.formtools.LabelledText;
 import org.talend.commons.ui.swt.formtools.UtilsButton;
+import org.talend.commons.ui.swt.tableviewer.TableViewerCreator;
+import org.talend.commons.ui.swt.tableviewer.TableViewerCreatorColumn;
 import org.talend.commons.utils.data.text.IndiceHelper;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
+import org.talend.core.model.metadata.builder.connection.MetadataColumn;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
-import org.talend.core.model.metadata.builder.connection.OutputSAPFunctionParameterTable;
-import org.talend.core.model.metadata.builder.connection.SAPFunctionParameterColumn;
 import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
+import org.talend.core.model.metadata.editor.MetadataEmfTableEditor;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
-import org.talend.cwm.helper.ModelElementHelper;
+import org.talend.core.ui.metadata.editor.MetadataEmfTableEditorView;
 import org.talend.repository.sap.i18n.Messages;
-import org.talend.repository.sapwizard.service.SapDataTypeEnum;
 import org.talend.repository.sapwizard.service.SapUtil;
 
 /**
@@ -97,11 +73,6 @@ public class SapTableForm extends BaseSAPForm {
 	 */
 	private UtilsButton findButton;
 	/**
-	 * columnTableViewer
-	 */
-	private TableViewer columnTableViewer;
-
-	/**
 	 * readOnly
 	 */
 	private boolean readOnly;
@@ -118,10 +89,8 @@ public class SapTableForm extends BaseSAPForm {
 	 * metadataTable
 	 */
 	private MetadataTable metadataTable;
-	private ToolItem addToolItem;
-	private ToolItem removeToolItem;
-	private ToolItem upToolItem;
-	private ToolItem downToolItemDown;
+	private MetadataEmfTableEditor metadataEditor;
+	private MetadataEmfTableEditorView tableEditorView;
 
 	/**
 	 * @param parent
@@ -151,6 +120,8 @@ public class SapTableForm extends BaseSAPForm {
 		this.tableNameText.setReadOnly(isReadOnly());
 		this.directoryText.setReadOnly(isReadOnly());
 		this.inputDirectoryText.setReadOnly(isReadOnly());
+		this.tableEditorView.setReadOnly(isReadOnly());
+
 	}
 
 	/*
@@ -167,6 +138,7 @@ public class SapTableForm extends BaseSAPForm {
 		if (isReadOnly() != this.readOnly) {
 			adaptFormToReadOnly();
 		}
+		tableNameText.forceFocus();
 	}
 
 	/**
@@ -202,159 +174,21 @@ public class SapTableForm extends BaseSAPForm {
 		Group group = Form.createGroup(parent, 1, Messages.getString("SapTableForm.GroupColumnsToDownload"), 1);
 		gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
 		gridData.horizontalSpan = 2;
-		gridData.verticalIndent = 20;
 		group.setLayoutData(gridData);
+		Composite compositeMetaData = Form.startNewGridLayout(group, 1);
 
-		Composite columnTableComposite = new Composite(group, SWT.NULL);
-		columnTableComposite.setLayout(new GridLayout());
-		GridData columnCompGridData = new GridData(GridData.FILL_BOTH);
-		columnCompGridData.widthHint = 400;
-		columnCompGridData.heightHint = 200;
-		columnTableComposite.setLayoutData(columnCompGridData);
+		int rightCompositeWidth = 100;
+		int tableCompositeHeight = 220;
 
-		columnTableViewer = new TableViewer(columnTableComposite, SWT.FULL_SELECTION | SWT.MULTI | SWT.BORDER);
-		TableLayout layout = new TableLayout();
-		layout.addColumnData(new ColumnWeightData(10, 50, true));
-		layout.addColumnData(new ColumnWeightData(10, 20, true));
-		layout.addColumnData(new ColumnWeightData(10, 50, false));
-		columnTableViewer.getTable().setLayout(layout);
-		GridDataFactory.fillDefaults().span(1, 2).grab(true, true).applyTo(columnTableViewer.getTable());
+		Composite compositeTable = Form.startNewDimensionnedGridLayout(compositeMetaData, 1, rightCompositeWidth, tableCompositeHeight);
+		compositeTable.setLayout(new FillLayout());
+		metadataEditor = new MetadataEmfTableEditor(""); //$NON-NLS-1$
+		tableEditorView = new SapMetadataEmfTableEditorView(compositeTable);
+		this.tableEditorView.setShowDbTypeColumn(false, false, false);
+		this.tableEditorView.setShowDbColumnName(false, false);
+		tableEditorView.setCurrentDbms("sap");
+		tableEditorView.initGraphicComponents();
 
-		String[] columnNames = new String[] { Messages.getString("SapTableForm.ColumnTable.Column1"),
-				Messages.getString("SapTableForm.ColumnTable.Column2"), Messages.getString("SapTableForm.ColumnTable.Column3") };
-
-		columnTableViewer.setColumnProperties(columnNames);
-		columnTableViewer.setContentProvider(new ArrayContentProvider());
-		columnTableViewer.setLabelProvider(new TableColumnLabelProvider());
-		final Table table = columnTableViewer.getTable();
-		table.setHeaderVisible(true);
-		table.setLinesVisible(true);
-
-		createColumn(0, 50);
-		createColumn(1, 20);
-		createColumn(2, 50);
-
-		ComboBoxCellEditor dataTypeComboCellEdditor = new ComboBoxCellEditor(table, SapDataTypeEnum.getLabels(), SWT.READ_ONLY);
-		TextCellEditor columNameTextCellEditor = new TextCellEditor(this.columnTableViewer.getTable());
-		TextCellEditor descTextCellEditor = new TextCellEditor(this.columnTableViewer.getTable());
-
-		this.columnTableViewer.setCellEditors(new CellEditor[] { columNameTextCellEditor, dataTypeComboCellEdditor, descTextCellEditor });
-		addCellModifier();
-		createTabbingForTableCell();
-
-		addTableToolBar(columnTableComposite);
-	}
-
-	private void createColumn(final int columnIndex, int width) {
-		TableColumn column = new TableColumn(columnTableViewer.getTable(), SWT.LEFT_TO_RIGHT);
-		column.setText(columnTableViewer.getColumnProperties()[columnIndex].toString());
-		column.setWidth(width);
-		column.setResizable(true);
-		column.setMoveable(true);
-	}
-
-	private void addTableToolBar(Composite columnTableComposite) {
-		ToolBar toolBar = new ToolBar(columnTableComposite, SWT.HORIZONTAL | SWT.WRAP | SWT.RIGHT);
-
-		addToolItem = new ToolItem(toolBar, SWT.PUSH);
-		addToolItem.setImage(ImageProvider.getImage(EImage.ADD_ICON));
-
-		removeToolItem = new ToolItem(toolBar, SWT.PUSH);
-		removeToolItem.setImage(ImageProvider.getImage(EImage.DELETE_ICON));
-		removeToolItem.setEnabled(false);
-
-		upToolItem = new ToolItem(toolBar, SWT.PUSH);
-		upToolItem.setImage(ImageProvider.getImage(EImage.UP_ICON));
-		upToolItem.setEnabled(false);
-
-		downToolItemDown = new ToolItem(toolBar, SWT.PUSH);
-		downToolItemDown.setImage(ImageProvider.getImage(EImage.DOWN_ICON));
-		downToolItemDown.setEnabled(false);
-	}
-
-	private void setMoveAndUp(int currentPos, int newPos) {
-		@SuppressWarnings("unchecked")
-		List<SAPFunctionParameterColumn> input = (List<SAPFunctionParameterColumn>) columnTableViewer.getInput();
-		IStructuredSelection selection = (IStructuredSelection) columnTableViewer.getSelection();
-		SAPFunctionParameterColumn moveColumn = (SAPFunctionParameterColumn) selection.getFirstElement();
-		input.remove(currentPos);
-		input.add(newPos, moveColumn);
-		columnTableViewer.setSelection(selection, true);
-		columnTableViewer.refresh();
-	}
-
-	private void addCellModifier() {
-		this.columnTableViewer.setCellModifier(new ICellModifier() {
-
-			public void modify(Object element, String property, Object value) {
-				TableItem localTableItem = (TableItem) element;
-				Object localObject = localTableItem.getData();
-				int columnIndex = getColumnIndex(property);
-				if ((localObject instanceof SAPFunctionParameterColumn)) {
-					SAPFunctionParameterColumn column = (SAPFunctionParameterColumn) localObject;
-					switch (columnIndex) {
-					case 0:
-						column.setName(String.valueOf(value));
-						break;
-					case 1:
-						Integer index = Integer.valueOf(value.toString());
-						String dataTpe;
-						if (index < 0 || index > SapDataTypeEnum.getLabels().length) {
-							dataTpe = SapDataTypeEnum.INVALID.name();
-						} else {
-							dataTpe = SapDataTypeEnum.getLabels()[index];
-						}
-						column.setDataType(dataTpe);
-						break;
-					case 2:
-						ModelElementHelper.getFirstDescription(column).setBody(String.valueOf(value));
-						break;
-					}
-				}
-				columnTableViewer.refresh();
-
-			}
-
-			public Object getValue(Object element, String property) {
-				if (element == null || property == null) {
-					return "";
-				}
-				if ((element instanceof SAPFunctionParameterColumn)) {
-					SAPFunctionParameterColumn column = (SAPFunctionParameterColumn) element;
-					switch (getColumnIndex(property)) {
-					case 0:
-						return column.getName() == null ? "" : column.getName();
-					case 1:
-						List<String> dataTypes = Arrays.asList(SapDataTypeEnum.getLabels());
-						return column.getDataType() == null ? dataTypes.indexOf(SapDataTypeEnum.INVALID) : dataTypes.indexOf(column.getDataType());
-					case 2:
-						return ModelElementHelper.getFirstDescription(column).getBody();
-					}
-				}
-				return null;
-			}
-
-			public boolean canModify(Object element, String property) {
-				return true;
-			}
-		});
-	}
-
-	private int getColumnIndex(String property) {
-		return Arrays.asList(columnTableViewer.getColumnProperties()).indexOf(property);
-	}
-
-	private void createTabbingForTableCell() {
-		ColumnViewerEditorActivationStrategy actSupport = new ColumnViewerEditorActivationStrategy(columnTableViewer) {
-			protected boolean isEditorActivationEvent(ColumnViewerEditorActivationEvent event) {
-				return event.eventType == ColumnViewerEditorActivationEvent.TRAVERSAL
-						|| event.eventType == ColumnViewerEditorActivationEvent.MOUSE_DOUBLE_CLICK_SELECTION
-						|| event.eventType == ColumnViewerEditorActivationEvent.PROGRAMMATIC;
-			}
-		};
-
-		TableViewerEditor.create(columnTableViewer, actSupport, ColumnViewerEditor.TABBING_HORIZONTAL
-				| ColumnViewerEditor.TABBING_MOVE_TO_ROW_NEIGHBOR | ColumnViewerEditor.TABBING_VERTICAL | ColumnViewerEditor.KEYBOARD_ACTIVATION);
 	}
 
 	/**
@@ -411,110 +245,6 @@ public class SapTableForm extends BaseSAPForm {
 			}
 		});
 
-		this.columnTableViewer.addSelectionChangedListener(new ISelectionChangedListener() {
-
-			public void selectionChanged(SelectionChangedEvent event) {
-				IStructuredSelection localIStructuredSelection = (IStructuredSelection) columnTableViewer.getSelection();
-				updateToolBarItems(localIStructuredSelection.getFirstElement() != null);
-			}
-		});
-		this.columnTableViewer.getTable().addKeyListener(new KeyListener() {
-
-			public void keyReleased(KeyEvent e) {
-				if (e.keyCode == SWT.DEL) {
-					removeColumn();
-				}
-			}
-
-			public void keyPressed(KeyEvent e) {
-			}
-		});
-		this.addToolItem.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				if (functionUnit == null) {
-					return;
-				}
-				SAPFunctionParameterColumn sapFunctionParameterColumn = ConnectionFactory.eINSTANCE.createSAPFunctionParameterColumn();
-				sapFunctionParameterColumn.setName(Messages.getString("SapTableForm.DefaultNewLabel"));
-				sapFunctionParameterColumn.setDataType("DataType");
-				sapFunctionParameterColumn.setParameterType("");
-				sapFunctionParameterColumn.setLength("Length");
-				ModelElementHelper.getFirstDescription(sapFunctionParameterColumn).setBody("Description");
-
-				sapFunctionParameterColumn.setStructureOrTableName(metadataTable.getLabel());
-				functionUnit.getOutputParameterTable().getColumns().add(sapFunctionParameterColumn);
-				columnTableViewer.refresh();
-				columnTableViewer.setSelection(new StructuredSelection(sapFunctionParameterColumn), true);
-				updateToolBarItems(true);
-			}
-		});
-
-		this.removeToolItem.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				removeColumn();
-			}
-		});
-
-		this.upToolItem.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				Table table = columnTableViewer.getTable();
-				int selectedIndex = table.getSelectionIndex();
-				setMoveAndUp(selectedIndex, selectedIndex - 1);
-				table.select(selectedIndex - 1);
-				upToolItem.setEnabled(selectedIndex - 1 > 0);
-				downToolItemDown.setEnabled(true);
-
-			}
-		});
-
-		this.downToolItemDown.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-
-				Table table = columnTableViewer.getTable();
-				int selectedIndex = table.getSelectionIndex();
-				setMoveAndUp(selectedIndex, selectedIndex + 1);
-				table.select(selectedIndex + 1);
-				upToolItem.setEnabled(true);
-				downToolItemDown.setEnabled(selectedIndex < table.getItemCount() - 2);
-			}
-
-		});
-
-	}
-
-	private void removeColumn() {
-		IStructuredSelection selections = (IStructuredSelection) columnTableViewer.getSelection();
-		if (selections.isEmpty() || functionUnit == null) {
-			return;
-		}
-		for (Object selection : selections.toArray()) {
-
-			SAPFunctionParameterColumn selectedCol = (SAPFunctionParameterColumn) selection;
-			Table table = columnTableViewer.getTable();
-			int selectionIndex = table.getSelectionIndex();
-			functionUnit.getOutputParameterTable().getColumns().remove(selectedCol);
-			columnTableViewer.refresh();
-
-			if (table.getItemCount() == 0) {
-				updateToolBarItems(false);
-				return;
-			}
-			int nextIndex = selectionIndex == table.getItemCount() ? 0 : selectionIndex;
-			SAPFunctionParameterColumn elementAt = (SAPFunctionParameterColumn) columnTableViewer.getElementAt(nextIndex);
-			columnTableViewer.setSelection(new StructuredSelection(elementAt), true);
-		}
-		updateToolBarItems(true);
-	}
-
-	private void updateToolBarItems(boolean enabled) {
-		removeToolItem.setEnabled(enabled);
-		Table table = columnTableViewer.getTable();
-		upToolItem.setEnabled(!(table.getSelectionIndex() <= 0));
-		downToolItemDown.setEnabled((table.getSelectionIndex() < table.getItemCount() - 1 && table.getSelectionIndex() >= 0));
 	}
 
 	/*
@@ -574,9 +304,12 @@ public class SapTableForm extends BaseSAPForm {
 			}
 			this.tableNameText.setText(functionUnit.getName());
 			this.directoryText.setText(this.metadataTable.getComment());
-			this.tableNameText.forceFocus();
-			setColumnTableInput();
+			metadataEditor.setMetadataTable(metadataTable);
+			tableEditorView.setMetadataEditor(metadataEditor);
+			tableEditorView.getTableViewerCreator().layout();
+
 		}
+		this.tableNameText.forceFocus();
 		updateStatus(2, "");
 	}
 
@@ -599,7 +332,9 @@ public class SapTableForm extends BaseSAPForm {
 					MessageDialog.openWarning(getShell(), "SAP", Messages.getString("SapTableForm.NoTable"));
 				} else {
 					this.metadataTable = functionUnit.getMetadataTable();
-					setColumnTableInput();
+					metadataEditor.setMetadataTable(metadataTable);
+					tableEditorView.setMetadataEditor(metadataEditor);
+					tableEditorView.getTableViewerCreator().layout();
 					updateStatus(0, "");
 				}
 			} catch (Exception exception) {
@@ -612,12 +347,25 @@ public class SapTableForm extends BaseSAPForm {
 		}
 	}
 
-	/**
-	 * 
-	 */
-	private void setColumnTableInput() {
-		OutputSAPFunctionParameterTable outputParameterTable = functionUnit.getOutputParameterTable();
-		columnTableViewer.setInput(outputParameterTable.getColumns());
-	}
+	class SapMetadataEmfTableEditorView extends MetadataEmfTableEditorView {
+		public static final String ID_COLUMN_UNTRANSCODE = "ID_COLUMN_UNTRANSCODE";
 
+		public SapMetadataEmfTableEditorView(Composite parent) {
+			super(parent, SWT.NONE, false);
+		}
+
+		@Override
+		protected void createColumns(TableViewerCreator<MetadataColumn> tableViewerCreator, Table table) {
+			tableViewerCreator.setReadOnly(this.readOnly);
+			TableViewerCreatorColumn<MetadataColumn, Object> localTableViewerCreatorColumn = new TableViewerCreatorColumn<MetadataColumn, Object>(
+					tableViewerCreator);
+			localTableViewerCreatorColumn.setTitle("");
+			localTableViewerCreatorColumn.setDefaultInternalValue("");
+			localTableViewerCreatorColumn.setWidth(15);
+			configureNameColumn(tableViewerCreator);
+			configureTypeColumns(tableViewerCreator);
+			configureLengthColumn(tableViewerCreator);
+			configureCommentColumn(tableViewerCreator);
+		}
+	}
 }
