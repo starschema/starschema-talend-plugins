@@ -230,21 +230,17 @@ public class SapForm extends BaseSAPForm {
 		ProgressMonitorDialog progressMonitorDialog = new ProgressMonitorDialog(getShell());
 		try {
 			progressMonitorDialog.run(true, false, new IRunnableWithProgress() {
-				public void run(IProgressMonitor progressMonitor) throws InvocationTargetException,
-						InterruptedException {
+				public void run(IProgressMonitor progressMonitor) throws InvocationTargetException, InterruptedException {
 					try {
-						SapUtil.connectSAPserver(getConnection().getClient(), getConnection().getLanguage(),
-								getConnection().getSystemNumber(), getConnection().getHost(), getConnection()
-										.getUsername(), getConnection().getPassword());
+						SapUtil.connectSAPserver(getConnection().getClient(), getConnection().getLanguage(), getConnection().getSystemNumber(),
+								getConnection().getHost(), getConnection().getUsername(), getConnection().getPassword());
 						Display.getDefault().asyncExec(new Runnable() {
 							public void run() {
 								if (!isReadOnly()) {
 									updateStatus(0, null);
 								}
-								MessageDialog.openInformation(getShell(), Messages
-										.getString("SapForm.CheckConnectionTitle"), "\""
-										+ connectionItem.getProperty().getLabel() + "\" "
-										+ Messages.getString("SapForm.CheckIsDone"));
+								MessageDialog.openInformation(getShell(), Messages.getString("SapForm.CheckConnectionTitle"), "\""
+										+ connectionItem.getProperty().getLabel() + "\" " + Messages.getString("SapForm.CheckIsDone"));
 								if ((isReadOnly()) && (isContextMode())) {
 									adaptFormToEditable();
 								}
@@ -293,8 +289,7 @@ public class SapForm extends BaseSAPForm {
 			return false;
 		}
 		if (this.sapSystemNumberText.getCharCount() == 0) {
-			updateStatus(2, Messages.getString("SapForm.Alert",
-					new Object[] { this.sapSystemNumberText.getLabelText() }));
+			updateStatus(2, Messages.getString("SapForm.Alert", new Object[] { this.sapSystemNumberText.getLabelText() }));
 			return false;
 		}
 		updateCheckButton();

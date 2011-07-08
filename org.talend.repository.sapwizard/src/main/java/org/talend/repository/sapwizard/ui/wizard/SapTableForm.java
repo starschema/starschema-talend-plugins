@@ -39,16 +39,20 @@ import org.talend.commons.ui.swt.formtools.UtilsButton;
 import org.talend.commons.ui.swt.tableviewer.TableViewerCreator;
 import org.talend.commons.ui.swt.tableviewer.TableViewerCreatorColumn;
 import org.talend.commons.utils.data.text.IndiceHelper;
+import org.talend.core.language.LanguageManager;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
 import org.talend.core.model.metadata.builder.connection.MetadataColumn;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
 import org.talend.core.model.metadata.editor.MetadataEmfTableEditor;
+import org.talend.core.model.metadata.types.JavaTypesManager;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.ui.metadata.editor.MetadataEmfTableEditorView;
+import org.talend.core.utils.TalendQuoteUtils;
 import org.talend.repository.sap.i18n.Messages;
 import org.talend.repository.sapwizard.service.SapUtil;
+import orgomg.cwm.objectmodel.core.Expression;
 
 /**
  * @author Ammu
@@ -335,6 +339,7 @@ public class SapTableForm extends BaseSAPForm {
 					metadataEditor.setMetadataTable(metadataTable);
 					tableEditorView.setMetadataEditor(metadataEditor);
 					tableEditorView.getTableViewerCreator().layout();
+					handleDefaultValue(metadataEditor.getMetadataColumnList());
 					updateStatus(0, "");
 				}
 			} catch (Exception exception) {
@@ -343,6 +348,37 @@ public class SapTableForm extends BaseSAPForm {
 					message = Messages.getString("SapTableForm.NoTable");
 				}
 				MessageDialog.openWarning(getShell(), "SAP", message);
+			}
+		}
+	}
+
+	private void handleDefaultValue(List<MetadataColumn> metadataColumnList) {
+		for (MetadataColumn metadataColumn : metadataColumnList) {
+			if (metadataColumn == null) {
+				continue;
+			}
+			switch (LanguageManager.getCurrentLanguage()) {
+			case JAVA:
+				Expression initialValue = metadataColumn.getInitialValue();
+				String returnValue = initialValue==null?null:initialValue.getBody();
+				if (metadataColumn.getTalendType().equals(JavaTypesManager.STRING.getId())
+						|| metadataColumn.getTalendType().equals(JavaTypesManager.DATE.getId())) {
+					if ((returnValue == null) || (returnValue.length() == 0)) {
+						returnValue = null;
+					} else if (returnValue.equalsIgnoreCase("null")) {
+						returnValue = "null";
+					} else {
+						returnValue = returnValue.replaceAll("\'", "");
+					}
+				} else {
+					String returnBoolean = TalendQuoteUtils.removeQuotes(returnValue);
+					if (returnBoolean != null && returnBoolean.length() > 0 && returnBoolean.getBytes()[0] == 1) {
+						returnValue = TalendQuoteUtils.addQuotes("1"); //$NON-NLS-1$
+					}
+				}
+				metadataColumn.setDefaultValue(returnValue);
+			default:
+				break;
 			}
 		}
 	}

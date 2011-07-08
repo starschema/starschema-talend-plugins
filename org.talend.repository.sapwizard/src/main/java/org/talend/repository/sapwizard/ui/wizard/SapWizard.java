@@ -31,6 +31,7 @@ import org.talend.core.context.Context;
 import org.talend.core.context.RepositoryContext;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
 import org.talend.core.model.metadata.builder.connection.SAPConnection;
+import org.talend.core.model.metadata.designerproperties.SapJcoVersion;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
@@ -100,6 +101,7 @@ public class SapWizard extends CheckLastVersionRepositoryWizard implements INewW
 		case SYSTEM_FOLDER:
 			pathToSave = new Path(""); //$NON-NLS-1$
 			connection = ConnectionFactory.eINSTANCE.createSAPConnection();
+			connection.setJcoVersion(SapJcoVersion.SAP3.getModulName());
 			connectionProperty = PropertiesFactory.eINSTANCE.createProperty();
 			connectionProperty.setAuthor(((RepositoryContext) CorePlugin.getContext().getProperty(
 					Context.REPOSITORY_CONTEXT_KEY)).getUser());
