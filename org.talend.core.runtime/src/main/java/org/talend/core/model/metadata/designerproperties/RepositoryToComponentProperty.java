@@ -321,7 +321,7 @@ public class RepositoryToComponentProperty {
             return TalendQuoteUtils.addQuotes(unit.getOutputTableName());
 		} else if (paramterName.equals("SAP_TABLE_NAME")) { //$NON-NLS-1$
 			if (unit.getLabel() != null) {
-				return unit.getLabel(); //$NON-NLS-1$ //$NON-NLS-2$
+				return TalendQuoteUtils.addQuotes(unit.getLabel()); //$NON-NLS-1$ //$NON-NLS-2$
 			}
 		}
         return null;
