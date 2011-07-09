@@ -70,7 +70,7 @@ public final class MetadataToolHelper {
             if (functions != null && !functions.isEmpty()) {
                 final EList tables = new BasicEList();
                 for (int i = 0; i < functions.size(); i++) {
-                    tables.addAll(((SAPFunctionUnit) functions.get(i)).getTables());
+                    tables.add(((SAPFunctionUnit) functions.get(i)).getMetadataTable());
                 }
                 return tables;
             }

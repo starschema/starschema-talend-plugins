@@ -141,7 +141,7 @@ public class SapUtil {
 		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
 
 		functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
-		functionUnit.setName(tableName);
+		functionUnit.setName(function.getName());
 		functionUnit.setLabel(tableName);
 		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
 		functionUnit.setConnection(connection);
