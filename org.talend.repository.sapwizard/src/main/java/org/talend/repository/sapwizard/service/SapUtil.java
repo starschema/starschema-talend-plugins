@@ -31,12 +31,9 @@ import org.talend.core.model.metadata.builder.connection.MetadataColumn;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.OutputSAPFunctionParameterTable;
 import org.talend.core.model.metadata.builder.connection.SAPConnection;
-import org.talend.core.model.metadata.builder.connection.SAPFunctionParameterColumn;
-import org.talend.core.model.metadata.builder.connection.SAPFunctionParameterTable;
 import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
 import org.talend.core.model.metadata.builder.connection.SAPTestInputParameterTable;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
-import org.talend.cwm.helper.ModelElementHelper;
 
 import com.sap.conn.jco.JCoDestination;
 import com.sap.conn.jco.JCoDestinationManager;
@@ -141,7 +138,7 @@ public class SapUtil {
 		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
 
 		functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
-		functionUnit.setName(function.getName());
+		functionUnit.setName(tableName);
 		functionUnit.setLabel(tableName);
 		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
 		functionUnit.setConnection(connection);

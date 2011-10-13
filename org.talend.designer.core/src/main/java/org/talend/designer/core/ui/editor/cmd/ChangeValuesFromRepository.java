@@ -69,7 +69,7 @@ import org.talend.repository.ui.utils.ConnectionContextHelper;
 /**
  * DOC nrousseau class global comment. Detailled comment <br/>
  * 
- * $Id: ChangeValuesFromRepository.java 63026 2011-06-21 10:23:17Z wchen $
+ * $Id: ChangeValuesFromRepository.java 62460 2011-06-15 07:43:07Z wzhang $
  * 
  */
 public class ChangeValuesFromRepository extends ChangeMetadataCommand {
@@ -981,7 +981,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
             }
             SAPConnection sapConn = (SAPConnection) connection;
             if (sapConn.getFuntions() != null && !sapConn.getFuntions().isEmpty()) {
-                return ((SAPFunctionUnit) sapConn.getFuntions().get(0)).getLabel();
+                return ((SAPFunctionUnit) sapConn.getFuntions().get(0)).getName();
             }
         }
         return this.sapFunctionLabel;

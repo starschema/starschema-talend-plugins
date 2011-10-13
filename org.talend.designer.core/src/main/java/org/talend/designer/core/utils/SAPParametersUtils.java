@@ -17,7 +17,6 @@ import java.util.Map;
 
 import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.builder.connection.SAPConnection;
-import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
 import org.talend.core.model.metadata.builder.connection.SAPIDocUnit;
 import org.talend.core.model.metadata.designerproperties.RepositoryToComponentProperty;
 import org.talend.core.model.process.EParameterFieldType;
@@ -223,24 +222,13 @@ public final class SAPParametersUtils {
      */
     @SuppressWarnings("unchecked")
     public static void retrieveSAPParams(final IElement elem, final Connection connection, final IElementParameter param,
-            final String sapFunctionLabel) {
-        if (param.getRepositoryValue() == null || !(connection instanceof SAPConnection)) {
+            final String sapFunctionName) {
+        if (param.getRepositoryValue() == null) {
             return;
         }
         if (param.getFieldType().equals(EParameterFieldType.TEXT) && param.getRepositoryValue().equals("SAP_FUNCTION")) { //$NON-NLS-1$
-            if (connection != null && sapFunctionLabel != null) {
-                SAPFunctionUnit unit = null;
-                for (int i = 0; i < ((SAPConnection) connection).getFuntions().size(); i++) {
-                    SAPFunctionUnit tmp = (SAPFunctionUnit) ((SAPConnection) connection).getFuntions().get(i);
-                    if (tmp.getLabel().equals(sapFunctionLabel)) {
-                        unit = tmp;
-                        break;
-                    }
-                }
-                if (unit == null) {
-                    return;
-                }
-                param.setValue(TalendTextUtils.addQuotes(unit.getName()));
+            if (connection != null && sapFunctionName != null) {
+                param.setValue(TalendTextUtils.addQuotes(sapFunctionName));
                 param.setRepositoryValueUsed(true);
                 param.setReadOnly(true);
             } else {
@@ -248,10 +236,9 @@ public final class SAPParametersUtils {
                 param.setReadOnly(false);
             }
         } else if (param.getFieldType().equals(EParameterFieldType.TABLE) && param.getRepositoryValue().equals("INPUT_PARAMS")) { //$NON-NLS-1$
-            if (connection != null && sapFunctionLabel != null) {
+            if (connection != null && sapFunctionName != null) {
                 List<Map<String, Object>> table = (List<Map<String, Object>>) elem.getPropertyValue(param.getName());
-                RepositoryToComponentProperty
-                        .getSAPInputAndOutputValue((SAPConnection) connection, table, sapFunctionLabel, true);
+                RepositoryToComponentProperty.getSAPInputAndOutputValue((SAPConnection) connection, table, sapFunctionName, true);
                 param.setRepositoryValueUsed(true);
                 param.setReadOnly(true);
             } else {
@@ -259,10 +246,10 @@ public final class SAPParametersUtils {
                 param.setReadOnly(false);
             }
         } else if (param.getFieldType().equals(EParameterFieldType.TABLE) && param.getRepositoryValue().equals("OUTPUT_PARAMS")) { //$NON-NLS-1$
-            if (connection != null && sapFunctionLabel != null) {
+            if (connection != null && sapFunctionName != null) {
                 List<Map<String, Object>> table = (List<Map<String, Object>>) elem.getPropertyValue(param.getName());
-                RepositoryToComponentProperty.getSAPInputAndOutputValue((SAPConnection) connection, table, sapFunctionLabel,
-                        false);
+                RepositoryToComponentProperty
+                        .getSAPInputAndOutputValue((SAPConnection) connection, table, sapFunctionName, false);
                 param.setRepositoryValueUsed(true);
                 param.setReadOnly(true);
             } else {
@@ -270,9 +257,9 @@ public final class SAPParametersUtils {
                 param.setReadOnly(false);
             }
         } else if (param.getRepositoryValue().equals("SAP_ITERATE_OUT_TYPE")) { //$NON-NLS-1$
-            if (connection != null && sapFunctionLabel != null) {
-                param.setValue(RepositoryToComponentProperty.getSAPValuesForFunction((SAPConnection) connection,
-                        sapFunctionLabel, "SAP_ITERATE_OUT_TYPE")); //$NON-NLS-1$
+            if (connection != null && sapFunctionName != null) {
+                param.setValue(RepositoryToComponentProperty.getSAPValuesForFunction((SAPConnection) connection, sapFunctionName,
+                        "SAP_ITERATE_OUT_TYPE")); //$NON-NLS-1$
                 param.setRepositoryValueUsed(true);
                 param.setReadOnly(true);
             } else {
@@ -280,9 +267,9 @@ public final class SAPParametersUtils {
                 param.setReadOnly(false);
             }
         } else if (param.getRepositoryValue().equals("SAP_ITERATE_OUT_TABLENAME")) { //$NON-NLS-1$
-            if (connection != null && sapFunctionLabel != null) {
-                param.setValue(RepositoryToComponentProperty.getSAPValuesForFunction((SAPConnection) connection,
-                        sapFunctionLabel, "SAP_ITERATE_OUT_TABLENAME")); //$NON-NLS-1$
+            if (connection != null && sapFunctionName != null) {
+                param.setValue(RepositoryToComponentProperty.getSAPValuesForFunction((SAPConnection) connection, sapFunctionName,
+                        "SAP_ITERATE_OUT_TABLENAME")); //$NON-NLS-1$
                 param.setRepositoryValueUsed(true);
                 param.setReadOnly(true);
             } else {
@@ -290,9 +277,9 @@ public final class SAPParametersUtils {
                 param.setReadOnly(false);
             }
         }else if (param.getRepositoryValue().equals("SAP_TABLE_NAME")) { //$NON-NLS-1$
-            if (connection != null && sapFunctionLabel != null) {
+            if (connection != null && sapFunctionName != null) {
                 param.setValue(RepositoryToComponentProperty.getSAPValuesForFunction((SAPConnection) connection,
-                        sapFunctionLabel, "SAP_TABLE_NAME")); //$NON-NLS-1$
+                        sapFunctionName, "SAP_TABLE_NAME")); //$NON-NLS-1$
                 param.setRepositoryValueUsed(true);
                 param.setReadOnly(true);
             } else {

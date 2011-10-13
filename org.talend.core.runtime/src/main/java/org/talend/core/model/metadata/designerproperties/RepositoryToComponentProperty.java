@@ -175,11 +175,11 @@ public class RepositoryToComponentProperty {
      * 
      * @param conn
      * @param value2
-     * @param functionLabel
+     * @param functionName
      * @param isInput
      * @return
      */
-    public static void getSAPInputAndOutputValue(SAPConnection conn, List<Map<String, Object>> value2, String functionLabel,
+    public static void getSAPInputAndOutputValue(SAPConnection conn, List<Map<String, Object>> value2, String functionName,
             boolean isInput) {
         if (conn == null) {
             return;
@@ -187,7 +187,7 @@ public class RepositoryToComponentProperty {
         SAPFunctionUnit unit = null;
         for (int i = 0; i < conn.getFuntions().size(); i++) {
             SAPFunctionUnit tmp = (SAPFunctionUnit) conn.getFuntions().get(i);
-            if (tmp.getLabel().equals(functionLabel)) {
+            if (tmp.getLabel().equals(functionName)) {
                 unit = tmp;
                 break;
             }
@@ -295,18 +295,18 @@ public class RepositoryToComponentProperty {
      * DOC xye Comment method "getSAPValuesForFunction".
      * 
      * @param conn
-     * @param functionLabel
+     * @param functionName
      * @param paramterName
      * @return
      */
-    public static String getSAPValuesForFunction(SAPConnection conn, String functionLabel, String paramterName) {
+    public static String getSAPValuesForFunction(SAPConnection conn, String functionName, String paramterName) {
         SAPFunctionUnit unit = null;
         if (conn == null) {
             return null;
         }
         for (int i = 0; i < conn.getFuntions().size(); i++) {
             unit = (SAPFunctionUnit) conn.getFuntions().get(i);
-            if (unit.getLabel().equals(functionLabel)) {
+            if (unit.getName().equals(functionName)) {
                 break;
             }
         }
@@ -323,7 +323,7 @@ public class RepositoryToComponentProperty {
 			if (unit.getLabel() != null) {
 				return TalendQuoteUtils.addQuotes(unit.getLabel()); //$NON-NLS-1$ //$NON-NLS-2$
 			}
-		}
+        }
         return null;
     }
 
@@ -387,17 +387,8 @@ public class RepositoryToComponentProperty {
             } else {
                 return TalendQuoteUtils.addQuotes(connection.getSystemNumber());
             }
-        } else if ("VERSION".equals(value)) {
-            // before 421 sap version value was defined as SAP2 SAP3 in component side(see 17789) and saved in items ,
-            // after component changed the value to the jar name
-            String version = connection.getJcoVersion();
-            if (SapJcoVersion.SAP2.name().equals(version)) {
-                version = SapJcoVersion.SAP2.getModulName();
-            } else if (SapJcoVersion.SAP3.name().equals(version)) {
-                version = SapJcoVersion.SAP3.getModulName();
-            }
-
-            return version;
+        } else if ("SAP_VERSION".equals(value)) {
+            return connection.getJcoVersion();
         }
 
         return null;
@@ -952,7 +943,7 @@ public class RepositoryToComponentProperty {
                     path = PathUtils.getPortablePath(path);
                     url = h2Prefix + path;
                 }
-                return TalendQuoteUtils.addQuotes(url);
+                return TalendQuoteUtils.addQuotes(connection.getURL());
             }
         }
 
