@@ -85,7 +85,7 @@
 		<delete dir="${build.result.folder}/@dot"/>
 		<mkdir dir="${build.result.folder}/@dot"/>
 		<path id="@dot.classpath">
-			<pathelement path="${eclipse.home}/plugins/org.eclipse.ui.workbench_3.6.2.M20110210-1200.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench_3.6.2.M20110210-1200.jar"/>
 			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.100.I20100511-0800/compatibility.jar"/>
 			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.100.I20100511-0800/e4-workbench.jar"/>
 			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.100.I20100511-0800"/>

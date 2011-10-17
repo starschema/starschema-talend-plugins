@@ -7,8 +7,9 @@
 	<property name="basearch" value="${arch}"/>
 	<property name="basenl" value="${nl}"/>
 	<property name="bundleId" value="org.talend.repository"/>
-	<property name="bundleVersion" value="2.2.0.201106290314"/>
+	<property name="bundleVersion" value="2.2.0.201110150229"/>
 	<property name="p2.publishonerror" value="false"/>
+	<property file="build.properties" />
 
 	<!-- Compiler settings. -->
 	<property name="javacFailOnError" value="false"/>
@@ -16,6 +17,7 @@
 	<property name="javacVerbose" value="false"/>
 	<property name="logExtension" value=".log"/>
 	<property name="compilerArg" value=""/>
+	<property name="compilation.prereq.log" value="${buildDirectory}/prereqErrors.log"/>
 	<condition property="dir_bootclasspath" value="${java.home}/../Classes">
 		<os family="mac"/>
 	</condition>
@@ -35,7 +37,7 @@
 			<isset property="buildTempFolder"/>
 		</condition>
 		<property name="pluginTemp" value="${basedir}"/>
-		<condition property="build.result.folder" value="${pluginTemp}/org.talend.repository_2.2.0.201106290314"		>
+		<condition property="build.result.folder" value="${pluginTemp}/org.talend.repository_2.2.0.201110150229"		>
 			<isset property="buildTempFolder"/>
 		</condition>
 		<property name="build.result.folder" value="${basedir}"/>
@@ -48,7 +50,7 @@
 		<condition property="compilation.problem.marker.exists" value="true"		>
 			<and>
 			<available file="${compilation.problem.marker}"/>
-			<isfalse value="p2.publishonerror"/>
+			<isfalse value="${p2.publishonerror}"/>
 			</and>
 		</condition>
 	</target>
@@ -65,7 +67,7 @@
 		<antcall target="gather.bin.parts">
 			<param name="destination.temp.folder" value="${temp.folder}/"/>
 		</antcall>
-		<jar destfile="${plugin.destination}/org.talend.repository_2.2.0.201106290314.jar" basedir="${temp.folder}/org.talend.repository_2.2.0.201106290314" filesetmanifest="merge"/>
+		<jar destfile="${plugin.destination}/org.talend.repository_${version}.jar" basedir="${temp.folder}/org.talend.repository_2.2.0.201110150229" filesetmanifest="merge"/>
 		<delete dir="${temp.folder}"/>
 	</target>
 
@@ -73,130 +75,105 @@
 		<delete dir="${build.result.folder}/@dot"/>
 		<mkdir dir="${build.result.folder}/@dot"/>
 		<path id="@dot.classpath">
-			<pathelement path="../../../Talend Soft/eclipse/plugins/javax.xml.rpc_1.1.0.v201005080400/lib/jaxrpc.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/javax.servlet_2.5.0.v200806031605.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/javax.xml.soap_1.3.0.v201105210645"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/javax.activation_1.1.0.v200906290531.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.osgi_3.5.2.R35x_v20100126.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.xerces_2.9.0.v201005080400.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/javax.xml_1.3.4.v201005080400.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.xml.resolver_1.2.0.v201005080400.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.xml.serializer_2.7.1.v201005080400.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.axis_1.4.0.v201005080400/lib/axis.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.axis_1.4.0.v201005080400/lib/axis-ant.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.axis_1.4.0.v201005080400/lib/"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/javax.mail_1.4.0.v201005080615.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.commons.logging_1.1.1.v201101211721.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/javax.wsdl_1.6.2.v201012040545.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.commons.discovery_0.2.0.v201004190315/lib/commons-discovery-0.2.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.junit_3.8.2.v20090203-1005/junit.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-antlr.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-apache-bcel.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-apache-bsf.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-apache-log4j.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-apache-oro.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-apache-regexp.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-apache-resolver.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-commons-logging.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-commons-net.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-jai.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-javamail.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-jdepend.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-jmf.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-jsch.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-junit.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-launcher.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-netrexx.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-nodeps.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-starteam.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-stylebook.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-swing.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-trax.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.ant_1.7.1.v20090120-1145/lib/ant-weblogic.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-antlr.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-apache-bcel.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-apache-bsf.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-apache-log4j.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-apache-oro.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-apache-regexp.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-apache-resolver.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-commons-logging.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-commons-net.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-jai.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-javamail.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-jdepend.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-jmf.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-jsch.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-junit.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-launcher.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-netrexx.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-nodeps.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-starteam.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-stylebook.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-swing.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-trax.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.optional.junit_3.2.0/lib/ant-weblogic.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.swtbot.ant.optional.junit4_2.0.4.20110304_0338-e5aff47-dev-e35.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.runtime.compatibility_3.2.0.v20090413.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.runtime_3.5.0.v20090525.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.common_3.5.1.R35x_v20090807-1100.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.jobs_3.4.100.v20090429-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.runtime.compatibility.registry_3.2.200.v20090429-1800/runtime_registry_compatibility.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.runtime.compatibility.registry_3.2.200.v20090429-1800"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.registry_3.4.100.v20090520-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.preferences_3.2.301.R35x_v20091117.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.contenttype_3.4.1.R35x_v20090826-0451.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.runtime.compatibility.auth_3.2.100.v20090413.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.app_1.2.1.R35x_v20091203.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.osgi.services_3.2.0.v20090520-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.update.configurator_3.3.0.v20090312.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.junit4_4.5.0.v20090824/junit.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.hamcrest.core_1.1.0.v20090501071000.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.xml.rpc_1.1.0.v201005080400/lib/jaxrpc.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.servlet_2.5.0.v200910301333.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.xml.soap_1.2.0.v201005080501/lib/saaj.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.osgi_3.6.2.R36x_v20110210.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.transaction_1.1.1.v201006150915.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.xerces_2.9.0.v201005080400.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.xml_1.3.4.v201005080400.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.xml.resolver_1.2.0.v201005080400.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.xml.serializer_2.7.1.v201005080400.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.axis_1.4.0.v201005080400/lib/axis.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.axis_1.4.0.v201005080400/lib/axis-ant.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.axis_1.4.0.v201005080400/lib/"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.mail_1.4.0.v201005080615.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.activation_1.1.0.v201005080500.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.commons.logging_1.1.1.v201005080502.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/javax.wsdl_1.6.2.v201005080631.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.commons.discovery_0.2.0.v201004190315/lib/commons-discovery-0.2.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.junit_4.8.1.v4_8_1_v20100427-1100/junit.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.hamcrest.core_1.1.0.v20090501071000.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-antlr.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-apache-bcel.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-apache-bsf.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-apache-log4j.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-apache-oro.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-apache-regexp.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-apache-resolver.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-commons-logging.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-commons-net.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-jai.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-javamail.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-jdepend.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-jmf.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-jsch.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-junit.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-launcher.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-netrexx.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-nodeps.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-starteam.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-stylebook.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-swing.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-trax.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.ant_1.7.1.v20100518-1145/lib/ant-weblogic.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.swtbot.ant.optional.junit4_2.0.4.20110304_0338-e5aff47-dev-e36.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.runtime.compatibility_3.2.100.v20100505.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.runtime_3.6.0.v20100505.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.common_3.6.0.v20100503.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.jobs_3.5.1.R36x_v20100824.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.runtime.compatibility.registry_3.3.0.v20100520/runtime_registry_compatibility.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.runtime.compatibility.registry_3.3.0.v20100520"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.registry_3.5.0.v20100503.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.preferences_3.3.0.v20100503.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.contenttype_3.4.100.v20100505-1235.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.runtime.compatibility.auth_3.2.200.v20100517.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.app_1.3.1.R36x_v20100803.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.osgi.services_3.2.100.v20100503.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.update.configurator_3.3.100.v20100512.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.junit4_4.8.1.v20100525"/>
 			<pathelement path="../org.talend.model/bin/"/>
 			<pathelement path="../org.talend.model/@dot"/>
 			<pathelement path="../org.talend.model.nl/class/"/>
 			<pathelement path="../org.talend.model.nl/@dot"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.ecore_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.common_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.resources_3.5.2.R35x_v20091203-1235.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.resources.compatibility_3.4.1.R35x_v20100113-0530.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.resources.win32.x86_3.5.0.v20081020.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ant.core_3.2.101.v20091110_r352.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.variables_3.2.200.v20090521.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.expressions_3.4.101.R35x_v20100209.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.filesystem_1.2.1.R35x_v20091203-1235.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.filesystem.win32.x86_1.1.0.v20080604-1400.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.ecore.xmi_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.notation_1.4.1.v20100717-0059.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.ecore_2.6.1.v20100914-1218.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.common_2.6.0.v20100914-1218.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.resources_3.6.1.R36x_v20110131-1630.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ant.core_3.2.201.v20110203_r362.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.variables_3.2.400.v20100505.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.expressions_3.4.200.v20100505.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.filesystem_1.3.1.R36x_v20100727-0745.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.filesystem.win32.x86_64_1.1.201.R36x_v20100727-0745.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.ecore.xmi_2.5.0.v20100521-1846.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.notation_1.4.1.v20100717-0059.jar"/>
 			<pathelement path="../org.talend.cwm.mip/bin/"/>
 			<pathelement path="../org.talend.cwm.mip/@dot"/>
 			<pathelement path="../org.talend.cwm.mip.nl/class/"/>
 			<pathelement path="../org.talend.cwm.mip.nl/@dot"/>
 			<pathelement path="../org.talend.commons/class/"/>
 			<pathelement path="../org.talend.commons/@dot"/>
-			<pathelement path="../org.talend.commons.nl/class/"/>
-			<pathelement path="../org.talend.commons.nl/@dot"/>
 			<pathelement path="../org.talend.commons.test/bin/"/>
 			<pathelement path="../org.talend.commons.test/@dot"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.core_3.5.2.v_981_R35x.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.compiler.apt_1.0.201.R35x_v20090925-1100.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.compiler.tool_1.0.100.v_981_R35x.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.text_3.5.0.v20090513-2000.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/com.ibm.icu_4.0.1.v20090822.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.commands_3.5.0.I20090525-2000.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.team.core_3.5.1.r35x_20100113-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.launching_3.5.1.v20100108_r352.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.debug.core_3.5.1.v20091103_r352.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.debug_3.5.0.v20090526/jdi.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.debug_3.5.0.v20090526/jdimodel.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.debug_3.5.0.v20090526/tools.jar"/>
+			<pathelement path="../org.talend.commons.nl/class/"/>
+			<pathelement path="../org.talend.commons.nl/@dot"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.core_3.6.2.v_A76_R36x.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.compiler.apt_1.0.300.v20100513-0845.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.compiler.tool_1.0.100.v_A76_R36x.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.text_3.5.0.v20100601-1300.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/com.ibm.icu_4.2.1.v20100412.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.commands_3.6.0.I20100512-1500.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.team.core_3.5.101.R36x_v20110203-1036.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.launching_3.5.200.v20110105_r362.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.debug.core_3.6.0.v20100519.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.debug_3.6.1.v20100715_r361/jdi.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.debug_3.6.1.v20100715_r361/jdimodel.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.debug_3.6.1.v20100715_r361/tools.jar"/>
 			<pathelement path="../org.talend.libraries.jackson/bin/"/>
 			<pathelement path="../org.talend.libraries.jackson/@dot"/>
 			<pathelement path="../org.talend.libraries.jackson/lib/jackson-0.9.2.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.log4j_1.2.13.v200903072027.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.log4j_1.2.15.v201005080500.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.xtext.logging_1.2.15.jar"/>
 			<pathelement path="../org.talend.libraries.apache/bin/"/>
 			<pathelement path="../org.talend.libraries.apache/@dot"/>
 			<pathelement path="../org.talend.libraries.apache/bin"/>
@@ -218,7 +195,7 @@
 			<pathelement path="../org.talend.libraries.apache/lib/poi-ooxml-schemas-3.6-20091214.jar"/>
 			<pathelement path="../org.talend.libraries.apache/lib/xerces-2.6.2.jar"/>
 			<pathelement path="../org.talend.libraries.apache/lib/xmlbeans-2.3.0.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.commons.lang_2.4.0.v201005080502.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.commons.lang_2.4.0.v201005080502.jar"/>
 			<pathelement path="../org.talend.commons.runtime/bin/"/>
 			<pathelement path="../org.talend.commons.runtime/@dot"/>
 			<pathelement path="../org.talend.commons.runtime/bin"/>
@@ -228,87 +205,84 @@
 			<pathelement path="../org.talend.commons.runtime.nl/@dot"/>
 			<pathelement path="../org.talend.commons.runtime.nl/fakejdbc_driver.jar"/>
 			<pathelement path="../org.talend.commons.runtime.nl/lib/talend_file_enhanced_20070724.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.commons.httpclient_3.1.0.v201012070820.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.apache.commons.codec_1.3.0.v20080530-1600.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.xsd_2.5.0.v200906151043.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.commons.httpclient_3.1.0.v201005080502.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.apache.commons.codec_1.3.0.v20100518-1140.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.xsd_2.6.0.v20100914-1218.jar"/>
 			<pathelement path="../org.talend.utils/class/"/>
 			<pathelement path="../org.talend.utils/@dot"/>
 			<pathelement path="../org.talend.utils.test/bin/"/>
 			<pathelement path="../org.talend.utils.test/@dot"/>
 			<pathelement path="../org.talend.core.repository/bin/"/>
 			<pathelement path="../org.talend.core.repository/@dot"/>
-			<pathelement path="../org.talend.core.repository.nl/class/"/>
-			<pathelement path="../org.talend.core.repository.nl/@dot"/>
 			<pathelement path="../org.talend.core.repository.test/bin/"/>
 			<pathelement path="../org.talend.core.repository.test/@dot"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui_3.5.2.M20100120-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.swt_3.5.2.v3557f.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.swt.win32.win32.x86_3.5.2.v3557f.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jface_3.5.2.M20100120-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.workbench_3.5.2.M20100113-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.0.I20090429-1800/compatibility.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.0.I20090429-1800/e4-workbench.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.0.I20090429-1800"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.help_3.4.1.v20090805_35x.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jface.databinding_1.3.1.M20090826-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.databinding.observable_1.2.0.M20090902-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.databinding.property_1.2.0.M20090819-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.databinding_1.2.0.M20090819-0800.jar"/>
+			<pathelement path="../org.talend.core.repository.nl/class/"/>
+			<pathelement path="../org.talend.core.repository.nl/@dot"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui_3.6.2.M20110203-1100.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.swt_3.6.2.v3659c.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.swt.win32.win32.x86_64_3.6.2.v3659c.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jface_3.6.2.M20110210-1200.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench_3.6.2.M20110210-1200.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.100.I20100511-0800/compatibility.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.100.I20100511-0800/e4-workbench.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench.compatibility_3.2.100.I20100511-0800"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.help_3.5.0.v20100524.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jface.databinding_1.4.0.I20100601-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.databinding.observable_1.3.0.I20100601-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.databinding.property_1.3.0.I20100601-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.databinding_1.3.100.I20100601-0800.jar"/>
 			<pathelement path="../org.talend.core.runtime/bin/"/>
 			<pathelement path="../org.talend.core.runtime/@dot"/>
 			<pathelement path="../org.talend.core.runtime.nl/class/"/>
 			<pathelement path="../org.talend.core.runtime.nl/@dot"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gef_3.5.1.v20090910-2020.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.draw2d_3.5.2.v20091126-1908.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.views_3.4.1.M20090826-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.edit.ui_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.edit_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.ecore.change_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.common.ui_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.ide_3.5.2.M20100113-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.win32_3.2.100.v20090429-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jface.text_3.5.2.r352_v20091118-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.forms_3.4.1.v20090714_35x.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.p2.engine_1.0.102.R35x_v20091117.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.p2.core_1.0.101.R35x_v20090819.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.p2.metadata_1.0.101.R35x_v20100112.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.p2.metadata.repository_1.0.101.R35x_v20090812.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.p2.repository_1.0.1.R35x_v20100105.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.security_1.0.100.v20090520-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.security.win32.x86_1.0.100.v20090520-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ecf.filetransfer_3.0.0.v20090831-1906.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ecf_3.0.0.v20090831-1906.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ecf.ssl_1.0.0.v20090831-1906.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.concurrent_1.0.0.v20090520-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ecf.identity_3.0.0.v20090831-1906.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ecf.provider.filetransfer_3.0.1.v20090831-1906.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ecf.provider.filetransfer.ssl_1.0.0.v20090831-1906.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.net_1.2.1.r35x_20090812-1200.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.net.win32.x86_1.0.0.I20080909.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.p2.artifact.repository_1.0.101.R35x_v20090721.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.equinox.p2.jarprocessor_1.0.100.v20090520-1905.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.ui_3.5.2.r352_v20100106-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.search_3.5.1.r351_v20090708-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.core.filebuffers_3.5.0.v20090526-2000.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.workbench.texteditor_3.5.1.r352_v20100105.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.compare.core_3.5.0.I20090430-0408.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ltk.core.refactoring_3.5.0.v20090513-2000.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ltk.ui.refactoring_3.4.101.r352_v20100209.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.navigator_3.4.2.M20100120-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.compare_3.5.2.r35x_20100113-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.editors_3.5.0.v20090527-2000.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.team.ui_3.5.0.I20090430-0408.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.navigator.resources_3.4.1.M20090826-0800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.views.properties.tabbed_3.5.0.I20090429-1800.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.debug.ui_3.5.2.v20091028_r352.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.console_3.4.0.v20090513.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.jdt.core.manipulation_1.3.0.v20090603.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gef_3.6.2.v20110110-2020.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.draw2d_3.6.2.v20110128-0100.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.views_3.5.1.M20110202-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.edit.ui_2.6.0.v20100914-1218.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.edit_2.6.0.v20100914-1218.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.ecore.change_2.5.1.v20100907-1643.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.common.ui_2.6.0.v20100914-1218.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.ide_3.6.2.M20101201-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.win32_3.2.200.I20100509-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jface.text_3.6.1.r361_v20100825-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.forms_3.5.2.r36_v20100702.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.p2.engine_2.0.1.R36x_v20110201.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.p2.core_2.0.3.R36x_v20110111.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.p2.metadata_2.0.1.R36x_v20101202.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.p2.repository_2.0.2.R36x_v20110111-1500.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.security_1.0.200.v20100503.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ecf.filetransfer_4.0.0.v20100906-1425.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ecf_3.1.0.v20100906-1425.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ecf.ssl_1.0.100.v20100906-1425.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.concurrent_1.0.100.v20100503.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ecf.identity_3.1.0.v20100906-1425.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ecf.provider.filetransfer_3.1.0.v20100906-1425.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ecf.provider.filetransfer.ssl_1.0.0.v20100906-1425.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.net_1.2.100.I20100511-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.net.win32.x86_64_1.0.100.I20100505-1245.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.equinox.p2.metadata.repository_1.1.0.v20100513.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.ui_3.6.2.r362_v20110203.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.search_3.6.0.v20100520-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.core.filebuffers_3.5.100.v20100520-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.workbench.texteditor_3.6.1.r361_v20100714-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.compare.core_3.5.101.R36x_v20100929-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ltk.core.refactoring_3.5.101.r362_v20101117-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ltk.ui.refactoring_3.5.0.v20100526-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.navigator_3.5.0.I20100601-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.compare_3.5.101.R36x_v20100929-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.editors_3.6.1.r361_v20100825-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.team.ui_3.5.102.R36x_v20110203-1036.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.debug.ui_3.6.3.v20101201_r362.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.console_3.5.0.v20100526.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.navigator.resources_3.4.202.M20101124-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.views.properties.tabbed_3.5.100.I20100509-0800.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.jdt.core.manipulation_1.3.0.v20100520-0800.jar"/>
 			<pathelement path="../org.talend.commons.ui/class/"/>
 			<pathelement path="../org.talend.commons.ui/@dot"/>
-			<pathelement path="../org.talend.commons.ui.nl/bin/"/>
-			<pathelement path="../org.talend.commons.ui.nl/@dot"/>
 			<pathelement path="../org.talend.commons.ui.test/bin/"/>
 			<pathelement path="../org.talend.commons.ui.test/@dot"/>
+			<pathelement path="../org.talend.commons.ui.nl/bin/"/>
+			<pathelement path="../org.talend.commons.ui.nl/@dot"/>
 			<pathelement path="../org.talend.common.ui.runtime/bin/"/>
 			<pathelement path="../org.talend.common.ui.runtime/@dot"/>
 			<pathelement path="../org.talend.common.ui.runtime.nl/class/"/>
@@ -327,36 +301,36 @@
 			<pathelement path="../org.talend.libraries.javacsv/@dot"/>
 			<pathelement path="../org.talend.core/class/"/>
 			<pathelement path="../org.talend.core/@dot"/>
-			<pathelement path="../org.talend.core.nl/bin/"/>
-			<pathelement path="../org.talend.core.nl/@dot"/>
 			<pathelement path="../org.talend.core.test/bin/"/>
 			<pathelement path="../org.talend.core.test/@dot"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.update.scheduler_3.2.200.v20081127.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.update.core_3.2.300.v20090525.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.update.core.win32_3.2.100.v20080107.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.update.ui_3.2.201.R35x_v20090813.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.diagram.ui.properties_1.4.2.v20101130-0030.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.common.ui_1.4.0.v20100518-2230.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.common.core_1.4.0.v20100423-2359.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.emf.commands.core_1.4.0.v20100423-2359.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.workspace_1.4.0.v20100224-1706.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.transaction_1.4.0.v20100331-1738.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.validation_1.4.0.v20100428-2315.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.emf.core_1.4.1.v20100909-1300.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.emf.ecore.edit_2.5.0.v200906151043.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.emf.clipboard.core_1.4.2.v20101111-1500.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.emf.ui_1.2.0.v20090403-1720.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.action_1.2.0.v20090403-1720.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.services.action_1.4.0.v20100430-1518.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.services_1.3.0.v20100423-2359.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.emf.type.core_1.4.0.v20100423-2359.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.emf.ui.properties_1.4.0.v20100304-2359.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.services.properties_1.3.0.v20101129-1213.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.diagram.ui_1.4.1.v20100909-1300.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.gef.ui_1.2.0.v20090520-1343.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.draw2d.ui_1.3.0.v20100209-2200.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.diagram.core_1.4.0.v20100331-2359.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.gmf.runtime.draw2d.ui.render_1.4.2.v20101111-1500.jar"/>
+			<pathelement path="../org.talend.core.nl/bin/"/>
+			<pathelement path="../org.talend.core.nl/@dot"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.update.scheduler_3.2.300.v20100512.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.update.core_3.2.402.R36x_v20100629.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.update.core.win32_3.2.200.v20100512.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.update.ui_3.2.300.v20100512.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.diagram.ui.properties_1.4.2.v20101130-0030.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.common.ui_1.4.0.v20100518-2230.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.common.core_1.4.0.v20100423-2359.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.emf.commands.core_1.4.0.v20100423-2359.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.workspace_1.4.0.v20100224-1706.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.transaction_1.4.0.v20100331-1738.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.validation_1.4.0.v20100428-2315.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.emf.core_1.4.1.v20100909-1300.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.emf.ecore.edit_2.6.0.v20100914-1218.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.emf.clipboard.core_1.4.2.v20101111-1500.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.emf.ui_1.2.0.v20090403-1720.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.action_1.2.0.v20090403-1720.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.services.action_1.4.0.v20100430-1518.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.services_1.3.0.v20100423-2359.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.emf.type.core_1.4.0.v20100423-2359.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.emf.ui.properties_1.4.0.v20100304-2359.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.common.ui.services.properties_1.3.0.v20101129-1213.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.diagram.ui_1.4.1.v20100909-1300.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.gef.ui_1.4.0.v20100430-1518.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.draw2d.ui_1.4.2.v20101217-0030.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.diagram.core_1.4.0.v20100331-2359.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.gmf.runtime.draw2d.ui.render_1.4.2.v20101111-1500.jar"/>
 			<pathelement path="../org.talend.metadata.managment/bin/"/>
 			<pathelement path="../org.talend.metadata.managment/@dot"/>
 			<pathelement path="../org.talend.metadata.managment/bin"/>
@@ -499,50 +473,46 @@
 			<pathelement path="../org.talend.librariesmanager/@dot"/>
 			<pathelement path="../org.talend.librariesmanager.nl/bin/"/>
 			<pathelement path="../org.talend.librariesmanager.nl/@dot"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.ui.browser_3.2.301.v20091215_35x.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.ui.browser_3.3.1.r36_20101216.jar"/>
 			<pathelement path="../org.talend.registration/class/"/>
 			<pathelement path="../org.talend.registration/@dot"/>
 			<pathelement path="../org.talend.registration/class"/>
 			<pathelement path="../org.talend.registration/lib/talendregister.jar"/>
 			<pathelement path="../org.talend.registration.nl/class/"/>
-			<pathelement path="${build.result.folder}/../org.talend.registration.nl_1.0.0.201106290314/class/"/>
-			<pathelement path="${build.result.folder}/../org.talend.registration.nl/@dot"/>
-			<pathelement path="${build.result.folder}/../org.talend.registration.nl_1.0.0.201106290314/@dot"/>
 			<pathelement path="../org.talend.registration.nl/@dot"/>
 			<pathelement path="../org.talend.registration.nl/lib/talendregister.jar"/>
-			<pathelement path="${build.result.folder}/../org.talend.registration.nl_1.0.0.201106290314/lib/talendregister.jar"/>
 			<pathelement path="../org.talend.migrationTool/bin/"/>
 			<pathelement path="../org.talend.migrationTool/@dot"/>
 			<pathelement path="../org.talend.migrationTool.nl/bin/"/>
 			<pathelement path="../org.talend.migrationTool.nl/@dot"/>
 			<pathelement path="../org.talend.model.migration/bin/"/>
 			<pathelement path="../org.talend.model.migration/@dot"/>
-			<pathelement path="../org.talend.model.migration.nl/class/"/>
-			<pathelement path="../org.talend.model.migration.nl/@dot"/>
 			<pathelement path="../org.talend.model.migration.test/bin/"/>
 			<pathelement path="../org.talend.model.migration.test/@dot"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.core_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.engine.emfvm_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.common_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.core.emf_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.core.ui.vm_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.drivers.emf4atl_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.dsls_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.antlr.runtime_3.0.0.v200803061811.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.engine.vm_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.adt.debug_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.engine_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.engine.emfvm.launch_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.debug.core_3.1.1.v201009141132.jar"/>
-			<pathelement path="../../../Talend Soft/eclipse/plugins/org.eclipse.m2m.atl.adt.editor_3.1.1.v201009141132.jar"/>
+			<pathelement path="../org.talend.model.migration.nl/class/"/>
+			<pathelement path="../org.talend.model.migration.nl/@dot"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.core_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.engine.emfvm_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.common_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.core.emf_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.core.ui.vm_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.drivers.emf4atl_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.dsls_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.antlr.runtime_3.0.0.v200803061811.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.engine.vm_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.adt.debug_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.engine_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.engine.emfvm.launch_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.debug.core_3.1.2.v20110119-0755.jar"/>
+			<pathelement path="../../../Software/eclipse/plugins/org.eclipse.m2m.atl.adt.editor_3.1.2.v20110119-0755.jar"/>
 		</path>
 		<!-- compile the source code -->
-		<javac destdir="${build.result.folder}/@dot" failonerror="${javacFailOnError}" verbose="${javacVerbose}" debug="${javacDebugInfo}" includeAntRuntime="no" bootclasspath="${bundleBootClasspath}" source="${bundleJavacSource}" target="${bundleJavacTarget}"		>
+		<javac destdir="${build.result.folder}/@dot" failonerror="${javacFailOnError}" verbose="${javacVerbose}" debug="${javacDebugInfo}" includeAntRuntime="no" bootclasspath="${bundleBootClasspath}" source="${bundleJavacSource}" target="${bundleJavacTarget}"	encoding="iso-8859-1"	>
 			<compilerarg line="${compilerArg}" compiler="${build.compiler}"/>
 			<classpath refid="@dot.classpath" />
 			<src path="src/main/java/"			/>
-			<compilerarg value="@${basedir}/javaCompiler...args" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"/>
-			<compilerarg line="-log '${build.result.folder}/@dot${logExtension}'" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+			<compilerarg value="@${basedir}/javaCompiler...args" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"			/>
+			<compilerarg line="-log &apos;${build.result.folder}/@dot${logExtension}&apos;" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"			/>
 		</javac>
 		<antcall target="checkCompilationResults"/>
 		<!-- Copy necessary resources -->
@@ -580,7 +550,143 @@
 	</target>
 
 	<target name="checkCompilationResults" if="compilation.error.occured">
-		<echo file="${compilation.problem.marker}" message="org.talend.repository : compilation.error.occured=${compilation.error.occured}"/>
+		<echo file="${compilation.problem.marker}" message="org.talend.repository_2.2.0.201110150229${line.separator}compilation.error.occured=${compilation.error.occured}"/>
+		<eclipse.logCompileError bundle="org.talend.repository_2.2.0.201110150229" log="${compilation.prereq.log}">
+			<include name="E:/Talend_4_2_3/tos/org.talend.migrationTool.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.migrationTool.nl_1.0.0/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.as400/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.as400_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.librariesmanager.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.librariesmanager.nl_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core.test/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core.test_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.informix/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.informix_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.common.ui.runtime.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.common.ui.runtime.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.apache.axis2/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.apache.axis2_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.oracle/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.oracle_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.model.migration.test/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.model.migration.test_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons.nl_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core.repository/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core.repository_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.ui/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.ui_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons.test/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons.test_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.teradata/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.teradata_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.utils.test/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.utils.test_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.metadata.managment/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.metadata.managment_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.metadata.managment.ui/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.metadata.managment.ui_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.dom4j-jaxen/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.dom4j-jaxen_1.6.1.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jexcel/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jexcel_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.utils/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.utils_2.1.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons.ui.test/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons.ui.test_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.model.migration/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.model.migration_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.model/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.model_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jackson/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jackson_0.9.2.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.sqlite3/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.sqlite3_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core.repository.test/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core.repository.test_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.db2/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.db2_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.resources/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.resources_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons.runtime/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons.runtime_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.jtds/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.jtds_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons.ui/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons.ui_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core.nl_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.postgresql/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.postgresql_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.cwm.mip.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.cwm.mip.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.hsql/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.hsql_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.h2/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.h2_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.common.ui.runtime/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.common.ui.runtime_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.javacsv/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.javacsv_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.metadata.managment.ui.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.metadata.managment.ui.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.model.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.model.nl_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.metadata.managment.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.metadata.managment.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.salesforce/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.salesforce_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.apache.hive/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.apache.hive_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jxplorer/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jxplorer_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.css/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.css_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.cwm.mip/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.cwm.mip_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons.ui.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons.ui.nl_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.sybase/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.sybase_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.librariesmanager/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.librariesmanager_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.ingres/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.ingres_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.migrationTool/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.migrationTool_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.apache/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.apache_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.registration.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.registration.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.mysql/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.mysql_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.commons.runtime.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.commons.runtime.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdom/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdom_1.1.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.resources.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.resources.nl_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.eclipse.datatools.connectivity.oda/compilation.problem"/>
+			<include name="${pluginTemp}/org.eclipse.datatools.connectivity.oda_3.0.3.200610171/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core.runtime.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core.runtime.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core.runtime/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core.runtime_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.libraries.jdbc.mssql/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.libraries.jdbc.mssql_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core_2.2.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.eclipse.datatools.enablement.oda.xml/compilation.problem"/>
+			<include name="${pluginTemp}/org.eclipse.datatools.enablement.oda.xml_1.0.0.200610021/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.model.migration.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.model.migration.nl_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.registration/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.registration_1.0.0.201110150229/compilation.problem"/>
+			<include name="E:/Talend_4_2_3/tos/org.talend.core.repository.nl/compilation.problem"/>
+			<include name="${pluginTemp}/org.talend.core.repository.nl_1.0.0.201110150229/compilation.problem"/>
+		</eclipse.logCompileError>
 	</target>
 
 	<target name="build.sources" depends="init">
@@ -589,7 +695,7 @@
 	</target>
 
 	<target name="publish.bin.parts" depends="init" if="p2.publish.parts" unless="compilation.problem.marker.exists">
-		<mkdir dir="${build.result.folder}/org.talend.repository_2.2.0.201106290314"/>
+		<mkdir dir="${build.result.folder}/org.talend.repository_2.2.0.201110150229"/>
 		<copy todir="${build.result.folder}" failonerror="true" overwrite="true">
 			<fileset dir="${basedir}">
 				<include name="META-INF/MANIFEST.MF"/>
@@ -597,7 +703,7 @@
 				<include name="fragment.xml"/>
 			</fileset>
 		</copy>
-		<eclipse.versionReplacer path="${build.result.folder}" version="2.2.0.201106290314"/>
+		<eclipse.versionReplacer path="${build.result.folder}" version="2.2.0.201110150229"/>
 		<antcall target="apitools.generation">
 			<param name="target.folder" value="${build.result.folder}"/>
 			<param name="projectLocation" value="${basedir}"/>
@@ -608,19 +714,19 @@
 		   metadataRepository="${p2.build.repo}"
 		   artifactRepository="${p2.build.repo}"
 		   buildResultFolder="${build.result.folder}"
-		   unpack="true"
+		   unpack="false"
 		   baseDirectory="${basedir}"
 		/>
 	</target>
 
 	<target name="gather.bin.parts" depends="init" if="destination.temp.folder">
-		<mkdir dir="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314"/>
-		<copy todir="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314" failonerror="true" overwrite="false">
+		<mkdir dir="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229"/>
+		<copy todir="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229" failonerror="true" overwrite="false">
 			<fileset dir="${build.result.folder}/@dot">
 				<include name="**"/>
 			</fileset>
 		</copy>
-		<copy todir="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314" failonerror="true" overwrite="true">
+		<copy todir="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229" failonerror="true" overwrite="true">
 			<fileset dir="${basedir}">
 				<include name="META-INF/"/>
 				<include name="plugin.xml"/>
@@ -629,9 +735,8 @@
 				<include name="resources/"/>
 			</fileset>
 		</copy>
-		<eclipse.versionReplacer path="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314" version="2.2.0.201106290314"/>
 		<antcall target="apitools.generation">
-			<param name="target.folder" value="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314"/>
+			<param name="target.folder" value="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229"/>
 			<param name="projectLocation" value="${basedir}"/>
 			<param name="binary.folders" value="${build.result.folder}/@dot"/>
 			<param name="projectName" value="${bundleId}_${bundleVersion}"/>
@@ -642,10 +747,10 @@
 	</target>
 
 	<target name="gather.sources" depends="init" if="destination.temp.folder">
-		<mkdir dir="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314"/>
-		<copy file="${build.result.folder}/src.zip" todir="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314" failonerror="false" overwrite="false"/>
+		<mkdir dir="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229"/>
+		<copy file="${build.result.folder}/src.zip" todir="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229" failonerror="false" overwrite="false"/>
 		<antcall target="copy.src.includes">
-			<param name="source.destination.folder" value="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314"/>
+			<param name="source.destination.folder" value="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229"/>
 		</antcall>
 	</target>
 
@@ -667,8 +772,8 @@
 	</target>
 
 	<target name="gather.logs" depends="init" if="destination.temp.folder">
-		<mkdir dir="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314"/>
-		<copy todir="${destination.temp.folder}/org.talend.repository_2.2.0.201106290314" failonerror="false" overwrite="false">
+		<mkdir dir="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229"/>
+		<copy todir="${destination.temp.folder}/org.talend.repository_2.2.0.201110150229" failonerror="false" overwrite="false">
 			<fileset dir="${build.result.folder}">
 				<include name="@dot${logExtension}"/>
 			</fileset>
@@ -678,14 +783,14 @@
 	<target name="clean" depends="init" description="Clean the plug-in: org.talend.repository of all the zips, jars and logs created.">
 		<delete dir="${build.result.folder}/@dot"/>
 		<delete file="${build.result.folder}/src.zip"/>
-		<delete file="${plugin.destination}/org.talend.repository_2.2.0.201106290314.jar"/>
-		<delete file="${plugin.destination}/org.talend.repository_2.2.0.201106290314.zip"/>
+		<delete file="${plugin.destination}/org.talend.repository_2.2.0.201110150229.jar"/>
+		<delete file="${plugin.destination}/org.talend.repository_2.2.0.201110150229.zip"/>
 		<delete dir="${temp.folder}"/>
 		<delete file="${compilation.problem.marker}" quiet="true"/>
 	</target>
 
 	<target name="refresh" depends="init" if="eclipse.running" description="Refresh this folder.">
-		<eclipse.convertPath fileSystemPath="F:/Talend_4_2_2/tos/org.talend.repository" property="resourcePath"/>
+		<eclipse.convertPath fileSystemPath="E:/Talend_4_2_3/tos/org.talend.repository" property="resourcePath"/>
 		<eclipse.refreshLocal resource="${resourcePath}" depth="infinite"/>
 	</target>
 
@@ -705,12 +810,12 @@
 				<include name="**/*.bin${logExtension}"/>
 			</fileset>
 		</delete>
-		<zip destfile="${plugin.destination}/org.talend.repository_2.2.0.201106290314.zip" basedir="${temp.folder}" filesonly="true" whenempty="skip" update="false"/>
+		<zip destfile="${plugin.destination}/org.talend.repository_2.2.0.201110150229.zip" basedir="${temp.folder}" filesonly="true" whenempty="skip" update="false"/>
 		<delete dir="${temp.folder}"/>
 	</target>
 
 	<target name="apitools.generation" if="generateAPIDescription">
-		<apitooling.apigeneration  projectName="${projectName}" project="${projectLocation}" binary="${binary.folders}" target="${target.folder}"		/>
+		<apitooling.apigeneration  projectName="${projectName}" project="${projectLocation}" binary="${binary.folders}" target="${target.folder}" extramanifests="${extraManifests}"		/>
 	</target>
 
 </project>
