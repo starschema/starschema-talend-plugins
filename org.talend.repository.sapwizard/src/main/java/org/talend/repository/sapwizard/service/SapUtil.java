@@ -206,7 +206,7 @@ public class SapUtil {
 			metadataColumn.setNullable(true);
 			metadataColumn.setDefaultValue("");
 			metadataColumn.setComment(data.getString("FIELDTEXT"));
-			metadataColumn.setPattern(data.getString("INTTYPE").equals("D") ? "yyyyMMdd" : "");
+			metadataColumn.setPattern(data.getString("INTTYPE").equals("D") ? "\"yyyyMMdd\"" : "");
 			metadataColumn.setOriginalField(data.getString("FIELDNAME"));
 
 			if (!columnsAlreadyAdded.contains(metadataColumn.getLabel())) {
