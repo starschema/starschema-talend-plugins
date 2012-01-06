@@ -42,11 +42,13 @@ String groupName = ElementParameterParser.getValue(node,"__GROUPNAME__");
 
 
 // PLSAP related	
-String tableName = ElementParameterParser.getValue(node, "__SAP_TABLE_NAME__");	
+String tableName = "dummy";	
 String functionName = ElementParameterParser.getValue(node, "__SAP_FUNCTION__");
 String sapOutputDirectory = ElementParameterParser.getValue(node, "__SAP_OUTPUT_DIRECTORY__");
 String plsapInputDirectory = ElementParameterParser.getValue(node, "__PLSAP_INPUT_DIRECTORY__");
 String whereCondition = ElementParameterParser.getValue(node, "__WHERE_CONDITION__");
+List<Map<String, String>> join_conditions = (List<Map<String,String>>)ElementParameterParser.getObjectValue(node, "__JOIN_CONDITIONS__");
+List<Map<String, String>> sap_columns = (List<Map<String,String>>)ElementParameterParser.getObjectValue(node, "__SAP_COLUMNS__");
 boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"__COMPRESSION__"));
 
 boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"__USE_EXISTING_CONNECTION__"));
@@ -87,7 +89,6 @@ com.sap.conn.jco.JCoDestination dest_<%=cid%> = null;
     dest_<%=cid%> = com.sap.conn.jco.JCoDestinationManager.getDestination("SAP_SERVER_<%=cid%>");
 
 <%}%>  
-		
 
 /* switch to JCO Context */
 try { 
@@ -103,28 +104,38 @@ try {
 	function_<%=cid %>.getImportParameterList().setValue( "FILE_NAME", fileNameBase_<%=cid%> );
 
 	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD");
+	com.sap.conn.jco.JCoTable joins_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD_JOIN");
+
+
+	java.util.HashMap<String,String> schemaColToSAPCol_<%=cid%> = new java.util.HashMap<String,String>();	
+<%
+  sizeListColumns = sap_columns.size(); 
+  for (int j=0; j<sizeListColumns; j++) {
+    Map<String, String> line = sap_columns.get(j);
+%>
+	fields_<%=cid %>.appendRows(1);
+	fields_<%=cid %>.setValue("TABNAME",  <%= line.get("TABNAME") %>);
+	fields_<%=cid %>.setValue("FIELDNAME",  <%= line.get("FIELDNAME") %> );
+	
+	schemaColToSAPCol_<%=cid%>.put(  <%= line.get("COLUMN") %>,  <%= line.get("TABNAME") %> + "_" + <%= line.get("FIELDNAME") %> );
+<%
+  }
+%>
+
+    // add join conditions
+<%
+  for (int i=0; i<join_conditions.size(); i++) {
+    Map<String, String> line = join_conditions.get(i);
+%>
+	joins_<%=cid %>.appendRows(1);
+	joins_<%=cid %>.setValue("TABNAME", <%= line.get("TABLE_NAME_A") %> );
+	joins_<%=cid %>.setValue("FIELDNAME", <%= line.get("COLUMN_NAME_A") %>); 
+	joins_<%=cid %>.setValue("JTABNAME", <%= line.get("TABLE_NAME_B") %> );
+	joins_<%=cid %>.setValue("JFIELDNAME", <%= line.get("COLUMN_NAME_B") %>); 
 
 <%
-List< ? extends IConnection> outConns = node.getOutgoingConnections();
-for(IConnection conn : outConns){
-	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
-		IMetadataTable justMetadata = conn.getMetadataTable();
-		List<IMetadataColumn> justColumnList = justMetadata.getListColumns();
-		sizeListColumns = justColumnList.size();
-		for (int valueN=0; valueN<sizeListColumns; valueN++) {
-			IMetadataColumn column = justColumnList.get(valueN);
-			%>
-	//System.out.println("Add SAP Column:  <%= column.getLabel() %>" );
-	
-	fields_<%=cid %>.appendRows(1);
-	fields_<%=cid %>.setValue("TABNAME", <%= tableName %> );
-	fields_<%=cid %>.setValue("FIELDNAME", "<%= column.getLabel() %>" ); 
-			<%
-		} // for valueN
-		break; 					
-	} // if DATA 
-} // foreach outConns
-%> 
+  }
+%>
 
 
 	// Add where condition
@@ -132,7 +143,7 @@ for(IConnection conn : outConns){
 	com.sap.conn.jco.JCoTable where_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("OPTIONS");
 	where_<%=cid %>.appendRows(1);
 	where_<%=cid %>.setValue("TEXT", <%= whereCondition %> );
-<% } %>
+<% } %>		
 
 	// Call RFC
 	function_<%=cid%>.execute(dest_<%=cid%>);
@@ -168,6 +179,8 @@ for(IConnection conn : outConns){
 		for (com.infomata.data.DataRow row = read_dat_<%=cid%>.next(); row != null; row = read_dat_<%=cid%>.next())
 		{
 <%
+List< ? extends IConnection> outConns = node.getOutgoingConnections();
+
 for(IConnection conn : outConns){
 	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
 		IMetadataTable justMetadata = conn.getMetadataTable();
@@ -176,17 +189,16 @@ for(IConnection conn : outConns){
 		for (int valueN=0; valueN<sizeListColumns; valueN++) {
 			IMetadataColumn column = justColumnList.get(valueN);
 			JavaType javaType = JavaTypesManager.getJavaTypeFromId(column.getTalendType());
-
 			if ( javaType == JavaTypesManager.STRING) {
 %>
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(
-					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					fieldToCol<%=cid%>.get( schemaColToSAPCol_<%=cid%>.get("<%=column.getLabel()%>") )
 					);
 <%			
 			} else if ( javaType == JavaTypesManager.DATE) {
 %>
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getDate(
-					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					fieldToCol<%=cid%>.get(  schemaColToSAPCol_<%=cid%>.get("<%=column.getLabel()%>") )
 					, "yyyyMMdd"
 					);
 					<% if ( column.isKey() ) { %> 
@@ -201,21 +213,22 @@ for(IConnection conn : outConns){
   			} else if ( javaType == JavaTypesManager.INTEGER) {
 %>
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getInt(
-					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					fieldToCol<%=cid%>.get(  schemaColToSAPCol_<%=cid%>.get("<%=column.getLabel()%>") )
 					);
 <%
 			} else if ( javaType == JavaTypesManager.DOUBLE) {
 %>
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getDouble(
-					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					fieldToCol<%=cid%>.get( schemaColToSAPCol_<%=cid%>.get("<%=column.getLabel()%>") )
 					);
 <%			} else {  %>
 				System.out.println( "Unknown type: " + <%= javaType.toString() %> );
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(
-					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					fieldToCol<%=cid%>.get( schemaColToSAPCol_<%=cid%>.get("<%=column.getLabel()%>") )
 					);
 <%
 			} // if javatype
+
 		} // for valueN 					
 	} // if DATA 
 } // foreach outConns
