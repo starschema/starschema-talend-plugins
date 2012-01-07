@@ -99,11 +99,25 @@ try {
 	if(function_<%=cid %> == null)
     	throw new RuntimeException("<%= functionName %> not found in SAP.");
 
+<% if ( functionName.equals( "RFC_READ_TABLE") ) 
+   { 
+%>
+	function_<%=cid %>.getImportParameterList().setValue( "QUERY_TABLE", <%= tableName %> );
+	function_<%=cid %>.getImportParameterList().setValue( "DELIMITER", "|" );
+
+	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("FIELDS");
+	com.sap.conn.jco.JCoTable data_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("DATA");		
+<%} else { // Z_PLSAP... 
+%>
 	function_<%=cid %>.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> );
 	function_<%=cid %>.getImportParameterList().setValue( "FILE_NAME", fileNameBase_<%=cid%> );
 
 	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD");
-
+<%
+}
+%>
+	java.util.HashMap<String,Integer> fieldToCol<%=cid%> = new java.util.HashMap<String,Integer>();
+	
 <%
 List< ? extends IConnection> outConns = node.getOutgoingConnections();
 for(IConnection conn : outConns){
@@ -117,8 +131,16 @@ for(IConnection conn : outConns){
 	//System.out.println("Add SAP Column:  <%= column.getLabel() %>" );
 	
 	fields_<%=cid %>.appendRows(1);
+<% if ( functionName.equals( "RFC_READ_TABLE") ) 
+   { 
+%>	
+    fields_<%=cid %>.setValue("FIELDNAME", "<%= column.getLabel() %>" );
+    fieldToCol<%=cid%>.put(<%=tableName %> +  "<%= "_" +column.getLabel() %>",new Integer(<%=valueN%>));
+<%} else { // Z_PLSAP... %>
 	fields_<%=cid %>.setValue("TABNAME", <%= tableName %> );
 	fields_<%=cid %>.setValue("FIELDNAME", "<%= column.getLabel() %>" ); 
+<%} %>
+
 			<%
 		} // for valueN
 		break; 					
@@ -136,13 +158,25 @@ for(IConnection conn : outConns){
 
 	// Call RFC
 	function_<%=cid%>.execute(dest_<%=cid%>);
-  
+
+<% if (  functionName.equals( "RFC_READ_TABLE") ) 
+   { 
+%>  	
+    com.infomata.data.SimpleDelimiterFormat simpleDelimFmt_<%=cid %> = new com.infomata.data.SimpleDelimiterFormat("|", null);
+    
+    try { 
+		data_<%=cid %> .firstRow();
+    	for (int i = 0; i < data_<%=cid %>.getNumRows(); i++, data_<%=cid %>.nextRow()) 
+    	{
+			com.infomata.data.DataRow row = simpleDelimFmt_<%=cid %>.parseLine( data_<%=cid %>.getString("WA") );
+           
+
+<%} else { // Z_PLSAP... %>
   	// Parse fields file
 	com.infomata.data.DataFile read_fields_<%=cid%> = com.infomata.data.DataFileFactory.createReader("8859_1");
 	read_fields_<%=cid%>.setDataFormat(new com.infomata.data.SimpleDelimiterFormat(";", null));
 
   	int [] fieldLengths<%=cid%> = new int[ <%= sizeListColumns %> ];
-  	java.util.HashMap<String,Integer> fieldToCol<%=cid%> = new java.util.HashMap<String,Integer>();
   	try {
 	  	int fieldNo = 0;
 		read_fields_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".fields") );
@@ -167,6 +201,9 @@ for(IConnection conn : outConns){
 	
 		for (com.infomata.data.DataRow row = read_dat_<%=cid%>.next(); row != null; row = read_dat_<%=cid%>.next())
 		{
+		
+<% }  // ! RFC_READ_TABLE %>
+		
 <%
 for(IConnection conn : outConns){
 	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
