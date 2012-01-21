@@ -51,6 +51,7 @@ boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"_
 
 boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"__USE_EXISTING_CONNECTION__"));
 String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
+int maximumWhereEntrySize = 70;
 %>
 
 String fileNameBase_<%=cid%> = "<%= cid %>" + (System.currentTimeMillis()/1000-1309270519);
@@ -152,8 +153,36 @@ for(IConnection conn : outConns){
 	// Add where condition
 <% if ( whereCondition.length() > 2 ) { %>
 	com.sap.conn.jco.JCoTable where_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("OPTIONS");
+	
+	String [] whereTokens_<%=cid %> = <%=whereCondition%>.split("\\s");
+	String whereLine_<%=cid %> = ""; 
+		
+	for( int i = 0; i < whereTokens_<%=cid %>.length ; i++ ) {
+		String token_<%=cid %> = "";
+		
+		// join quoted strings, which are having whitespace inside
+		if ( whereTokens_<%=cid %>[i].startsWith("'") && ! whereTokens_<%=cid %>[i].endsWith("'") ) {
+			do { 
+				token_<%=cid %> += whereTokens_<%=cid %>[i] + (whereTokens_<%=cid %>[i].endsWith("'") ? "" : " ");
+			} while (!whereTokens_<%=cid %>[i].endsWith("'") && i++ < whereTokens_<%=cid %>.length);
+		} else {
+			token_<%=cid %> = whereTokens_<%=cid %>[i];
+		}
+	
+		// check if the where condition can fit into a RFC_DB_OPT structure 				
+		if ( whereLine_<%=cid %>.length() + token_<%=cid %>.length() > <%= maximumWhereEntrySize %> )
+		{				
+			where_<%=cid %>.appendRows(1);
+			where_<%=cid %>.setValue("TEXT",whereLine_<%=cid %>);
+			
+			whereLine_<%=cid %> = "";
+		} 
+		
+		whereLine_<%=cid %> +=  token_<%=cid %> + " "; 		
+	}
+
 	where_<%=cid %>.appendRows(1);
-	where_<%=cid %>.setValue("TEXT", <%= whereCondition %> );
+	where_<%=cid %>.setValue("TEXT",whereLine_<%=cid %>);
 <% } %>
 
 	// Call RFC
