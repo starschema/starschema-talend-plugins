@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <category
+            id="org.talend.repository.plsap.extractor.wizardCategory"
+            name="PLSAP">
+      </category>
+      <wizard
+            category="org.talend.repository.plsap.extractor.wizardCategory"
+            class="org.talend.repository.plsap.extractor.wizard.NewTableExtractorWizard"
+            icon="icons/sap_extractor.gif"
+            id="org.talend.repository.plsap.extractor.NewTableExtractorWizardID"
+            name="SAP Table Extractor">
+         <description>
+            Create a new Extracted SAP Table XML
+         </description>
+      </wizard>
+   </extension>
+   <extension
+         point="org.eclipse.ui.startup">
+      <startup
+            class="org.talend.repository.plsap.extractor.Startup">
+      </startup>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            locationURI="menu:org.eclipse.ui.main.menu?after=additions">
+         <menu
+               id="org.talend.repository.plsap.extractor.PLSAPMenuID"
+               label="PLSAP">
+         <command
+               commandId="org.talend.repository.plsap.extractor.NewTableExtractorCommandID"
+               icon="icons/sap_extractor.gif"
+               id="NewTableExtractorCommandID"
+               label="SAP Table Extractor"
+               style="push">
+         </command>
+                     <separator
+                  name="additions"
+                  visible="false">
+            </separator>
+         </menu>
+      </menuContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            id="org.talend.repository.plsap.extractor.NewTableExtractorCommandID"
+            name="SAP Table Extractor">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="org.talend.repository.plsap.extractor.handlers.NewTableExtractorCommandHandler"
+            commandId="org.talend.repository.plsap.extractor.NewTableExtractorCommandID">
+      </handler>
+   </extension>
+
+</plugin>

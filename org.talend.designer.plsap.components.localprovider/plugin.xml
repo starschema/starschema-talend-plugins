@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+   <extension
+         point="org.talend.core.components_provider">
+      <ComponentsProvider
+            class="org.talend.designer.plsap.components.PLSAPLocalComponentsProvider"
+            folderName="components"
+            id="org.talend.designer.components.LocalComponentsProvider">
+      </ComponentsProvider>
+   </extension>
+   <extension
+         point="org.talend.core.runtime.service">
+      <Service
+            class="org.talend.designer.plsap.components.PLSAPLocalProviderService"
+            serviceId="ILocalProviderService">
+      </Service>
+   </extension>
+</plugin>

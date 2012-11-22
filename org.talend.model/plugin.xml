@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+
+<!--
+  <copyright>
+  </copyright>
+  
+  $Id: plugin.xml 67349 2011-09-06 09:55:08Z gldu $
+-->
+
+<plugin>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="http://www.talend.org/metadata/connection/2010"
+            class="org.talend.core.model.metadata.builder.connection.ConnectionPackage"
+            genModel="model/metadata.genmodel"/>
+   </extension>
+
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="http://www.talend.org/cwm/resource/relational/2010"
+            class="org.talend.cwm.relational.RelationalPackage"
+            genModel="model/metadata.genmodel"/>
+   </extension>
+
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="http://www.talend.org/cwm/foundation/softwaredeployment/2010"
+            class="org.talend.cwm.softwaredeployment.SoftwaredeploymentPackage"
+            genModel="model/metadata.genmodel"/>
+   </extension>
+
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="http://www.talend.org/cwm/constants/constants/2010"
+            class="org.talend.cwm.constants.ConstantsPackage"
+            genModel="model/metadata.genmodel"/>
+   </extension>
+
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="http://www.talend.org/cwm/resource/xml/2010"
+            class="org.talend.cwm.xml.XmlPackage"
+            genModel="model/metadata.genmodel"/>
+   </extension>
+
+  <extension point="org.eclipse.emf.ecore.generated_package">
+    <package uri="business"
+      class="org.talend.designer.business.model.business.BusinessPackage"
+      genModel="model/Business.genmodel" />
+    <package class="org.talend.core.model.properties.PropertiesPackage"
+      genModel="model/properties.genmodel"
+      uri="http://www.talend.org/properties" />
+    <package
+          class="org.talend.designer.core.model.utils.emf.talendfile.TalendFilePackage"
+          genModel="model/TalendFile.genmodel"
+          uri="platform:/resource/org.talend.model/model/TalendFile.xsd"/>
+    <package
+          class="org.talend.designer.core.model.utils.emf.component.ComponentPackage"
+          genModel="model/Component.genmodel"
+          uri="platform:/resource/org.talend.model/model/Component.xsd"/>
+    <package
+          class="org.talend.designer.joblet.model.JobletPackage"
+          genModel="model/joblet.genmodel"
+          uri="http://www.talend.com/joblet.ecore">
+    </package>
+    <package
+          class="org.talend.core.model.component_cache.ComponentCachePackage"
+          genModel="model/component_cache.genmodel"
+          uri="http://www.talend.org/component_cache">
+    </package>
+  </extension>
+  <extension
+        point="org.eclipse.emf.ecore.extension_parser">
+     <parser
+           class="org.talend.designer.joblet.model.util.JobletResourceFactoryImpl"
+           type="joblet">
+     </parser>
+  </extension>
+  <extension
+         point="org.eclipse.emf.ecore.extension_parser">     
+      <parser
+            class="org.talend.commons.emf.CwmResourceFactory"
+            type="item">
+      </parser>
+   </extension>  
+  <extension
+        point="org.eclipse.emf.ecore.uri_mapping">
+     <mapping
+           source="http://www.talend.org"
+           target="dummy.uri">
+     </mapping>
+  </extension>
+</plugin>

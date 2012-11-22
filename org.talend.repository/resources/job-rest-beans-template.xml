@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:osgi="http://www.springframework.org/schema/osgi"
+		xmlns:jaxrs="http://cxf.apache.org/jaxrs"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/osgi http://www.springframework.org/schema/osgi/spring-osgi.xsd
+			http://cxf.apache.org/jaxrs http://cxf.apache.org/schemas/jaxrs.xsd">
+
+	<import resource="classpath:META-INF/cxf/cxf.xml"/>
+
+	<jaxrs:server id="service" address="@ENDPOINT_URI@">
+		<jaxrs:serviceBeans>
+			<ref bean="serviceBean"/>
+		</jaxrs:serviceBeans>
+		<jaxrs:providers>
+			<ref bean="wrongCallHandler"/>
+			<ref bean="jsonProvider"/>
+			<ref bean="dom4jProvider"/>
+			@JAXRS_SERVICE_PROVIDERS@
+		</jaxrs:providers>
+	</jaxrs:server>
+
+@ADDITIONAL_BEANS_CONFIG@
+
+	<bean id="serviceBean" class="@JOBCLASSNAME@.RestServiceProviderImpl4TalendJob">
+		<constructor-arg ref="job"/>
+	</bean>
+
+	<bean id="wrongCallHandler" class="@JOBCLASSNAME@.ExceptionMapper4TalendJobRestService">
+		<constructor-arg ref="serviceBean"/>
+	</bean>
+
+	<bean id="dom4jProvider" class="@JOBCLASSNAME@.DOM4JProvider"/>
+
+	<bean id="jsonProvider" class="org.apache.cxf.jaxrs.provider.json.JSONProvider">
+		<property name="ignoreNamespaces" value="true"/>
+	</bean>
+
+	<bean id="job" class="@JOBCLASSNAME@">
+		<property name="runInTalendEsbRuntimeContainer" value="true" />
+		@ADDITIONAL_JOB_BEAN_PARAMS@
+	</bean>
+
+	<osgi:service ref="job">
+		<osgi:interfaces>
+			<value>routines.system.api.TalendJob</value>
+		</osgi:interfaces>
+		<osgi:service-properties>
+			<entry key="name" value="@JOBNAME@" />
+			<entry key="type" value="job" />
+		</osgi:service-properties>
+	</osgi:service>
+
+	<!-- Wiring the counter repository -->
+	<bean class="org.apache.cxf.management.counters.CounterRepository">
+		<property name="bus" ref="cxf" /> 
+	</bean>
+
+</beans>

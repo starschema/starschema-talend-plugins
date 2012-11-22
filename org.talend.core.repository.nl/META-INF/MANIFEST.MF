@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Nl
+Bundle-SymbolicName: org.talend.core.repository.nl
+Bundle-Version: 5.2.0.M1_r86684
+Fragment-Host: org.talend.core.repository;bundle-version="1.0.0"

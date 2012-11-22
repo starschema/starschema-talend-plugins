@@ -1,0 +1,288 @@
+<%@ jet
+	imports="
+	java.util.Arrays
+	java.util.ArrayList
+	java.util.HashMap
+	java.util.List
+	java.util.Map
+	
+	org.talend.core.model.metadata.IMetadataColumn
+	org.talend.core.model.metadata.IMetadataTable
+	org.talend.core.model.metadata.types.JavaType
+	org.talend.core.model.metadata.types.JavaTypesManager
+	org.talend.core.model.process.ElementParameterParser
+	org.talend.core.model.process.IConnection
+	org.talend.core.model.process.IConnectionCategory
+	org.talend.core.model.process.INode
+	org.talend.designer.codegen.config.CodeGeneratorArgument
+	org.talend.core.model.utils.TalendTextUtils
+	"
+%>
+<%
+	CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+	INode node = (INode)codeGenArgument.getArgument();
+	String cid = node.getUniqueName();
+%>
+
+
+<%
+boolean startIterate = false;
+int sizeListColumns = 0;
+
+String client = ElementParameterParser.getValue(node, "__CLIENT__");
+String userid = ElementParameterParser.getValue(node, "__USERID__");
+String password = ElementParameterParser.getValue(node, "__PASSWORD__");
+String language = ElementParameterParser.getValue(node, "__LANGUAGE__");
+String hostname = ElementParameterParser.getValue(node, "__HOSTNAME__");
+String systemnumber = ElementParameterParser.getValue(node, "__SYSTEMNUMBER__");
+
+String serverType = ElementParameterParser.getValue(node,"__SERVERTYPE__");
+String systemId = ElementParameterParser.getValue(node,"__SYSTEMID__");
+String groupName = ElementParameterParser.getValue(node,"__GROUPNAME__");
+
+
+// PLSAP related	
+String tableName = ElementParameterParser.getValue(node, "__SAP_TABLE_NAME__");	
+String functionName = ElementParameterParser.getValue(node, "__SAP_FUNCTION__");
+String sapOutputDirectory = ElementParameterParser.getValue(node, "__SAP_OUTPUT_DIRECTORY__");
+String plsapInputDirectory = ElementParameterParser.getValue(node, "__PLSAP_INPUT_DIRECTORY__");
+String whereCondition = ElementParameterParser.getValue(node, "__WHERE_CONDITION__");
+boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"__COMPRESSION__"));
+
+boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"__USE_EXISTING_CONNECTION__"));
+String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
+int maximumWhereEntrySize = 70;
+%>
+
+String fileNameBase_<%=cid%> = "<%= cid %>" + (System.currentTimeMillis()/1000-1309270519);
+
+/* Connect to SAP */
+com.sap.conn.jco.JCoDestination dest_<%=cid%> = null;
+<%if(useExistingConn){%>	
+	dest_<%=cid%> = (com.sap.conn.jco.JCoDestination)globalMap.get("conn_<%=connection %>");
+<%}else{%>
+	org.talend.sap.TalendDestinationData destinationData_<%=cid%> = null;
+	<%if("ApplicationServer".equals(serverType)){%>
+		destinationData_<%=cid%> = new org.talend.sap.TalendDestinationData(<%=client%>,
+																			<%=userid%>,
+																			<%=password%>,
+																			<%=language%>,
+																			<%=hostname%>,
+																			<%=systemnumber%>);
+	<%}else{%>			
+		destinationData_<%=cid%> = new org.talend.sap.TalendDestinationData(<%=client%>,
+																			<%=userid%>,
+																			<%=password%>,
+																			<%=language%>,
+																			<%=hostname%>,
+																			<%=systemId %>,
+				            				 								<%=groupName%> );
+	<%}%>
+    org.talend.sap.TalendDestinationDataProvider destinationDataProvider_<%=cid%> = org.talend.sap.TalendDestinationDataProvider.getInstance();
+    destinationDataProvider_<%=cid%>.addDestination("SAP_SERVER_<%=cid%>", destinationData_<%=cid%>);
+    try {
+    	com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(destinationDataProvider_<%=cid%>);
+	} catch (java.lang.IllegalStateException ex) {
+		//ignore if the provider already registered.
+    }
+    dest_<%=cid%> = com.sap.conn.jco.JCoDestinationManager.getDestination("SAP_SERVER_<%=cid%>");
+
+<%}%>  
+		
+
+/* switch to JCO Context */
+try { 
+    // Begins the stateful call sequence for calls to the specified destination.
+	com.sap.conn.jco.JCoContext.begin(dest_<%=cid%>);
+
+	com.sap.conn.jco.JCoFunction function_<%=cid %> = dest_<%=cid%>.getRepository().getFunction( "<%= functionName %>" );
+
+	if(function_<%=cid %> == null)
+    	throw new RuntimeException("<%= functionName %> not found in SAP.");
+
+<% if ( functionName.equals( "RFC_READ_TABLE") ) 
+   { 
+%>
+	function_<%=cid %>.getImportParameterList().setValue( "QUERY_TABLE", <%= tableName %> );
+	function_<%=cid %>.getImportParameterList().setValue( "DELIMITER", "|" );
+
+	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("FIELDS");
+	com.sap.conn.jco.JCoTable data_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("DATA");		
+<%} else { // Z_PLSAP... 
+%>
+	function_<%=cid %>.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> );
+	function_<%=cid %>.getImportParameterList().setValue( "FILE_NAME", fileNameBase_<%=cid%> );
+
+	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD");
+<%
+}
+%>
+	java.util.HashMap<String,Integer> fieldToCol<%=cid%> = new java.util.HashMap<String,Integer>();
+	
+<%
+List< ? extends IConnection> outConns = node.getOutgoingConnections();
+for(IConnection conn : outConns){
+	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
+		IMetadataTable justMetadata = conn.getMetadataTable();
+		List<IMetadataColumn> justColumnList = justMetadata.getListColumns();
+		sizeListColumns = justColumnList.size();
+		for (int valueN=0; valueN<sizeListColumns; valueN++) {
+			IMetadataColumn column = justColumnList.get(valueN);
+			%>
+	//System.out.println("Add SAP Column:  <%= column.getLabel() %>" );
+	
+	fields_<%=cid %>.appendRows(1);
+<% if ( functionName.equals( "RFC_READ_TABLE") ) 
+   { 
+%>	
+    fields_<%=cid %>.setValue("FIELDNAME", "<%= column.getLabel() %>" );
+    fieldToCol<%=cid%>.put(<%=tableName %> +  "<%= "_" +column.getLabel() %>",new Integer(<%=valueN%>));
+<%} else { // Z_PLSAP... %>
+	fields_<%=cid %>.setValue("TABNAME", <%= tableName %> );
+	fields_<%=cid %>.setValue("FIELDNAME", "<%= column.getLabel() %>" ); 
+<%} %>
+
+			<%
+		} // for valueN
+		break; 					
+	} // if DATA 
+} // foreach outConns
+%> 
+
+
+	// Add where condition
+<% if ( whereCondition.length() > 2 ) { %>
+	com.sap.conn.jco.JCoTable where_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("OPTIONS");
+	
+	String [] whereTokens_<%=cid %> = <%=whereCondition%>.split("\\s");
+	String whereLine_<%=cid %> = ""; 
+		
+	for( int i = 0; i < whereTokens_<%=cid %>.length ; i++ ) {
+		String token_<%=cid %> = "";
+		
+		// join quoted strings, which are having whitespace inside
+		if ( whereTokens_<%=cid %>[i].startsWith("'") && ! whereTokens_<%=cid %>[i].endsWith("'") ) {
+			do { 
+				token_<%=cid %> += whereTokens_<%=cid %>[i] + (whereTokens_<%=cid %>[i].endsWith("'") ? "" : " ");
+			} while (!whereTokens_<%=cid %>[i].endsWith("'") && i++ < whereTokens_<%=cid %>.length);
+		} else {
+			token_<%=cid %> = whereTokens_<%=cid %>[i];
+		}
+	
+		// check if the where condition can fit into a RFC_DB_OPT structure 				
+		if ( whereLine_<%=cid %>.length() + token_<%=cid %>.length() > <%= maximumWhereEntrySize %> )
+		{				
+			where_<%=cid %>.appendRows(1);
+			where_<%=cid %>.setValue("TEXT",whereLine_<%=cid %>);
+			
+			whereLine_<%=cid %> = "";
+		} 
+		
+		whereLine_<%=cid %> +=  token_<%=cid %> + " "; 		
+	}
+
+	where_<%=cid %>.appendRows(1);
+	where_<%=cid %>.setValue("TEXT",whereLine_<%=cid %>);
+<% } %>
+
+	// Call RFC
+	function_<%=cid%>.execute(dest_<%=cid%>);
+
+<% if (  functionName.equals( "RFC_READ_TABLE") ) 
+   { 
+%>  	
+    com.infomata.data.SimpleDelimiterFormat simpleDelimFmt_<%=cid %> = new com.infomata.data.SimpleDelimiterFormat("|", null);
+    
+    try { 
+		data_<%=cid %> .firstRow();
+    	for (int i = 0; i < data_<%=cid %>.getNumRows(); i++, data_<%=cid %>.nextRow()) 
+    	{
+			com.infomata.data.DataRow row = simpleDelimFmt_<%=cid %>.parseLine( data_<%=cid %>.getString("WA") );
+           
+
+<%} else { // Z_PLSAP... %>
+  	// Parse fields file
+	com.infomata.data.DataFile read_fields_<%=cid%> = com.infomata.data.DataFileFactory.createReader("8859_1");
+	read_fields_<%=cid%>.setDataFormat(new com.infomata.data.SimpleDelimiterFormat(";", null));
+
+  	int [] fieldLengths<%=cid%> = new int[ <%= sizeListColumns %> ];
+  	try {
+	  	int fieldNo = 0;
+		read_fields_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".fields") );
+	
+		for (com.infomata.data.DataRow row = read_fields_<%=cid%>.next(); row != null && fieldNo < <%=sizeListColumns %>; row = read_fields_<%=cid%>.next())
+		{
+			fieldToCol<%=cid%>.put(row.getString(0),new Integer(fieldNo));
+
+			fieldLengths<%=cid%>[fieldNo++] = row.getInt(2);
+		}
+
+	} finally {
+		read_fields_<%=cid%>.close();
+	}
+  	
+  	// Read .DAT file
+	com.infomata.data.DataFile read_dat_<%=cid%> = com.infomata.data.DataFileFactory.createReader("8859_1");
+	read_dat_<%=cid%>.setDataFormat(new com.infomata.data.FixedWidthFormat(fieldLengths<%=cid%>));
+
+  	try { 
+		read_dat_<%=cid%>.open( new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".dat") );
+	
+		for (com.infomata.data.DataRow row = read_dat_<%=cid%>.next(); row != null; row = read_dat_<%=cid%>.next())
+		{
+		
+<% }  // ! RFC_READ_TABLE %>
+		
+<%
+for(IConnection conn : outConns){
+	if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
+		IMetadataTable justMetadata = conn.getMetadataTable();
+		List<IMetadataColumn> justColumnList = justMetadata.getListColumns();
+		sizeListColumns = justColumnList.size();
+		for (int valueN=0; valueN<sizeListColumns; valueN++) {
+			IMetadataColumn column = justColumnList.get(valueN);
+			JavaType javaType = JavaTypesManager.getJavaTypeFromId(column.getTalendType());
+
+			if ( javaType == JavaTypesManager.STRING) {
+%>
+				<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(
+					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					);
+<%			
+			} else if ( javaType == JavaTypesManager.DATE) {
+%>
+				<%=conn.getName() %>.<%=column.getLabel() %> = row.getDate(
+					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					, "yyyyMMdd"
+					);
+					<% if ( column.isKey() ) { %> 
+					if ( <%=conn.getName() %>.<%=column.getLabel() %> == null ) 
+					{
+						java.text.DateFormat dateFormat = new java.text.SimpleDateFormat("MM/dd/yyyy");
+						<%=conn.getName() %>.<%=column.getLabel() %> = dateFormat.parse("01/01/1900");
+					}	
+					<% } %>
+
+<%
+  			} else if ( javaType == JavaTypesManager.INTEGER) {
+%>
+				<%=conn.getName() %>.<%=column.getLabel() %> = row.getInt(
+					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					);
+<%
+			} else if ( javaType == JavaTypesManager.DOUBLE) {
+%>
+				<%=conn.getName() %>.<%=column.getLabel() %> = row.getDouble(
+					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					);
+<%			} else {  %>
+				System.out.println( "Unknown type: " + <%= javaType.toString() %> );
+				<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(
+					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
+					);
+<%
+			} // if javatype
+		} // for valueN 					
+	} // if DATA 
+} // foreach outConns
+%> 

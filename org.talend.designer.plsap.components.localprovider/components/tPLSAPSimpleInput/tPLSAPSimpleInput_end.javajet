@@ -1,0 +1,63 @@
+<%@ jet
+	imports="
+    java.util.List
+    java.util.Map
+    
+    org.talend.core.model.metadata.IMetadataColumn
+    org.talend.core.model.metadata.IMetadataTable
+    org.talend.core.model.process.ElementParameterParser
+    org.talend.core.model.process.IConnection
+    org.talend.core.model.process.IConnectionCategory
+    org.talend.core.model.process.INode
+    org.talend.designer.codegen.config.CodeGeneratorArgument
+	"
+%>
+
+<%
+	CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+	INode node = (INode)codeGenArgument.getArgument();
+	String cid = node.getUniqueName();
+	boolean close = ("true").equals(ElementParameterParser.getValue(node,"__CLOSE__"));
+	boolean keepFiles = ("true").equals(ElementParameterParser.getValue(node,"__KEEP_FILES__"));
+	String plsapInputDirectory = ElementParameterParser.getValue(node, "__PLSAP_INPUT_DIRECTORY__");
+	String functionName = ElementParameterParser.getValue(node, "__SAP_FUNCTION__");
+%>
+
+		} // FOR DataRow loop
+		
+	// close reader
+	} finally {
+<% if ( ! functionName.equals( "RFC_READ_TABLE") ) 
+   { 
+%>  
+		read_dat_<%=cid%>.close();
+<% } %>	
+	}
+  	
+} catch (Exception e_<%=cid%>) {
+
+	// close JcoConect even if the connection should persist
+	if ( ! <%= close %> )
+		com.sap.conn.jco.JCoContext.end(dest_<%=cid%>);
+
+    throw new RuntimeException(e_<%=cid%>);
+} finally {
+	if ( <%= close %> ) 
+		com.sap.conn.jco.JCoContext.end(dest_<%=cid%>);
+
+<% if ( !keepFiles && ! functionName.equals( "RFC_READ_TABLE") ) { %>		
+	// delete temporary files
+	java.io.File datFile = new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".dat");
+	java.io.File fieldsFile = new java.io.File(<%=plsapInputDirectory%>, fileNameBase_<%=cid%> + ".fields"); 
+	
+	try { 
+		if ( datFile.exists() && datFile.canWrite() )
+			datFile.delete();
+		if ( fieldsFile.exists() && fieldsFile.canWrite() )
+			fieldsFile.delete();
+	} catch (Exception e_<%=cid%>) {
+		throw new RuntimeException(e_<%=cid%>);
+	}
+	
+<%	} %>	
+}
