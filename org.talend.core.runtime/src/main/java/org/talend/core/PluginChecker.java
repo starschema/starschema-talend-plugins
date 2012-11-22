@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -44,10 +44,13 @@ public class PluginChecker {
 
     private static final String PERFORMANCE_PLUGIN_ID = "org.talend.designer.core.ui.preferences.PerformancePreferencePage"; //$NON-NLS-1$
 
-    private static final String EXCHANGE_SYSTEM_PLUGIN_ID = "org.talend.designer.components.ecosystem"; //$NON-NLS-1$
+    private static final String EXCHANGE_SYSTEM_PLUGIN_ID = "org.talend.designer.components.exchange"; //$NON-NLS-1$
 
     // added by hyWang
     private static final String RULES_PLUGIN_ID = "org.talend.repository.rules"; //$NON-NLS-1$   
+
+    // TDQ-3356
+    private static final String SURVIVORSHIP_PLUGIN_ID = "org.talend.survivorship.designer"; //$NON-NLS-1$
 
     private static final String PREVIEW_PLUGIN_ID = "org.talend.designer.component.preview"; //$NON-NLS-1$   
 
@@ -159,6 +162,10 @@ public class PluginChecker {
 
     public static boolean isHL7PluginLoaded() {
         return isPluginLoaded(HL7_PLUGIN_ID);
+    }
+
+    public static boolean isSurvivorshipPluginLoaded() {
+        return isPluginLoaded(SURVIVORSHIP_PLUGIN_ID);
     }
 
     public static boolean isBRMSPluginLoaded() {

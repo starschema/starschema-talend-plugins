@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -36,8 +36,8 @@ import org.talend.core.model.properties.ContextItem;
 import org.talend.core.runtime.CoreRuntimePlugin;
 import org.talend.core.ui.context.cmd.OrderContextParameterCommand;
 import org.talend.core.ui.context.model.template.ContextConstant;
-import org.talend.core.ui.context.model.template.ContextParameterParent;
-import org.talend.core.ui.context.model.template.ContextParameterSortedSon;
+import org.talend.core.ui.context.model.template.ContextVariableTabChildModel;
+import org.talend.core.ui.context.model.template.ContextVariableTabParentModel;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextParameterType;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
 import org.talend.repository.model.ERepositoryStatus;
@@ -91,7 +91,7 @@ public final class ContextManagerHelper {
         }
     }
 
-    private boolean isValid(Object obj) {
+    private static boolean isValid(Object obj) {
         if (obj == null) {
             return false;
         }
@@ -132,7 +132,7 @@ public final class ContextManagerHelper {
     /*
      * get the ContextParameterTypes of default ContextType from ContextItem
      */
-    public List<ContextParameterType> getContextParameterType(ContextItem item) {
+    public static List<ContextParameterType> getContextParameterType(ContextItem item) {
         if (!isValid(item)) {
             return null;
         }
@@ -155,7 +155,7 @@ public final class ContextManagerHelper {
     /*
      * get default ContextType from ContextItem
      */
-    public ContextType getDefaultContextType(ContextItem item) {
+    public static ContextType getDefaultContextType(ContextItem item) {
         if (!isValid(item)) {
             return null;
         }
@@ -428,8 +428,8 @@ public final class ContextManagerHelper {
 
         Object element = sSection.getFirstElement();
         IContextParameter movedParam = null;
-        if (element instanceof ContextParameterParent) {
-            movedParam = ((ContextParameterParent) element).getParameter();
+        if (element instanceof ContextVariableTabParentModel) {
+            movedParam = ((ContextVariableTabParentModel) element).getContextParameter();
         }
         if (movedParam == null) {
             return false;
@@ -479,14 +479,14 @@ public final class ContextManagerHelper {
         for (TreeItem item : items) {
             final Object data = item.getData();
             if (data != null) {
-                if (data instanceof ContextParameterParent) {
-                    ContextParameterParent parent = (ContextParameterParent) data;
-                    if (parent.getParameter() != null && param.getName().equals(parent.getParameter().getName())) {
+                if (data instanceof ContextVariableTabParentModel) {
+                    ContextVariableTabParentModel parent = (ContextVariableTabParentModel) data;
+                    if (parent.getContextParameter() != null && param.getName().equals(parent.getContextParameter().getName())) {
                         return item;
                     }
-                } else if (data instanceof ContextParameterSortedSon) {
-                    ContextParameterSortedSon son = (ContextParameterSortedSon) data;
-                    if (son.getParameter() != null && param.getName().equals(son.getParameter().getName())) {
+                } else if (data instanceof ContextVariableTabChildModel) {
+                    ContextVariableTabChildModel son = (ContextVariableTabChildModel) data;
+                    if (son.getContextParameter() != null && param.getName().equals(son.getContextParameter().getName())) {
                         return item;
                     }
                 }
@@ -583,10 +583,10 @@ public final class ContextManagerHelper {
 
         if (data == null) {
             return null;
-        } else if (data instanceof ContextParameterSortedSon) {
-            return ((ContextParameterSortedSon) data).getParameter();
-        } else if (data instanceof ContextParameterParent) {
-            return ((ContextParameterParent) data).getParameter();
+        } else if (data instanceof ContextVariableTabChildModel) {
+            return ((ContextVariableTabChildModel) data).getContextParameter();
+        } else if (data instanceof ContextVariableTabParentModel) {
+            return ((ContextVariableTabParentModel) data).getContextParameter();
         }
         return null;
     }

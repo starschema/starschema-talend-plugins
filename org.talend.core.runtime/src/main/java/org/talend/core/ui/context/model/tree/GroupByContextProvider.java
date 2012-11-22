@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,6 +14,7 @@ package org.talend.core.ui.context.model.tree;
 
 import java.util.List;
 
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
@@ -116,5 +117,25 @@ public class GroupByContextProvider extends ContextProviderProxy {
             return !((IContext) element).getContextParameterList().isEmpty();
         }
         return false;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.eclipse.jface.viewers.ITableColorProvider#getForeground(java.lang.Object, int)
+     */
+    public Color getForeground(Object element, int columnIndex) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.eclipse.jface.viewers.ITableColorProvider#getBackground(java.lang.Object, int)
+     */
+    public Color getBackground(Object element, int columnIndex) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -23,16 +23,15 @@ import org.talend.commons.xml.XmlUtil;
 import org.talend.core.model.components.IODataComponent;
 import org.talend.core.model.context.ContextUtils;
 import org.talend.core.model.metadata.IMetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.QueryUtil;
 import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.metadata.builder.connection.FTPConnection;
+import org.talend.core.model.metadata.builder.connection.MDMConnection;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.Query;
 import org.talend.core.model.metadata.builder.connection.SAPConnection;
-import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
-import org.talend.core.model.metadata.builder.connection.SAPIDocUnit;
 import org.talend.core.model.metadata.builder.connection.SalesforceModuleUnit;
 import org.talend.core.model.metadata.builder.connection.SalesforceSchemaConnection;
 import org.talend.core.model.metadata.builder.connection.WSDLSchemaConnection;
@@ -69,7 +68,7 @@ import org.talend.repository.ui.utils.ConnectionContextHelper;
 /**
  * DOC nrousseau class global comment. Detailled comment <br/>
  * 
- * $Id: ChangeValuesFromRepository.java 62460 2011-06-15 07:43:07Z wzhang $
+ * $Id: ChangeValuesFromRepository.java 86388 2012-06-27 10:08:36Z hwang $
  * 
  */
 public class ChangeValuesFromRepository extends ChangeMetadataCommand {
@@ -158,8 +157,9 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
         this.propertyName = propertyName;
         oldValues = new HashMap<String, Object>();
         if (connection instanceof XmlFileConnection) {
-            if (XmlUtil.isXSDFile(TalendQuoteUtils.removeQuotes(((XmlFileConnection) connection).getXmlFilePath())))
+            if (XmlUtil.isXSDFile(TalendQuoteUtils.removeQuotes(((XmlFileConnection) connection).getXmlFilePath()))) {
                 dragAndDropAction = true;
+            }
         }
         setLabel(Messages.getString("PropertyChangeCommand.Label")); //$NON-NLS-1$
         propertyTypeName = EParameterName.PROPERTY_TYPE.getName();
@@ -195,6 +195,8 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
 
         IElementParameter elemParam = elem.getElementParameter(EParameterName.REPOSITORY_ALLOW_AUTO_SWITCH.getName());
         if (elemParam != null) {
+            // add for TDI-8053
+            elemParam.setValue(Boolean.FALSE);
             allowAutoSwitch = (Boolean) elemParam.getValue();
         }
         if (!allowAutoSwitch && (elem instanceof Node)) {
@@ -280,7 +282,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                     if (!relatedPropertyParam.getCategory().equals(currentCategory) && !repositoryValue.equals("ENCODING")) { //$NON-NLS-1$
                         continue;
                     }
-                    Object objectValue;
+                    Object objectValue = null;
                     if (connection instanceof XmlFileConnection && this.dragAndDropAction == true
                             && repositoryValue.equals("FILE_PATH") && reOpenXSDBool == true) {
 
@@ -291,6 +293,25 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                             objectValue = moduleUnit.getModuleName();
                         } else {
                             objectValue = null;
+                        }
+                    }// for bug TDI-8662 . should be careful that connection.getModuleName() will always get the latest
+                     // name of the
+                     // module which was the last one be retrived
+                    else if (connection instanceof SalesforceSchemaConnection && "CUSTOM_MODULE_NAME".equals(repositoryValue)) { //$NON-NLS-1$ 
+                        if (this.moduleUnit != null) {
+                            objectValue = moduleUnit.getModuleName();
+                        } else {
+                            objectValue = null;
+                        }
+                    } else if (connection instanceof MDMConnection) {
+                        if (table == null) {
+                            IMetadataTable metaTable = null;
+                            if (((Node) elem).getMetadataList().size() > 0) {
+                                metaTable = ((Node) elem).getMetadataList().get(0);
+                            }
+                            objectValue = RepositoryToComponentProperty.getValue(connection, repositoryValue, metaTable);
+                        } else {
+                            objectValue = RepositoryToComponentProperty.getValue(connection, repositoryValue, table);
                         }
                     } else {
                         objectValue = RepositoryToComponentProperty.getValue(connection, repositoryValue, table);
@@ -363,8 +384,8 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                         } else if (param.getFieldType().equals(EParameterFieldType.CLOSED_LIST)
                                 && param.getRepositoryValue().equals("EDI_VERSION")) {
                             String[] list = param.getListItemsDisplayName();
-                            for (int i = 0; i < list.length; i++) {
-                                if (objectValue.toString().toUpperCase().equals(list[i])) {
+                            for (String element : list) {
+                                if (objectValue.toString().toUpperCase().equals(element)) {
                                     elem.setPropertyValue(param.getName(), objectValue);
                                 }
                             }
@@ -400,8 +421,8 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                             if (repositoryValue.equals("MODULENAME")) {//$NON-NLS-1$
                                 List list = new ArrayList();
                                 Object[] listItemsValue = elem.getElementParameter("MODULENAME").getListItemsValue();
-                                for (int i = 0; i < listItemsValue.length; i++) {
-                                    list.add(listItemsValue[i]);
+                                for (Object element : listItemsValue) {
+                                    list.add(element);
                                 }
                                 if (list != null && !list.contains(objectValue)) {
                                     objectValue = "CustomModule";//$NON-NLS-1$
@@ -425,12 +446,12 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
 
                                     filePath = TalendTextUtils.removeQuotes(objectValue.toString());
                                 }
-                                boolean versionCheckFor2007 = false; //$NON-NLS-N$
-                                if (filePath != null && filePath.endsWith(".xlsx")) { //$NON-NLS-N$
-                                    versionCheckFor2007 = true; //$NON-NLS-N$
+                                boolean versionCheckFor2007 = false;
+                                if (filePath != null && filePath.endsWith(".xlsx")) {
+                                    versionCheckFor2007 = true;
                                 }
-                                if (elem.getElementParameter("VERSION_2007") != null) { //$NON-NLS-N$
-                                    elem.setPropertyValue("VERSION_2007", versionCheckFor2007); //$NON-NLS-N$
+                                if (elem.getElementParameter("VERSION_2007") != null) {
+                                    elem.setPropertyValue("VERSION_2007", versionCheckFor2007);
                                 }
                             }
                             if (param.getFieldType().equals(EParameterFieldType.FILE)) {
@@ -468,7 +489,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                     } else {
                         // For SAP
                         String paramName = param.getName();
-                        if ("SAP_TABLE_NAME".equals(paramName)||"MAPPING_INPUT".equals(paramName)
+                        if ("SAP_TABLE_NAME".equals(paramName) || "MAPPING_INPUT".equals(paramName)
                                 || "SAP_FUNCTION".equals(paramName) // INPUT_PARAMS should be MAPPING_INPUT,bug16426
                                 || "OUTPUT_PARAMS".equals(paramName) || "SAP_ITERATE_OUT_TYPE".equals(paramName)
                                 || "SAP_ITERATE_OUT_TABLENAME".equals(paramName)) {
@@ -615,7 +636,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                                         if (repositoryTable != null && !"".equals(repositoryTable)) { //$NON-NLS-1$
                                             param.getChildParameters().get(EParameterName.SCHEMA_TYPE.getName())
                                                     .setValue(EmfComponent.REPOSITORY);
-                                            IMetadataTable table = MetadataTool.getMetadataFromRepository(repositoryTable);
+                                            IMetadataTable table = MetadataToolHelper.getMetadataFromRepository(repositoryTable);
                                             // repositoryTableMap.get(repositoryTable);
                                             if (table != null) {
                                                 table = table.clone();
@@ -638,7 +659,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                                         if (repositoryTable != null && !"".equals(repositoryTable)) { //$NON-NLS-1$
                                             param.getChildParameters().get(EParameterName.SCHEMA_TYPE.getName())
                                                     .setValue(EmfComponent.REPOSITORY);
-                                            IMetadataTable table = MetadataTool.getMetadataFromRepository(repositoryTable);
+                                            IMetadataTable table = MetadataToolHelper.getMetadataFromRepository(repositoryTable);
                                             // repositoryTableMap.get(repositoryTable);
                                             if (table != null) {
                                                 table = table.clone();
@@ -659,7 +680,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                                         if (repositoryTable != null && !"".equals(repositoryTable)) { //$NON-NLS-1$
                                             param.getChildParameters().get(EParameterName.SCHEMA_TYPE.getName())
                                                     .setValue(EmfComponent.REPOSITORY);
-                                            IMetadataTable table = MetadataTool.getMetadataFromRepository(repositoryTable);
+                                            IMetadataTable table = MetadataToolHelper.getMetadataFromRepository(repositoryTable);
                                             // repositoryTableMap.get(repositoryTable);
                                             if (table != null) {
                                                 table = table.clone();
@@ -691,7 +712,8 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
                                                 param.getChildParameters().get(EParameterName.SCHEMA_TYPE.getName())
                                                         .setValue(EmfComponent.REPOSITORY);
 
-                                                IMetadataTable table = MetadataTool.getMetadataFromRepository(repositoryTable);
+                                                IMetadataTable table = MetadataToolHelper
+                                                        .getMetadataFromRepository(repositoryTable);
                                                 if (table != null) {
                                                     table = table.clone();
                                                     setDBTableFieldValue(node, table.getTableName(), null);
@@ -981,7 +1003,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
             }
             SAPConnection sapConn = (SAPConnection) connection;
             if (sapConn.getFuntions() != null && !sapConn.getFuntions().isEmpty()) {
-                return ((SAPFunctionUnit) sapConn.getFuntions().get(0)).getName();
+                return sapConn.getFuntions().get(0).getName();
             }
         }
         return this.sapFunctionLabel;
@@ -1009,7 +1031,7 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
             }
             SAPConnection sapConn = (SAPConnection) connection;
             if (sapConn.getIDocs() != null && !sapConn.getIDocs().isEmpty()) {
-                return ((SAPIDocUnit) sapConn.getIDocs().get(0)).getName();
+                return sapConn.getIDocs().get(0).getName();
             }
         }
         return this.sapIDocLabel;
@@ -1037,5 +1059,9 @@ public class ChangeValuesFromRepository extends ChangeMetadataCommand {
 
     public void setSalesForceModuleUnit(SalesforceModuleUnit moduleUnit) {
         this.moduleUnit = moduleUnit;
+    }
+
+    public void setTable(IMetadataTable table) {
+        this.table = table;
     }
 }

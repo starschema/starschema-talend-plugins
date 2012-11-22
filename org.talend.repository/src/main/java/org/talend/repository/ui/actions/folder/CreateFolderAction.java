@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -16,7 +16,6 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
@@ -24,7 +23,6 @@ import org.eclipse.swt.widgets.Shell;
 import org.talend.commons.ui.runtime.image.ECoreImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.ui.images.OverlayImageProvider;
 import org.talend.repository.ProjectManager;
@@ -40,7 +38,7 @@ import org.talend.repository.ui.wizards.folder.FolderWizard;
 /**
  * Action used to create a new folder in repository.<br/>
  * 
- * $Id: CreateFolderAction.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: CreateFolderAction.java 82396 2012-04-24 09:28:34Z zwzhao $
  * 
  */
 public class CreateFolderAction extends AContextualAction {
@@ -59,6 +57,7 @@ public class CreateFolderAction extends AContextualAction {
      * 
      * @see org.eclipse.ui.IActionDelegate#run(org.eclipse.jface.action.IAction)
      */
+    @Override
     protected void doRun() {
         ISelection selection = getSelection();
         Object obj = ((IStructuredSelection) selection).getFirstElement();
@@ -79,9 +78,7 @@ public class CreateFolderAction extends AContextualAction {
             WizardDialog dialog = new WizardDialog(activeShell, processWizard);
             dialog.setPageSize(400, 60);
             dialog.create();
-            if (dialog.open() == Window.OK) {
-                RepositoryManager.refreshCreatedNode(objectType);
-            }
+            dialog.open();
         }
     }
 
@@ -107,15 +104,16 @@ public class CreateFolderAction extends AContextualAction {
                 canWork = false;
                 break;
             case SYSTEM_FOLDER:
-                if (property == ERepositoryObjectType.GENERATED || property == ERepositoryObjectType.JOBS
-                        || property == ERepositoryObjectType.JOBLETS || property == ERepositoryObjectType.SQLPATTERNS
-                        || property == ERepositoryObjectType.REFERENCED_PROJECTS || property == ERepositoryObjectType.SVN_ROOT) {
+                if (ERepositoryObjectType.GENERATED.equals(property) || ERepositoryObjectType.JOBS.equals(property)
+                        || ERepositoryObjectType.JOBLETS.equals(property) || ERepositoryObjectType.SQLPATTERNS.equals(property)
+                        || ERepositoryObjectType.REFERENCED_PROJECTS.equals(property)
+                        || ERepositoryObjectType.SVN_ROOT.equals(property)) {
                     canWork = false;
                 }
                 break;
             case SIMPLE_FOLDER:
-                if (property == ERepositoryObjectType.JOB_DOC || property == ERepositoryObjectType.JOBLET_DOC
-                        || (property == ERepositoryObjectType.SQLPATTERNS && !isUnderUserDefined(node))) {
+                if (ERepositoryObjectType.JOB_DOC.equals(property) || ERepositoryObjectType.JOBLET_DOC.equals(property)
+                        || (ERepositoryObjectType.SQLPATTERNS.equals(property) && !isUnderUserDefined(node))) {
                     canWork = false;
                 }
                 if (node.getObject().getProperty().getItem().getState().isDeleted()) {

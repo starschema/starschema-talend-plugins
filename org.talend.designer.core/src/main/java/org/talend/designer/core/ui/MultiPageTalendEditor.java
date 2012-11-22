@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,8 +29,8 @@ import org.talend.core.model.properties.InformationLevel;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.JobletProcessItem;
 import org.talend.core.ui.ISVNProviderService;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.core.ui.images.OverlayImageProvider;
-import org.talend.designer.core.ICamelDesignerCoreService;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.ui.editor.AbstractTalendEditor;
 import org.talend.designer.core.ui.editor.ProcessEditorInput;
@@ -43,7 +43,7 @@ import org.talend.designer.core.ui.editor.TalendEditor;
  * <br/>
  * This class uses the interface ISelectionListener, it allows to propage the Delete evenement to the designer. <br/>
  * 
- * $Id: MultiPageTalendEditor.java 61885 2011-06-07 14:45:21Z nrousseau $
+ * $Id: MultiPageTalendEditor.java 82729 2012-05-02 09:49:22Z hwang $
  * 
  */
 public class MultiPageTalendEditor extends AbstractMultiPageTalendEditor {
@@ -143,20 +143,23 @@ public class MultiPageTalendEditor extends AbstractMultiPageTalendEditor {
                 title = "MultiPageTalendEditor.Joblet";//$NON-NLS-1$
             }
         }
-
-        if (GlobalServiceRegister.getDefault().isServiceRegistered(ICamelDesignerCoreService.class)) {
-            ICamelDesignerCoreService camelService = (ICamelDesignerCoreService) GlobalServiceRegister.getDefault().getService(
-                    ICamelDesignerCoreService.class);
-            if (camelService.isInstanceofCamelRoutes(process2.getProperty().getItem())) {
-                title = "MultiPageTalendEditor.Route";
+        IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                IBrandingService.class);
+        boolean allowVerchange = brandingService.getBrandingConfiguration().isAllowChengeVersion();
+        if (allowVerchange) {
+            if (revisionNumStr != null) {
+                setPartName(Messages.getString(title, label, jobVersion) + revisionNumStr);
+            } else {
+                setPartName(Messages.getString(title, label, jobVersion)); //$NON-NLS-1$
+            }
+        } else {
+            if (revisionNumStr != null) {
+                setPartName(Messages.getString(title, label, "") + revisionNumStr);//$NON-NLS-1$
+            } else {
+                setPartName(Messages.getString(title, label, "")); //$NON-NLS-1$
             }
         }
 
-        if (revisionNumStr != null) {
-            setPartName(Messages.getString(title, label, jobVersion) + revisionNumStr);
-        } else {
-            setPartName(Messages.getString(title, label, jobVersion)); //$NON-NLS-1$
-        }
     }
 
     public void setName(String RevisionNumStr) {

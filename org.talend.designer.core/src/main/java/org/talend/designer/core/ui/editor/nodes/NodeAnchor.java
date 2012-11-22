@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -22,8 +22,8 @@ import org.eclipse.draw2d.ScalableFreeformLayeredPane;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.Rectangle;
-import org.eclipse.gmf.runtime.draw2d.ui.geometry.LineSeg;
-import org.eclipse.gmf.runtime.draw2d.ui.geometry.LineSeg.KeyPoint;
+import org.talend.commons.ui.gmf.draw2d.LineSeg;
+import org.talend.commons.ui.gmf.draw2d.LineSeg.KeyPoint;
 import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IGraphicalNode;
 import org.talend.designer.core.ui.editor.connections.Connection;

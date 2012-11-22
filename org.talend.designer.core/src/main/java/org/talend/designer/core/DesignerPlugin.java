@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -15,7 +15,6 @@ package org.talend.designer.core;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
-import org.talend.commons.ui.swt.colorstyledtext.jedit.Modes;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.IService;
 import org.talend.designer.codegen.ICodeGeneratorService;
@@ -26,13 +25,13 @@ import org.talend.repository.model.IRepositoryService;
 /**
  * The designer plugin class to be used in the desktop. <br/>
  * 
- * $Id: DesignerPlugin.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: DesignerPlugin.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 /**
  * DOC dev class global comment. Detailled comment <br/>
  * 
- * $Id: DesignerPlugin.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: DesignerPlugin.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class DesignerPlugin extends AbstractUIPlugin {
@@ -43,9 +42,6 @@ public class DesignerPlugin extends AbstractUIPlugin {
 
     public DesignerPlugin() {
         plugin = this;
-        Modes.getMode("perl.xml"); //$NON-NLS-1$
-        Modes.getMode("tsql.xml"); //$NON-NLS-1$
-        Modes.getMode("java.xml"); //$NON-NLS-1$
         /*
          * // plugins list IExtensionRegistry extensionRegistry = Platform.getExtensionRegistry(); String[] namespaces =
          * extensionRegistry.getNamespaces(); System.out.println("Liste des plugins talend:"); for (int i = 0; i <

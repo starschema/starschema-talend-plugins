@@ -13,21 +13,107 @@
       <Action
             class="org.talend.repository.sapwizard.actions.CreateSAPConnectionAction"
             id="org.talend.repository.sapwizard.actions.createSAPConnectionAction"
-            isEditAction="false"
-            isPropertiesAction="false"
-            isReadAction="false"
+            isEditAction="true"
+            isReadAction="true"
             level="10"
             name="Metadata/Create SAP">
       </Action>
-       <Action
+      <Action
             class="org.talend.repository.sapwizard.actions.CreateSAPTableAction"
             id="org.talend.repository.sapwizard.actions.createSAPTableAction"
-            isEditAction="false"
-            isPropertiesAction="false"
-            isReadAction="false"
-            level="11"
-            name="Retrieve SAP Tables">
+            isEditAction="true"
+            level="12"
+            name="Metadata/Retrieve SAP Tables">
       </Action>
    </extension>
-
+   <extension
+         point="org.eclipse.ui.navigator.navigatorContent">
+      <navigatorContent
+            activeByDefault="true"
+            appearsBefore="org.talend.repository.viewer.metadata.dbConnections"
+            contentProvider="org.talend.repository.plsap.ui.viewer.content.PlSapContentProvider"
+            icon="icons/sapconnection.png"
+            id="org.talend.repository.viewer.metadata.plsapConnections"
+            labelProvider="org.talend.repository.viewer.label.RepositoryViewLabelProvider"
+            name="PLSAP Connection"
+            priority="high">
+	<triggerPoints>
+            <and>
+               <instanceof
+                     value="org.talend.repository.model.RepositoryNode">
+               </instanceof>
+               <test
+                     forcePluginActivation="true"
+                     property="org.talend.repository.node.isMetadataTopNode">
+               </test>
+            </and>
+         </triggerPoints>
+         <possibleChildren>
+            <instanceof
+                  value="org.talend.repository.model.RepositoryNode">
+            </instanceof>
+         </possibleChildren>
+         <actionProvider
+               class="org.talend.repository.metadata.action.MetedataNodeActionProvier">
+            <enablement>
+               <and>
+                  <instanceof
+                        value="org.talend.repository.model.RepositoryNode">
+                  </instanceof>
+                  <test
+                        forcePluginActivation="true"
+                        property="org.talend.repository.node.metadata.isPlSap">
+                  </test>
+                  <not>
+                     <test
+                           forcePluginActivation="true"
+                           property="org.talend.repository.node.isDeleted">
+                     </test>
+                  </not>
+               </and>
+            </enablement>
+         </actionProvider>            
+      </navigatorContent>
+   </extension>
+   <extension
+         point="org.eclipse.core.expressions.propertyTesters">
+      <propertyTester
+            class="org.talend.repository.plsap.ui.viewer.tester.PlSapMetadataNodeTester"
+            id="org.talend.repository.node.tester.metadata.plsap"
+            namespace="org.talend.repository.node.metadata"
+            properties="isPlSap"
+            type="org.talend.repository.model.RepositoryNode">
+      </propertyTester>
+   </extension>
+   <extension
+         point="org.talend.core.runtime.repositoryComponent_provider">
+      <RepositoryComponent
+            input="tPLSAPSimpleInput"
+            name="SAP"
+            output="tSAPOutput"
+            type="SAP">
+         <Item
+               clazz="org.talend.core.model.properties.SAPConnectionItem">
+         </Item>
+      </RepositoryComponent>         
+      <DragAndDropFilter
+            clazz="org.talend.core.repository.DefaultRepositoryComponentDndFilter"
+            id="org.talend.repository.plsap.ui.viewer.dnd.PlSapComponentDndFilter"
+            name="tPLSAP">
+      </DragAndDropFilter>
+   </extension>
+   <extension
+         point="org.talend.designer.core.generators">
+      <generator
+            class="org.talend.repository.plsap.ui.editor.properties.controllers.generator.PlSapSchemaTypeGenerator"
+            mapping="PLSAP_SCHEMA_TYPE"
+            name="PLSAP Schema Type">
+      </generator>
+   </extension>
+   <extension
+         point="org.eclipse.ui.startup">
+      <startup
+            class="org.talend.repository.sapwizard.SAPPlugin">
+      </startup>
+   </extension>
 </plugin>

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -98,7 +98,7 @@ public class SelectDeleteProjectDialog extends SelectionDialog {
 
     }
 
-    protected SelectDeleteProjectDialog(Shell parentShell, boolean login) {
+    public SelectDeleteProjectDialog(Shell parentShell, boolean login) {
         this(parentShell);
         getProjectItem(login);
     }
@@ -352,5 +352,9 @@ public class SelectDeleteProjectDialog extends SelectionDialog {
         delProjectItem();
         projects = null;
         super.okPressed();
+    }
+
+    public List<Object> getDelList() {
+        return delItemList;
     }
 }

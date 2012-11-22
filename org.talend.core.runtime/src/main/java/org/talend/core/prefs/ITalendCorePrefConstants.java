@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -98,4 +98,32 @@ public interface ITalendCorePrefConstants {
     String USE_CSS_TEMPLATE = "use_css_template";
 
     String CSS_FILE_PATH = "css_file_path";
+
+    String FORBIDDEN_MAPPING_LENGTH_PREC_LOGIC = "forbidden_mapping_length_prec_logic";
+
+    String DATA_COLLECTOR_ENABLED = "active_data_collector";
+
+    String DATA_COLLECTOR_UPLOAD_PERIOD = "active_data_collector_times";
+
+    String DATA_COLLECTOR_LAST_TIME = "data_collector_last_time";
+
+    String DATA_COLLECTOR_PREVIEW = "data_collector_preview";
+
+    String DATA_COLLECTOR = "data_collector";
+
+    String EXCHANGE_CHECK_TIS_VERSION = "exchange_check_tis_version";
+
+    String EXCHANGE_DOWNLOADED_CHECK_UPDATES = "exchange_downloaded_check_updates";
+
+    String MAXIMUM_AMOUNT_OF_COLUMNS_FOR_XML = "maximum_amount_of_columns_for_xml";
+
+    String OOZIE_SCHEDULER_PATH = "oozie_scheduler_path";
+
+    String OOZIE_SHCEDULER_NAME_NODE_ENDPOINT = "oozie_scheduler_name_node_endpoint";
+
+    String OOZIE_SHCEDULER_JOB_TRACKER_ENDPOINT = "oozie_scheduler_job_tracker_endpoint";
+
+    String OOZIE_SHCEDULER_OOZIE_ENDPOINT = "oozie_scheduler_oozie_endpoint";
+
+    String OOZIE_SCHEDULER_USER_NAME = "oozie_scheduler_user_name";
 }

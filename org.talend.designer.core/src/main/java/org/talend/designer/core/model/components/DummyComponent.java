@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -15,12 +15,12 @@ package org.talend.designer.core.model.components;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.model.components.EComponentType;
-import org.talend.core.model.components.IComponentsFactory;
 import org.talend.core.model.components.IMultipleComponentManager;
 import org.talend.core.model.general.ModuleNeeded;
 import org.talend.core.model.process.EComponentCategory;
@@ -283,8 +283,8 @@ public class DummyComponent extends AbstractComponent {
      * 
      * @see org.talend.core.model.components.IComponent#getPluginFullName()
      */
-    public String getPluginFullName() {
-        return IComponentsFactory.COMPONENTS_LOCATION;
+    public String getPluginExtension() {
+        return null;
     }
 
     /*
@@ -512,6 +512,11 @@ public class DummyComponent extends AbstractComponent {
     public IProcess getProcess() {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    public void setImageRegistry(Map<String, ImageDescriptor> imageRegistry) {
+        // TODO Auto-generated method stub
+
     }
 
 }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,15 +14,19 @@ package org.talend.repository.model;
 
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.ui.IActionFilter;
 import org.talend.commons.ui.runtime.image.IImage;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.Folder;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.core.ui.images.RepositoryImageProvider;
+import org.talend.repository.ProjectManager;
 import org.talend.repository.model.nodes.IProjectRepositoryNode;
 
 /**
@@ -32,7 +36,7 @@ import org.talend.repository.model.nodes.IProjectRepositoryNode;
  * $Id: RepositoryNode.java 914 2006-12-08 08:28:53 +0000 (星期五, 08 �??二月 2006) bqian $
  * 
  */
-public class RepositoryNode implements IRepositoryNode {
+public class RepositoryNode implements IRepositoryNode, IActionFilter {
 
     public static final String NO_ID = "-1"; //$NON-NLS-1$
 
@@ -48,11 +52,16 @@ public class RepositoryNode implements IRepositoryNode {
 
     private Map<EProperties, Object> properties = new Hashtable<EProperties, Object>();
 
-    private IProjectRepositoryNode root;
+    // private IProjectRepositoryNode root;
+    private String projectTechnicalLabel;
 
     private IImage icon;
 
     private boolean initialized = false;
+
+    private boolean isDisposed = false;
+
+    private boolean enableDisposed = false;
 
     /*
      * (non-Javadoc)
@@ -80,17 +89,18 @@ public class RepositoryNode implements IRepositoryNode {
      */
     public RepositoryNode(IRepositoryViewObject object, RepositoryNode parent, ENodeType type) {
         super();
-        this.id = (object == null ? NO_ID : object.getId()); //$NON-NLS-1$
+        this.id = (object == null ? NO_ID : object.getId());
         this.object = object;
         this.parent = parent;
         this.type = type;
-        this.root = (parent == null ? null : parent.getRoot());
 
+        setRoot((parent == null ? null : parent.getRoot()));
         if (object != null) {
             object.setRepositoryNode(this);
         }
     }
 
+    @Override
     public String toString() {
         switch (getType()) {
         case REPOSITORY_ELEMENT:
@@ -113,6 +123,19 @@ public class RepositoryNode implements IRepositoryNode {
     public List<IRepositoryNode> getChildren() {
         if (true) {
             // FIXME SML Remove when mhelleboid attach item to folders
+            IBrandingService service = (IBrandingService) GlobalServiceRegister.getDefault().getService(IBrandingService.class);
+
+            List<IRepositoryNode> hiddens = service.getBrandingConfiguration().getHiddenRepositoryCategory(this, "DI");
+
+            for (IRepositoryNode node : hiddens) {
+                Iterator<IRepositoryNode> it = children.iterator();
+                while (it.hasNext()) {
+                    IRepositoryNode curNode = it.next();
+                    if (curNode.equals(node)) {
+                        it.remove();
+                    }
+                }
+            }
             return children;
         }
         if (type == ENodeType.STABLE_SYSTEM_FOLDER || type == ENodeType.SYSTEM_FOLDER) {
@@ -246,21 +269,28 @@ public class RepositoryNode implements IRepositoryNode {
             return properties.get(EProperties.LABEL).toString();
         case REPOSITORY_ELEMENT:
         case SIMPLE_FOLDER:
-            return getObjectType().toString();
+            final ERepositoryObjectType objectType = getObjectType();
+            if (objectType != null) {
+                objectType.toString();
+            }
         default:
-            if (getContentType().toString().equals("SVN")) {
-                return getProperties(EProperties.LABEL).toString();
+            final ERepositoryObjectType contentType = getContentType();
+            if (contentType != null) {
+                if ("SVN".equals(contentType.toString())) {
+                    return getProperties(EProperties.LABEL).toString();
+                }
+                if (contentType.equals(ERepositoryObjectType.PROCESS)) {
+                    return getProperties(EProperties.LABEL).toString();
+                }
+                if (ERepositoryObjectType.TDQ_INDICATOR_ELEMENT.equals(contentType)
+                        || ERepositoryObjectType.TDQ_PATTERN_ELEMENT.equals(contentType)
+                        || ERepositoryObjectType.TDQ_RULES.equals(contentType)) {
+                    return getObject().getLabel();
+                }
+                return contentType.toString();
             }
-            if (getContentType().equals(ERepositoryObjectType.PROCESS)) {
-                return getProperties(EProperties.LABEL).toString();
-            }
-            if (ERepositoryObjectType.TDQ_INDICATOR_ELEMENT.equals(getContentType())
-                    || ERepositoryObjectType.TDQ_PATTERN_ELEMENT.equals(getContentType())
-                    || ERepositoryObjectType.TDQ_RULES.equals(getContentType())) {
-                return getObject().getLabel();
-            }
-            return getContentType().toString();
         }
+        return "";
     }
 
     /*
@@ -292,8 +322,8 @@ public class RepositoryNode implements IRepositoryNode {
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * org.talend.repository.model.RepositoryNode#getProperties(org.talend.repository.model.RepositoryNode.EProperties)
+     * @see org.talend.repository.model.RepositoryNode#getProperties(org.talend.
+     * repository.model.RepositoryNode.EProperties)
      */
     public Object getProperties(EProperties key) {
         return properties.get(key);
@@ -341,8 +371,10 @@ public class RepositoryNode implements IRepositoryNode {
             return false;
         }
         final RepositoryNode other = (RepositoryNode) obj;
-        if (this.id != other.id) {
-            return false;
+        if (this.type != ENodeType.SIMPLE_FOLDER) {
+            if (null != this.id && null != other.id && !this.id.equals(other.id)) {
+                return false;
+            }
         }
         if (this.properties == null) {
             if (other.properties != null) {
@@ -365,11 +397,18 @@ public class RepositoryNode implements IRepositoryNode {
         } else if (!this.parent.equals(other.parent)) {
             return false;
         }
+        if (this.getLabel() == null) {
+            if (other.getLabel() != null) {
+                return false;
+            }// else keep checking
+        } else if (!this.getLabel().equals(other.getLabel())) {
+            return false;
+        }// else keep checking
         return true;
     }
 
     public IProjectRepositoryNode getRoot() {
-        return this.root;
+        return ProjectManager.getInstance().getProjectNode(this.projectTechnicalLabel);
     }
 
     /**
@@ -378,7 +417,9 @@ public class RepositoryNode implements IRepositoryNode {
      * @param root the root to set
      */
     public void setRoot(IProjectRepositoryNode root) {
-        this.root = root;
+        if (root != null) {
+            this.projectTechnicalLabel = root.getProject().getTechnicalLabel();
+        }
     }
 
     /**
@@ -398,4 +439,80 @@ public class RepositoryNode implements IRepositoryNode {
         this.icon = icon;
     }
 
+    /*
+     * Declarative visibility filter of extension points.
+     * 
+     * @see org.eclipse.ui.IActionFilter#testAttribute(java.lang.Object, java.lang.String, java.lang.String)
+     */
+    public boolean testAttribute(Object target, String name, String value) {
+        RepositoryNode node = (RepositoryNode) target;
+        // The 2 following declarations are used by TDQ-3800:
+        // Add the contextual pop-up menu to SurvivorshipFileItem nodes.
+        // see also plugin.xml of org.talend.survivorship.designer
+        if ("NodeType".equals(name)) { //$NON-NLS-1$
+            if (value.equals(node.getType().toString())) {
+                return true;
+            }
+        }
+        if ("ContentType".equals(name)) { //$NON-NLS-1$
+            ERepositoryObjectType contentType = node.getContentType();
+            if (contentType != null && value.equals(contentType.getType())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isEnableDisposed() {
+        return enableDisposed;
+    }
+
+    public void setEnableDisposed(boolean enableDisposed) {
+        this.enableDisposed = enableDisposed;
+    }
+
+    public void dispose() {
+        /*
+         * FIXME, if later, can dispose all children, the flag enableDisposed will be not useful. So far, because many
+         * actions reference this object, so can't dispose it, only dispose the StableRepositoryNode.
+         */
+        boolean doDispose = isEnableDisposed();
+
+        // StableRepositoryNode
+        if (getType() == ENodeType.STABLE_SYSTEM_FOLDER) {
+            doDispose = true;
+        }
+        if (doDispose) {
+            this.id = null;
+            this.projectTechnicalLabel = null;
+            this.parent = null;
+            this.object = null;
+
+            this.initialized = false;
+
+            if (this.properties != null) {
+                this.properties.clear();
+            }
+        }
+        // dispose the children .
+        if (this.children != null) {
+            for (IRepositoryNode child : this.children) {
+                /*
+                 * In fact, won't dispose the children. because the flag 'enableDisposed' is false always. So far, only
+                 * dispose the StableRepositoryNode.
+                 */
+                child.dispose();
+            }
+            if (doDispose) {
+                this.children.clear();
+            }
+        }
+        if (doDispose) {
+            this.isDisposed = true;
+        }
+    }
+
+    public boolean isDisposed() {
+        return this.isDisposed;
+    }
 }

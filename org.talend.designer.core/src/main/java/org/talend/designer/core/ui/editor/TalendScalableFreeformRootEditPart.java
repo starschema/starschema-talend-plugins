@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,16 +20,13 @@ import org.eclipse.draw2d.ScalableFigure;
 import org.eclipse.draw2d.ScalableFreeformLayeredPane;
 import org.eclipse.draw2d.Viewport;
 import org.eclipse.draw2d.geometry.Insets;
-import org.eclipse.draw2d.geometry.Point;
-import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.AutoexposeHelper;
 import org.eclipse.gef.editparts.GridLayer;
 import org.eclipse.gef.editparts.ScalableFreeformRootEditPart;
 import org.eclipse.gef.editparts.ViewportAutoexposeHelper;
 import org.eclipse.gef.editparts.ZoomManager;
-import org.eclipse.gmf.runtime.diagram.ui.internal.editparts.ZoomableEditPart;
-import org.eclipse.gmf.runtime.gef.ui.internal.editparts.AnimatableZoomManager;
 import org.eclipse.ui.IEditorInput;
+import org.talend.commons.ui.gmf.draw2d.AnimatableZoomManager;
 
 /**
  * Modification of the default RootEditPart to add the possibility to change the color of the background and change the
@@ -38,7 +35,7 @@ import org.eclipse.ui.IEditorInput;
  * $Id: TalendScalableFreeformRootEditPart.java 7038 2007-11-15 14:05:48Z plegall $
  * 
  */
-public class TalendScalableFreeformRootEditPart extends ScalableFreeformRootEditPart implements ZoomableEditPart {
+public class TalendScalableFreeformRootEditPart extends ScalableFreeformRootEditPart {
 
     public static final String PROCESS_BACKGROUND_LAYER = "processBackgroundLayer"; //$NON-NLS-1$
 
@@ -115,30 +112,6 @@ public class TalendScalableFreeformRootEditPart extends ScalableFreeformRootEdit
 
     public IEditorInput getEditorInput() {
         return editorInput;
-    }
-
-    public void zoomIn() {
-        zoomManager.zoomIn();
-    }
-
-    public void zoomIn(Point center) {
-        zoomManager.zoomTo(zoomManager.getNextZoomLevel(), center);
-    }
-
-    public void zoomOut() {
-        zoomManager.zoomOut();
-    }
-
-    public void zoomOut(Point center) {
-        zoomManager.zoomTo(zoomManager.getPreviousZoomLevel(), center);
-    }
-
-    public void zoomTo(Rectangle rect) {
-        zoomManager.zoomTo(rect);
-    }
-
-    public void zoomTo(double zoom, Point center) {
-        zoomManager.zoomTo(zoom, center);
     }
 
     /*

@@ -4,14 +4,17 @@
    <extension-point id="toolbar_creation" name="toolbar creation action" schema="schema/toolbar_creation.exsd"/>
    <extension-point id="projectsetting_page" name="Project Setting Page" schema="schema/projectsetting_page.exsd"/>
    <extension-point id="repository_menu_provider" name="Repository Menu Provider" schema="schema/repository_menu_provider.exsd"/>
+      <extension-point id="after_import_project_action" name="after import project action" schema="schema/after_import_project_action.exsd"/>
    <extension
          point="org.eclipse.ui.views">
+   <!--
       <view
             category="org.talend.core.root"
             class="org.talend.repository.ui.views.RepositoryView"
             icon="icons/nav_home_003.gif"
-            id="org.talend.repository.views.repository"
-            name="%RepositoryView.title"/>
+            id="org.talend.repository.views.repository.deprecated"
+            name="Repository [deprecated]"/>
+    -->
    </extension>
    <extension
          point="org.talend.core.global_actions">
@@ -31,112 +34,7 @@
             class="org.talend.repository.ui.actions.folder.RenameFolderAction"
             id="org.talend.repository.actions.renamefolder"
             level="20"
-            name="Rename folder"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateConnectionAction"
-            id="org.talend.repository.actions.createconnection"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create connection"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateTableAction"
-            id="org.talend.repository.actions.createtable"
-            isEditAction="true"
-            level="15"
-            name="Metadata/Create table"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.ReadTableAction"
-            id="org.talend.repository.actions.readtable"
-            isReadAction="true"
-            level="18"
-            name="Metadata/Read table"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateFileDelimitedAction"
-            id="org.talend.repository.actions.createfiledelimited"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create file delimited"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateFilePositionalAction"
-            id="org.talend.repository.actions.createfilepositional"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create file positional"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateFileRegexpAction"
-            id="org.talend.repository.actions.createfileregexp"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create file regexp"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateFileXmlAction"
-            id="org.talend.repository.actions.createfilexml"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create file xml"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateFileLdifAction"
-            id="org.talend.repository.actions.createfileldif"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create file ldif"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateFileExcelAction"
-            id="org.talend.repository.actions.createfileexcel"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create file Excel"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateSalesforceSchemaAction"
-            id="org.talend.repository.actions.createsalesforceschema"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create Salesforce"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateSalesforceModulesAction"
-            id="org.talend.repository.actions.createSalesforceModulesAction"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create Salesforce Modules"/>
-      <Action
-            class="org.talend.repository.ui.actions.metadata.CreateSalesforceSchemasAction"
-            id="org.talend.repository.actions.CreateSalesforceSchemasAction"
-            isEditAction="true"
-            isReadAction="true"
-            level="10"
-            name="Metadata/Create Salesforce Schemas"/>
-      <Action
-            class="org.talend.repository.ui.actions.documentation.CreateDocumentationAction"
-            id="org.talend.repository.actions.createdocumentation"
-            level="10"
-            name="Add documentation"/>
-      <Action
-            class="org.talend.repository.ui.actions.documentation.OpenDocumentationAction"
-            id="org.talend.repository.actions.opendocumentation"
-            isReadAction="true"
-            level="11"
-            name="Open documentation"/>
-      <Action
-            class="org.talend.repository.ui.actions.documentation.ExtractDocumentationAction"
-            id="org.talend.repository.actions.extractdocumentation"
-            isReadAction="true"
-            level="12"
-            name="Extract documentation"/>
-      <Action
-            class="org.talend.repository.ui.actions.documentation.UpdateDocumentationAction"
-            id="org.talend.repository.actions.updatedocumentation"
-            isEditAction="true"
-            level="10"
-            name="Update documentation"/>
+            name="Rename folder"/>          
       <Action
             class="org.talend.repository.ui.actions.ExpandAllAction"
             id="org.talend.repository.actions.expand"
@@ -201,48 +99,14 @@
              id="org.talend.repository.actions.ImportExternalJAR"
              level="97"
              name="Import External JARs"/>
-       <Action
-             class="org.talend.repository.ui.actions.metadata.CreateGenericSchemaAction"
-             id="org.talend.repository.actions.createGenericSchemas"
-             isEditAction="true"
-             isPropertiesAction="false"
-             isReadAction="true"
-             level="10"
-             name="Metadata/Create generic schemas"/>
-       <Action
-             class="org.talend.repository.ui.actions.metadata.CreateLDAPSchemaAction"
-             id="org.talend.repository.actions.createLDAPSchema"
-             isEditAction="true"
-             isReadAction="true"
-             level="10"
-             name="Metadata/Create LDAP schemas">
-       </Action>
-       <Action
-             class="org.talend.repository.ui.actions.metadata.CreateWSDLSchemaAction"
-             id="org.talend.repository.actions.createWSDLSchema"
-             isEditAction="true"
-             isReadAction="true"
-             level="10"
-             name="Metadata/Create WSDL schemas">
-       </Action>
+     
        <Action
              class="org.talend.repository.ui.actions.metadata.CopyToGenericSchemaAction"
              id="org.talend.repository.CopyToGenericSchemaAction"
              level="18"
              name="Metadata/Copy to Generic schema action">
        </Action>
-       <Action
-             class="org.talend.repository.ui.actions.metadata.ImportSchemaFileAction"
-             id="org.talend.repository.actions.ImportSchemaFileAction"
-             level="10"
-             name="Metadata/Create generic schema from xml">
-       </Action>
-       <Action
-             class="org.talend.repository.ui.actions.GenerateDocAsHTMLAction"
-             id="org.talend.repository.ui.actions.GenerateDocAsHTMLAction"
-             level="98"
-             name="Generate Doc as HTML">
-       </Action>
+      
        <Action
              class="org.talend.repository.ui.actions.sqlpattern.CreateSqlpatternAction"
              id="org.talend.repository.ui.actions.sqlpattern.createsqlpatternaction"
@@ -278,7 +142,7 @@
    <extension
          point="org.eclipse.ui.views.properties.tabbed.propertyContributor">
       <propertyContributor
-            contributorId="org.talend.repository.views.repository"
+            contributorId="org.talend.repository.cnf.view"
             labelProvider="org.talend.repository.ui.properties.PropsTitleLabelProvider">
          <propertyCategory category="main"/>
          <propertyCategory category="version"/>
@@ -287,7 +151,7 @@
    </extension>
    <extension
          point="org.eclipse.ui.views.properties.tabbed.propertyTabs">
-      <propertyTabs contributorId="org.talend.repository.views.repository">
+      <propertyTabs contributorId="org.talend.repository.cnf.view">
          <propertyTab
                category="main"
                id="repository.maintab"
@@ -301,7 +165,7 @@
    </extension>
    <extension
          point="org.eclipse.ui.views.properties.tabbed.propertySections">
-      <propertySections contributorId="org.talend.repository.views.repository">
+      <propertySections contributorId="org.talend.repository.cnf.view">
          <propertySection
                class="org.talend.repository.ui.properties.DateSection"
                enablesFor="1"
@@ -388,6 +252,10 @@
             class="org.talend.repository.StatusPreferenceInitService"
             serviceId="IStatusPreferenceInitService">
       </Service>
+      <Service
+            class="org.talend.repository.MigrationDIMetadataItemService"
+            serviceId="IMigrateDIMetadataItemService">
+      </Service>
    </extension>
    
    <!--extension
@@ -411,6 +279,7 @@
       </wizard>
    </extension-->
    <extension
+         id="ReadOnlyUser"
          point="org.eclipse.ui.actionSets">
       <actionSet
             id="org.talend.repository.actionSet"
@@ -440,6 +309,12 @@
                style="push"
                toolbarPath="Default"
                tooltip="%updateAllJobs.tooltip">
+            <enablement>
+               <systemProperty
+                     name="ReadOnlyUser"
+                     value="false">
+               </systemProperty>
+            </enablement>
          </action>
          <action
                class="org.talend.repository.ui.actions.toolbar.ProjectSettingsAction"
@@ -470,7 +345,14 @@
                label="%ImportItemAction.title"
                style="push"
                toolbarPath="Default"
-               tooltip="%ImportItemAction.tooltip"/>
+               tooltip="%ImportItemAction.tooltip">
+            <enablement>
+               <systemProperty
+                     name="ReadOnlyUser"
+                     value="false">
+               </systemProperty>
+            </enablement>
+         </action>
          <action
                class="org.talend.repository.ui.actions.importexport.ExportItemAction"
                icon="platform:/plugin/org.talend.common.ui.runtime/icons/export.gif"
@@ -1189,13 +1071,6 @@
        </projecttask>
        <projecttask
              beforeLogon="false"
-             class="org.talend.repository.model.migration.AddRulesGlobalMapMigrationTask"
-             description="modify metadata"
-             id="org.talend.repository.AddRulesGlobalMapMigrationTask"
-             name="AddRulesGlobalMapMigrationTask">
-       </projecttask>
-       <projecttask
-             beforeLogon="false"
              class="org.talend.repository.model.migration.AddWebServiceOutputTableMigrationTask"
              description="modify metadataTable"
              id="org.talend.repository.AddWebServiceOutputTableMigrationTask"
@@ -1282,13 +1157,48 @@
             class="org.talend.repository.model.migration.UpgrateDatabaseTypeForSybaseConnection"
             id="org.talend.repository.model.migration.UpgrateDatabaseTypeForSybaseConnection"
             name="UpgrateDatabaseTypeForSybaseConnection">
-      </projecttask> 
+      </projecttask>
+	  <projecttask
+            beforeLogon="false"
+            class="org.talend.repository.model.migration.RenameModeParaForPigMigrationTask"
+            description="Rename pig mode parameter for bug TDI-13406 "
+            id="org.talend.repository.model.migration.RenameModeParaForPigMigrationTask"
+            name="Rename pig mode parameter">
+      </projecttask>
+  	  <projecttask
+            beforeLogon="false"
+            class="org.talend.repository.model.migration.SetStandaloneModeForHiveComponentsMigrationTask"
+            description="Set the standalone value for the connection mode for old jobs for feature TDI-20301 "
+            id="org.talend.repository.model.migration.SetStandaloneModeForHiveComponentsMigrationTask"
+            name="Set the standalone value for the connection mode for old jobs.">
+      </projecttask>
+      <projecttask
+            beforeLogon="false"
+            class="org.talend.repository.model.migration.SetTrimToTrueAppendModeAdvancedFileOutputXMLComponentsMigrationTask"
+            description="Set true for trim option for the bug TDI-20394"
+            id="org.talend.repository.model.migration.SetTrimToTrueAppendModeAdvancedFileOutputXMLComponentsMigrationTask"
+            name="Set true for trim option for the bug TDI-20394">
+      </projecttask>
+      <projecttask
+            beforeLogon="false"
+            class="org.talend.repository.model.migration.RenameVersionParametersForPigMigrationTask"
+            description="Rename pig mode parameter for bug TDI-20076 "
+            id="org.talend.repository.model.migration.RenameVersionParametersForPigMigrationTask"
+            name="Rename pig parameters">
+      </projecttask>		  
       <projecttask
             beforeLogon="false"
             class="org.talend.repository.model.migration.RenamePasswordParaForLdapMigrationTask"
             description="Rename ldap password parameter for bug18289 "
             id="org.talend.repository.model.migration.RenamePasswordParaForLdapMigrationTask"
             name="Rename ldap password parameter">
+      </projecttask>
+      <projecttask
+            beforeLogon="false"
+            class="org.talend.repository.model.migration.RenameSchemaParameterForMSSqlConnectionMigrationTask"
+            description="Rename mssqlconnection schema parameter for bug TDI-19375 "
+            id="org.talend.repository.model.migration.RenameSchemaParameterForMSSqlConnectionMigrationTask"
+            name="Rename mssqlconnection schema parameter">
       </projecttask>
       <projecttask
             beforeLogon="false"
@@ -1317,6 +1227,89 @@
             id="org.talend.repository.model.migration.ReplacetFileOutputXMLParameterMigrationTask"
             name="Change the tFileOutputXML parameter value for the context,add quote to value">
       </projecttask>
+        <projecttask
+             beforeLogon="false"
+             class="org.talend.repository.model.migration.AddScreenshotFileMigrationTask"
+             description="AddScreenshotFileMigrationTask"
+             id="org.talend.repository.model.migration.AddScreenshotFileMigrationTask"
+             name="AddScreenshotFileMigrationTask">
+       </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.ChangeAS400DBVersionMigrationTask"
+              id="org.talend.repository.model.migration.ChangeAS400DBVersionMigrationTask"
+              name="Change AS400 DBVersion">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.MigratetFileOutputDelimitedAndtFileInputDelimitedMigrationTask"
+              description="for bug TDI13497"
+              id="org.talend.repository.model.migration.MigratetFileOutputDelimitedAndtFileInputDelimitedMigrationTask"
+              name="MigratetFileOutputDelimitedAndtFileInputDelimitedMigrationTask">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.MigrationTaskForIssue18419"
+              description="if you chose a different name than TALENDDEMOSJAVA for your demo project,the &quot;beforeRunJobs&quot; job cannot work as the path is hardcoded in the properties"
+              id="org.talend.repository.model.migration.MigrationTaskForIssue18419"
+              name="Modify tFileUnarchive ZIPFILE field value">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.AddContextGroupNameMigrationTask"
+              id="org.talend.repository.model.migration.AddContextGroupNameMigrationTask"
+              name="Rename ContextGroup Name">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.ChangeDefaultValueTDIBug16919"
+              id="org.talend.repository.model.migration.ChangeDefaultValueTDIBug16919"
+              name="set default value of ESCAPE of tPigCode">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.ChangeUseBatchSizeToFalseForDBOuput"
+              id="org.talend.repository.model.migration.ChangeUseBatchSizeToFalseForDBOuput"
+              name="set default value from true to false of USE_BATCH_SIZE of tDBOutput in TDI-19299">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.ChangeJobscriptContentValueMigrationTask"
+              id="org.talend.repository.model.migration.ChangeJobscriptContentValueMigrationTask"
+              name="change jobscript content value">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.ChangeValueTDIBug19870"
+              id="org.talend.repository.model.migration.ChangeValueTDIBug19870"
+              name="ChangeValueTDIBug19870">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.CheckAndUpdateStatusMigrationTask"
+              id="org.talend.repository.model.migration.CheckAndUpdateStatusMigrationTask"
+              name="CheckAndUpdateStatus">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.AddCopyBookXc2jFileMigrationTask"
+              id="org.talend.repository.model.migration.AddCopyBookXc2jFileMigrationTask"
+              name="AddCopyBookXc2jFileMigrationTask">
+        </projecttask>
+        <projecttask
+              beforeLogon="false"
+              class="org.talend.repository.model.migration.AddAdditionalFieldMigrationTask"
+              id="org.talend.repository.model.migration.AddAdditionalFieldMigrationTask"
+              name="Add additionalField to the job model">
+        </projecttask>
+		<projecttask
+             beforeLogon="false"
+             class="org.talend.repository.model.migration.SetFilterTiemFromTotoFromPOPComponentsMigrationTask"
+             description="Set the value from 'To' to 'From' for FILTER_TIEM in ADVANCED_FILTER of the component tPOP in Bug TDI-21568"
+             id="org.talend.repository.model.migration.SetFilterTiemFromTotoFromPOPComponentsMigrationTask"
+             name="SetFilterTiemFromTotoFromPOPComponentsMigrationTask">
+		</projecttask>
+
    </extension>
    
    <extension
@@ -1463,19 +1456,6 @@
                tooltip="boot a new Talend Open Studio.">
          </action>
       </actionSet>
-         <actionSet
-            id="org.talend.repository.CreateactionSet"
-            label="Action set"
-            visible="false">
-         <action
-               class="org.talend.repository.ui.actions.toolbar.CreateToolbarItemAction"
-              icon="icons/process_icon.gif"
-               id="org.talend.repository.repositoryitem.createJob"
-               style="pulldown"
-               tooltip="%create.tootip"
-               label="%create.title"
-               toolbarPath="Default"/>
-      </actionSet>
    </extension>
    <extension
          point="org.eclipse.core.runtime.preferences">
@@ -1543,6 +1523,30 @@
                class="org.talend.repository.application.CreateAutomaticConnectionApplication">
          </run>
       </application>
+   </extension>
+   <extension
+         point="org.eclipse.ui.exportWizards">
+      <wizard
+            category="org.eclipse.ui.Basic"
+            class="org.talend.repository.ui.wizards.newproject.copyfromeclipse.TalendZipFileExportWizard2"
+            icon="icons/exportzip_wiz.gif"
+            id="org.eclipse.ui.wizards.export.TalendZipFile"
+            name="Archive File">
+      </wizard>
+   </extension>
+   <extension
+         point="org.talend.core.runtime.tokenInfo_provider">
+      <provider
+            collector="org.talend.repository.preference.ExportJobTokenCollector"
+            id="org.talend.repository.exportjob.tokenProvider"
+            name="Export Job">
+      </provider>
+      <provider
+            collector="org.talend.repository.preference.TosTokenCollector"
+            description="for job, context, metadatas"
+            id="org.talend.repository.tosProvider"
+            name="TOS">
+      </provider>
    </extension>
 
 </plugin>

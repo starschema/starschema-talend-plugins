@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -39,14 +39,16 @@ import org.talend.core.model.properties.WSDLSchemaConnectionItem;
 import org.talend.core.model.properties.XmlFileConnectionItem;
 import org.talend.core.model.properties.impl.ConnectionItemImpl;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.utils.IComponentName;
 
 /**
  * DOC bqian TalendEditor class global comment. Detailled comment <br/>
  * 
  * $Id: talend.epf 1 2006-09-29 17:06:40 +0000 (ææäº, 29 ä¹æ 2006) nrousseau $
  * 
+ * @deprecated use extension point in class RepositoryComponentManager
  */
-public enum EDatabaseComponentName {
+public enum EDatabaseComponentName implements IComponentName {
 
     // DATABASES
     DBIBMDB2ZOS(DatabaseConnectionItem.class, EDatabaseTypeName.IBMDB2ZOS, "tDB2Input", "tDB2Output", true), //$NON-NLS-1$ //$NON-NLS-2$
@@ -71,6 +73,7 @@ public enum EDatabaseComponentName {
 
     DBORACLESN(DatabaseConnectionItem.class, EDatabaseTypeName.ORACLESN, "tOracleInput", "tOracleOutput", true), //$NON-NLS-1$ //$NON-NLS-2$
     DBORACLEOCI(DatabaseConnectionItem.class, EDatabaseTypeName.ORACLE_OCI, "tOracleInput", "tOracleOutput", true), //$NON-NLS-1$ //$NON-NLS-2$
+    DBORACLERAC(DatabaseConnectionItem.class, EDatabaseTypeName.ORACLE_RAC, "tOracleInput", "tOracleOutput", true), //$NON-NLS-1$ //$NON-NLS-2$
 
     DBGODBC(DatabaseConnectionItem.class, EDatabaseTypeName.GODBC, "tDBInput", "tDBOutput", true), //$NON-NLS-1$ //$NON-NLS-2$
     MSODBC(DatabaseConnectionItem.class, EDatabaseTypeName.MSODBC, "tDBInput", "tDBOutput", true), //$NON-NLS-1$ //$NON-NLS-2$
@@ -110,6 +113,7 @@ public enum EDatabaseComponentName {
     SAS(DatabaseConnectionItem.class, EDatabaseTypeName.SAS, "tSasInput", "tSasOutput", true), //$NON-NLS-1$ //$NON-NLS-2$
 
     HIVE(DatabaseConnectionItem.class, EDatabaseTypeName.HIVE, (String) null, (String) null, true), //$NON-NLS-1$ //$NON-NLS-2$
+    HBASE(DatabaseConnectionItem.class, EDatabaseTypeName.HBASE, "tHBaseInput", "tHBaseOutput", true), //$NON-NLS-1$ //$NON-NLS-2$
 
     // FILES
     FILEARFF(FakeFileConnectionItem.class, "tFileInputARFF", "tFileOutputARFF", "DELIMITED"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -119,7 +123,7 @@ public enum EDatabaseComponentName {
     FILEPOSITIONAL(PositionalFileConnectionItem.class, "tFileInputPositional", "tFileOutputPositional", "POSITIONAL"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     FILEREGEX(RegExFileConnectionItem.class, "tFileInputRegex", null, "REGEX"), //$NON-NLS-1$ //$NON-NLS-2$
     FILEXML(XmlFileConnectionItem.class, "tFileInputXML", "tFileOutputXML", "XML"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-    FILEXMLOUTPUT(XmlFileConnectionItem.class, (String) null, "tAdvancedFileOutputXML", "XMLOUTPUT"), //$NON-NLS-1$ //$NON-NLS-2$
+    FILEXMLOUTPUT(XmlFileConnectionItem.class, "tFileInputXML", "tAdvancedFileOutputXML", "XMLOUTPUT"), //$NON-NLS-1$ //$NON-NLS-2$
     SAPFFUNCTION(SAPConnectionItem.class, "tSAPInput", "tSAPOutput", "SAP"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     SAPIDOC(SAPConnectionItem.class, "tSAPIDocInput", "tSAPIDocOutput", "SAPIDOC"), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     GENERICSCHEMA(GenericSchemaConnectionItem.class, (String) null, null, "GENERICSCHEMA"), //$NON-NLS-1$

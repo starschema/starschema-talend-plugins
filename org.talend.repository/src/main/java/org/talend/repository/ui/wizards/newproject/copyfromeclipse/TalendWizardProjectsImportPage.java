@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -24,8 +24,9 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.eclipse.core.resources.IPathVariableManager;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
+import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -45,13 +46,20 @@ import org.eclipse.ui.internal.wizards.datatransfer.TarLeveledStructureProvider;
 import org.eclipse.ui.internal.wizards.datatransfer.WizardProjectsImportPage;
 import org.eclipse.ui.internal.wizards.datatransfer.ZipLeveledStructureProvider;
 import org.eclipse.ui.statushandlers.StatusManager;
+import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
-import org.talend.core.CorePlugin;
+import org.talend.core.model.properties.Project;
+import org.talend.core.repository.utils.XmiResourceManager;
 
 /**
  * DOC zhangchao.wang class global comment. Detailled comment
  */
 public class TalendWizardProjectsImportPage extends WizardProjectsImportPage {
+
+    /**
+     * 
+     */
+    private static final String TALEND_PROJECT = "talend.project";
 
     public TalendWizardProjectsImportPage() {
 
@@ -205,19 +213,19 @@ public class TalendWizardProjectsImportPage extends WizardProjectsImportPage {
         if (sourcePath == null || sourcePath.length() == 0) {
             return;
         }
-        String destinationJavaPath = null;
-        String destinationPerlPath = null;
+        // String destinationJavaPath = null;
+        // String destinationPerlPath = null;
         this.sourcePath = sourcePath;
         try {
             if (!("".equals(sourcePath))) { //$NON-NLS-1$
-                destinationJavaPath = CorePlugin.getDefault().getLibrariesService().getJavaLibrariesPath();
-                destinationPerlPath = CorePlugin.getDefault().getLibrariesService().getPerlLibrariesPath();
-
-                IPathVariableManager pathVariableManager = ResourcesPlugin.getWorkspace().getPathVariableManager();
-                pathVariableManager.setValue(EXTERNAL_LIB_JAVA_PATH, new Path(destinationJavaPath));
-                if (destinationPerlPath != null) {
-                    pathVariableManager.setValue(EXTERNAL_LIB_PERL_PATH, new Path(destinationPerlPath));
-                }
+                // destinationJavaPath = CorePlugin.getDefault().getLibrariesService().getJavaLibrariesPath();
+                // destinationPerlPath = CorePlugin.getDefault().getLibrariesService().getPerlLibrariesPath();
+                //
+                // IPathVariableManager pathVariableManager = ResourcesPlugin.getWorkspace().getPathVariableManager();
+                // pathVariableManager.setValue(EXTERNAL_LIB_JAVA_PATH, new Path(destinationJavaPath));
+                // if (destinationPerlPath != null) {
+                // pathVariableManager.setValue(EXTERNAL_LIB_PERL_PATH, new Path(destinationPerlPath));
+                // }
 
                 super.updateProjectsList(sourcePath);
             }
@@ -320,7 +328,7 @@ public class TalendWizardProjectsImportPage extends WizardProjectsImportPage {
             Object child = children.get(i);
             if (!structureProvider.isFolder(child)) {
                 String elementLabel = structureProvider.getLabel(child);
-                if (elementLabel.equals("talend.project")) {
+                if (elementLabel.equals(TALEND_PROJECT)) {
                     isContainsFile = true;
                 }
             }
@@ -356,7 +364,7 @@ public class TalendWizardProjectsImportPage extends WizardProjectsImportPage {
         }
 
         // first look for project description files
-        final String dotProject = "talend.project";
+        final String dotProject = TALEND_PROJECT;
         for (int i = 0; i < contents.length; i++) {
             File file = contents[i];
             if (file.isFile() && file.getName().equals(dotProject)) {
@@ -391,4 +399,33 @@ public class TalendWizardProjectsImportPage extends WizardProjectsImportPage {
 
     public final static String EXTERNAL_LIB_PERL_PATH = "external_lib_perl_path"; //$NON-NLS-1$
 
+    @SuppressWarnings("restriction")
+    @Override
+    public boolean createProjects() {
+        // TDI-19269
+        final boolean created = super.createProjects();
+        //
+        final Object[] selected = getProjectsList().getCheckedElements();
+        XmiResourceManager xmiManager = new XmiResourceManager();
+        for (int i = 0; i < selected.length; i++) {
+            final ProjectRecord record = (ProjectRecord) selected[i];
+            String projectName = record.getProjectName();
+            final IWorkspace workspace = ResourcesPlugin.getWorkspace();
+            final IProject project = workspace.getRoot().getProject(projectName);
+            try {
+                final Project loadProject = xmiManager.loadProject(project);
+                loadProject.setLocal(true);
+                loadProject.setId(0);
+                loadProject.setUrl(null);
+                loadProject.setCreationDate(null);
+                loadProject.setDescription("");
+                loadProject.setType(null);
+                xmiManager.saveResource(loadProject.eResource());
+            } catch (PersistenceException e) {
+                //
+            }
+        }
+        return created;
+        //
+    }
 }

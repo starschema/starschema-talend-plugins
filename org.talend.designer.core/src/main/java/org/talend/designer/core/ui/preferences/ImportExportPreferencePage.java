@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,7 +12,6 @@
 // ============================================================================
 package org.talend.designer.core.ui.preferences;
 
-import org.eclipse.gmf.runtime.common.ui.preferences.CheckBoxFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.events.SelectionEvent;
@@ -20,6 +19,7 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
+import org.talend.commons.ui.swt.preferences.CheckBoxFieldEditor;
 import org.talend.core.model.repository.IRepositoryPrefConstants;
 import org.talend.designer.core.DesignerPlugin;
 import org.talend.designer.core.i18n.Messages;
@@ -55,7 +55,7 @@ public class ImportExportPreferencePage extends FieldEditorPreferencePage implem
 
         isSaveUsed = store.getBoolean(IRepositoryPrefConstants.USE_EXPORT_SAVE);
 
-        isUsedCheckButton.getCheckbox().setSelection(isSaveUsed);
+        isUsedCheckButton.getButton().setSelection(isSaveUsed);
         SelectionListener listener = new SelectionListener() {
 
             public void widgetDefaultSelected(SelectionEvent e) {
@@ -70,17 +70,13 @@ public class ImportExportPreferencePage extends FieldEditorPreferencePage implem
             }
 
         };
-        isUsedCheckButton.getCheckbox().addSelectionListener(listener);
+        isUsedCheckButton.getButton().addSelectionListener(listener);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.eclipse.ui.IWorkbenchPreferencePage#init(org.eclipse.ui.IWorkbench)
-     */
+    @Override
     public void init(IWorkbench workbench) {
         // TODO Auto-generated method stub
-
+        
     }
 
 }

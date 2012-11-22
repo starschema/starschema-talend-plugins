@@ -4,5 +4,81 @@
    <extension-point id="service" name="Service Registration" schema="schema/service.exsd"/>
    <extension-point id="dq_EMFModel_provider" name="dq emf model" schema="schema/dq_EMFModel_provider.exsd"/>
    <extension-point id="filepreview_provider" name="File Preview Provider" schema="schema/filepreview_provider.exsd"/>
+   <extension-point id="tokenInfo_provider" name="Token Info" schema="schema/tokenInfo_provider.exsd"/>
+   <extension-point id="check_servers" name="Check servers" schema="schema/check_servers.exsd"/>
+   <extension-point id="repositoryComponent_provider" name="Repository Component Provider" schema="schema/repositoryComponent_provider.exsd"/>
 
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.core.runtime.MetadataPrecisionPage"
+            id="org.talend.core.runtime.MetadataPrecisionPage"
+            name="%Metadata">
+      </page>
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.core.prefs.collector.TalendDataCollectorPreferencePage"
+            id="org.talend.core.prefs.datacollector"
+            name="%TalendDataCollector">
+      </page>
+     <page
+            category="org.talend.core.prefs.datacollector"
+            class="org.talend.core.prefs.collector.TalendDataCollectorPreviewPreferencePage"
+            id="org.talend.core.prefs.collector.TalendDataCollectorPreviewPreferencePage"
+            name="%TalendDataCollectorPreview">
+      </page>
+     <page
+            category="org.talend.core.prefs.datacollector"
+            class="org.talend.core.prefs.collector.TalendDataCollectorUploadingPreferencePage"
+            id="org.talend.core.prefs.collector.TalendDataCollectorUploadingPreferencePage"
+            name="%TalendDataCollectorUploading">
+      </page>
+     <page
+           class="org.talend.core.prefs.ui.CorePreferencePage"
+           id="org.talend.core.prefs"
+           name="%prefs">
+     </page>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer class="org.talend.core.prefs.collector.TalendDataCollectorPreferenceInitializer"/>
+      <initializer
+            class="org.talend.core.runtime.MetadataPreferenceInitializer">
+      </initializer>
+   </extension>
+   <extension
+         point="org.talend.core.runtime.tokenInfo_provider">
+      <provider
+            collector="org.talend.core.token.DefaultTokenCollector"
+            description="collect the most of main details for workspace"
+            id="org.talend.core.runtime.defaultProvider"
+            name="default">
+      </provider>
+   </extension>
+      <extension
+         point="org.talend.core.runtime.repositoryComponent_provider">
+      <DragAndDropFilter
+            clazz="org.talend.core.repository.DefaultRepositoryComponentDndFilter"
+            id="org.talend.repository.DefaultRepositoryComponentDndFilter"
+            level="-1"
+            name="Default Filter">
+      </DragAndDropFilter>
+      <SortedComponents
+            description="sort the input &amp; output component"
+            name="Input/Output">
+         <Component
+               description="match all input components"
+               id="org.talend.core.input"
+               level="2"
+               pattern="Input">
+         </Component>
+         <Component
+               description="match all output components"
+               id="org.talend.core.output"
+               level="1"
+               pattern="Output">
+         </Component>
+      </SortedComponents>
+   </extension>
 </plugin>

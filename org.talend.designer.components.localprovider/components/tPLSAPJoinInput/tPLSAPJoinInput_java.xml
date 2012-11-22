@@ -95,7 +95,8 @@
 			<ITEMS DEFAULT="Z_PLSAP_RFC">
 				<ITEM NAME="Z_PLSAP_RFC" VALUE="Z_PLSAP_RFC" />
 				<ITEM NAME="Z_PLSAP_ENHANCED" VALUE="Z_PLSAP_ENHANCED" />
-				<ITEM NAME="Z_PLSAP_FTP" VALUE="Z_PLSAP_FTP" />
+ 				<ITEM NAME="Z_PLSAP_FTP" VALUE="Z_PLSAP_RFC_FTP" />
+			
 			</ITEMS>
 		</PARAMETER>
 
@@ -159,6 +160,28 @@
 			NUM_ROW="120">
 			<DEFAULT>true</DEFAULT>
 		</PARAMETER>
+
+        <PARAMETER NAME="USE_FTP" FIELD="CHECK" REQUIRED="false"
+            NUM_ROW="135" SHOW_IF="(SAP_FUNCTION == 'Z_PLSAP_ENHANCED' OR SAP_FUNCTION=='Z_PLSAP_RFC_FTP'
+            OR SAP_FUNCTION=='Z_PLSAP_FTP_RFC' OR SAP_FUNCTION=='Z_PLSAP_FTP')">
+            <DEFAULT>false</DEFAULT>
+        </PARAMETER>
+         
+        <PARAMETER NAME="FTP_USER" FIELD="TEXT" REQUIRED="false"
+            NUM_ROW="140" SHOW_IF="(USE_FTP == 'true')">
+            <DEFAULT>context.plsap_ftp_user</DEFAULT>
+        </PARAMETER>
+ 
+        <PARAMETER NAME="FTP_PWD" FIELD="TEXT" REQUIRED="false"
+            NUM_ROW="150" SHOW_IF="(USE_FTP == 'true')">
+            <DEFAULT>context.plsap_ftp_pass</DEFAULT>
+        </PARAMETER>
+     
+        <PARAMETER NAME="FTP_ADDR" FIELD="TEXT" REQUIRED="false"
+            NUM_ROW="160" SHOW_IF="(USE_FTP == 'true')">
+            <DEFAULT>context.plsap_ftp_host</DEFAULT>
+        </PARAMETER>  
+         
 
 	</ADVANCED_PARAMETERS>
 	<CODEGENERATION>

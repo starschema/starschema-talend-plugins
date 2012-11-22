@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,6 +12,8 @@
 // ============================================================================
 package org.talend.repository.ui.actions.routines;
 
+import java.util.HashSet;
+
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.ui.PartInitException;
@@ -19,6 +21,7 @@ import org.talend.commons.exception.SystemException;
 import org.talend.commons.ui.runtime.exception.MessageBoxExceptionHandler;
 import org.talend.commons.ui.runtime.image.ECoreImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
+import org.talend.core.CorePlugin;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
@@ -32,7 +35,7 @@ import org.talend.repository.model.RepositoryNode;
 /**
  * Action that will edit routines.
  * 
- * $Id: EditRoutineAction.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: EditRoutineAction.java 84387 2012-06-01 02:05:02Z zwzhao $
  * 
  */
 public class EditRoutineAction extends AbstractRoutineAction {
@@ -51,6 +54,7 @@ public class EditRoutineAction extends AbstractRoutineAction {
      * @see org.talend.repository.ui.actions.ITreeContextualAction#init(org.eclipse.jface.viewers.TreeViewer,
      * org.eclipse.jface.viewers.IStructuredSelection)
      */
+    @Override
     public void init(TreeViewer viewer, IStructuredSelection selection) {
         super.init(viewer, selection);
         boolean canWork = !selection.isEmpty() && selection.size() == 1;
@@ -72,7 +76,7 @@ public class EditRoutineAction extends AbstractRoutineAction {
         }
         if (canWork) {
             canWork = (factory.getStatus(node.getObject()) != ERepositoryStatus.DELETED);
-        }       
+        }
         setEnabled(canWork);
     }
 
@@ -81,6 +85,7 @@ public class EditRoutineAction extends AbstractRoutineAction {
      * 
      * @see org.eclipse.jface.action.Action#run()
      */
+    @Override
     protected void doRun() {
         if (repositoryNode == null) {
             repositoryNode = (RepositoryNode) ((IStructuredSelection) getSelection()).getFirstElement();
@@ -102,6 +107,8 @@ public class EditRoutineAction extends AbstractRoutineAction {
         try {
             openRoutineEditor(routineItem, false);
             refresh(repositoryNode);
+            CorePlugin.getDefault().getLibrariesService().resetModulesNeeded();
+            CorePlugin.getDefault().getRunProcessService().updateLibraries(new HashSet<String>(), null);
         } catch (PartInitException e) {
             MessageBoxExceptionHandler.process(e);
         } catch (SystemException e) {

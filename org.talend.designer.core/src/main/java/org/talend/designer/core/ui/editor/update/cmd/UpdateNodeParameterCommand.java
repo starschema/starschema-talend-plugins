@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -25,11 +25,12 @@ import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.xml.XmlUtil;
 import org.talend.core.CorePlugin;
 import org.talend.core.GlobalServiceRegister;
+import org.talend.core.IESBService;
 import org.talend.core.PluginChecker;
 import org.talend.core.model.metadata.IEbcdicConstant;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.QueryUtil;
 import org.talend.core.model.metadata.builder.ConvertionHelper;
 import org.talend.core.model.metadata.builder.connection.Connection;
@@ -64,6 +65,8 @@ import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.service.IDesignerMapperService;
 import org.talend.core.ui.ICDCProviderService;
 import org.talend.core.ui.IEBCDICProviderService;
+import org.talend.core.ui.IJobletProviderService;
+import org.talend.cwm.helper.ConnectionHelper;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
 import org.talend.designer.core.ui.editor.cmd.ChangeMetadataCommand;
@@ -211,7 +214,7 @@ public class UpdateNodeParameterCommand extends Command {
 
     }
 
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     private void updateProperty() {
         Object updateObject = result.getUpdateObject();
         if (updateObject == null) {
@@ -239,8 +242,10 @@ public class UpdateNodeParameterCommand extends Command {
                     for (IElementParameter param : node.getElementParameters()) {
                         String repositoryValue = param.getRepositoryValue();
                         if ((repositoryValue != null)
-                                && (param.isShow(node.getElementParameters()) || (node instanceof INode && ((INode) node)
-                                        .getComponent().getName().equals("tAdvancedFileOutputXML")))) { //$NON-NLS-1$
+                                && (param.isShow(node.getElementParameters())
+                                        || (node instanceof INode && ((INode) node).getComponent().getName()
+                                                .equals("tAdvancedFileOutputXML")) || (node instanceof INode && ((INode) node)
+                                        .getComponent().getName().equals("tESBProviderRequest")))) { //$NON-NLS-1$
                             if (param.getName().equals(EParameterName.PROPERTY_TYPE.getName())
                                     || param.getFieldType() == EParameterFieldType.MEMO_SQL) {
                                 continue;
@@ -255,6 +260,31 @@ public class UpdateNodeParameterCommand extends Command {
                             Object objectValue = RepositoryToComponentProperty.getValue(
                                     (org.talend.core.model.metadata.builder.connection.Connection) result.getParameter(),
                                     repositoryValue, table);
+                            if (objectValue == null || "".equals(objectValue)) {
+                                if (GlobalServiceRegister.getDefault().isServiceRegistered(IESBService.class)) {
+                                    IESBService service = (IESBService) GlobalServiceRegister.getDefault().getService(
+                                            IESBService.class);
+                                    if (service != null) {
+                                        String propertyValue = (String) node
+                                                .getPropertyValue(EParameterName.REPOSITORY_PROPERTY_TYPE.getName());
+
+                                        if (node.getComponent().getName().startsWith("tESB")) {
+                                            if (propertyValue.contains(" - ")) {
+                                                propertyValue = propertyValue.split(" - ")[0];
+                                            }
+                                        }
+
+                                        IRepositoryViewObject lastVersion = UpdateRepositoryUtils
+                                                .getRepositoryObjectById(propertyValue);
+                                        if (lastVersion != null) {
+                                            Item item = lastVersion.getProperty().getItem();
+                                            if (item != null) {
+                                                objectValue = service.getValue(item, repositoryValue, node);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if (param.getName().equals(EParameterName.CDC_TYPE_MODE.getName())) {
                                 //
                                 String propertyValue = (String) node.getPropertyValue(EParameterName.REPOSITORY_PROPERTY_TYPE
@@ -368,7 +398,7 @@ public class UpdateNodeParameterCommand extends Command {
                                     List<String> objectValueList = (List<String>) objectValue;
                                     for (int i = 0; i < objectValueList.size(); i++) {
                                         Map<String, Object> map = new HashedMap();
-                                        map.put("VALUE", TalendTextUtils.addQuotes((String) objectValueList.get(i)));
+                                        map.put("VALUE", TalendTextUtils.addQuotes(objectValueList.get(i)));
                                         paramMaps.add(map);
                                     }
                                 }
@@ -400,7 +430,7 @@ public class UpdateNodeParameterCommand extends Command {
         }
     }
 
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     private void updateSchema() {
         Object updateObject = result.getUpdateObject();
         if (updateObject == null) {
@@ -425,9 +455,10 @@ public class UpdateNodeParameterCommand extends Command {
                                     if (parameter.size() >= 2) {
                                         IMetadataTable newTable = (IMetadataTable) parameter.get(0);
                                         String schemaName = (String) parameter.get(1);
-                                        IMetadataTable metadataTable = MetadataTool.getMetadataTableFromNode(node, schemaName);
+                                        IMetadataTable metadataTable = MetadataToolHelper.getMetadataTableFromNode(node,
+                                                schemaName);
                                         if (metadataTable != null) {
-                                            MetadataTool.copyTable(newTable, metadataTable);
+                                            MetadataToolHelper.copyTable(newTable, metadataTable);
                                         }
                                         syncSchemaForEBCDIC(node, metadataTable);
                                     }
@@ -440,8 +471,9 @@ public class UpdateNodeParameterCommand extends Command {
                         if (GlobalServiceRegister.getDefault().isServiceRegistered(IDesignerMapperService.class)) {
                             IDesignerMapperService service = (IDesignerMapperService) GlobalServiceRegister.getDefault()
                                     .getService(IDesignerMapperService.class);
-                            if (service == null || externalNode == null || externalNode.getExternalData() == null)
+                            if (service == null || externalNode == null || externalNode.getExternalData() == null) {
                                 return;
+                            }
                             List<Object> parameter = (List<Object>) result.getParameter();
                             if (parameter.size() == 2) {
                                 if (node.getComponent() != null && "tMap".equals(node.getComponent().getName())) { //$NON-NLS-1$
@@ -467,9 +499,11 @@ public class UpdateNodeParameterCommand extends Command {
                                                             column.setType(newColumn.getType());
                                                             column.setKey(newColumn.isKey());
                                                             column.setPrecision(newColumn.getPrecision());
+                                                            break;
                                                         }
                                                     }
                                                 }
+                                                break;
                                             }
                                         }
                                     }
@@ -527,7 +561,8 @@ public class UpdateNodeParameterCommand extends Command {
                                             }
                                         }
                                     } else {
-                                        MetadataTool.copyTable(newTable, node.getMetadataFromConnector(nodeConnector.getName()));
+                                        MetadataToolHelper.copyTable(newTable,
+                                                node.getMetadataFromConnector(nodeConnector.getName()));
                                     }
                                 }
                             }
@@ -554,12 +589,13 @@ public class UpdateNodeParameterCommand extends Command {
                                 final String newSchemaName = sourceIdAndChildName[1];
                                 Map<String, Object> lineValue = (Map<String, Object>) parameter.get(3);
                                 if (lineValue != null) {
-                                    IMetadataTable metadataTable = MetadataTool.getMetadataTableFromNode(node, oldSchemaName);
+                                    IMetadataTable metadataTable = MetadataToolHelper.getMetadataTableFromNode(node,
+                                            oldSchemaName);
                                     Object schemaName = lineValue.get(IEbcdicConstant.FIELD_SCHEMA);
                                     if (metadataTable != null && schemaName != null) {
                                         lineValue.put(IEbcdicConstant.FIELD_SCHEMA, newSchemaName);
 
-                                        MetadataTool.copyTable(newTable, metadataTable);
+                                        MetadataToolHelper.copyTable(newTable, metadataTable);
                                         syncSchemaForEBCDIC(node, metadataTable);
                                         metadataTable.setLabel(newSchemaName);
 
@@ -574,8 +610,9 @@ public class UpdateNodeParameterCommand extends Command {
                     if (GlobalServiceRegister.getDefault().isServiceRegistered(IDesignerMapperService.class)) {
                         IDesignerMapperService service = (IDesignerMapperService) GlobalServiceRegister.getDefault().getService(
                                 IDesignerMapperService.class);
-                        if (service == null || externalNode == null || externalNode.getExternalData() == null)
+                        if (service == null || externalNode == null || externalNode.getExternalData() == null) {
                             return;
+                        }
                         IExternalData externalData = externalNode.getExternalData();
                         parameter = (List<Object>) result.getParameter();
                         if (parameter.size() == 3) {
@@ -599,7 +636,8 @@ public class UpdateNodeParameterCommand extends Command {
                         if (newTable != null) {
                             for (INodeConnector nodeConnector : node.getListConnector()) {
                                 if (nodeConnector.getBaseSchema().equals(newTable.getAttachedConnector())) {
-                                    MetadataTool.copyTable(newTable, node.getMetadataFromConnector(nodeConnector.getName()));
+                                    MetadataToolHelper
+                                            .copyTable(newTable, node.getMetadataFromConnector(nodeConnector.getName()));
                                 }
                             }
                         }
@@ -614,7 +652,8 @@ public class UpdateNodeParameterCommand extends Command {
                         if (newTable != null) {
                             for (INodeConnector nodeConnector : node.getListConnector()) {
                                 if (nodeConnector.getBaseSchema().equals(repositoryParam.getContext())) {
-                                    MetadataTool.copyTable(newTable, node.getMetadataFromConnector(nodeConnector.getName()));
+                                    MetadataToolHelper
+                                            .copyTable(newTable, node.getMetadataFromConnector(nodeConnector.getName()));
                                 }
                             }
                         }
@@ -643,6 +682,16 @@ public class UpdateNodeParameterCommand extends Command {
                             }
                         }
                     }
+
+                    if (PluginChecker.isJobLetPluginLoaded()) {
+                        IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
+                                IJobletProviderService.class);
+                        if (service != null && service.isJobletInOutComponent(node)) {
+                            node.setPropertyValue(
+                                    EParameterName.SCHEMA_TYPE.getName() + ":" + EParameterName.SCHEMA_TYPE.getName(),
+                                    EmfComponent.BUILTIN);
+                        }
+                    }
                     node.setPropertyValue(EParameterName.SCHEMA_TYPE.getName(), EmfComponent.BUILTIN);
                     for (IElementParameter param : node.getElementParameters()) {
                         SAPParametersUtils.setNoRepositoryParams(param);
@@ -657,7 +706,7 @@ public class UpdateNodeParameterCommand extends Command {
                 IRepositoryViewObject toReload = null;
                 IMetadataTable tableToReload = null;
                 if (parameter instanceof List) {
-                    List listParameter = (List) parameter;
+                    List listParameter = parameter;
                     connectionId = (String) node.getPropertyValue(EParameterName.REPOSITORY_PROPERTY_TYPE.getName());
                     tableLabel = ((String) listParameter.get(0)).split(UpdatesConstants.SEGMENT_LINE)[0];
                 }
@@ -678,7 +727,7 @@ public class UpdateNodeParameterCommand extends Command {
                             Set<MetadataTable> tables = ProjectNodeHelper.getTablesFromSpecifiedDataPackage(dbConn);
                             if (tables != null && !tables.isEmpty()) {
                                 Iterator it = tables.iterator();
-                                while (it.hasNext()) {
+                                while (it.hasNext() && tableToReload == null) {
                                     MetadataTable table = (MetadataTable) it.next();
                                     String label = table.getLabel();
                                     if (tableLabel != null) {
@@ -688,8 +737,23 @@ public class UpdateNodeParameterCommand extends Command {
                                         }
                                     }
                                 }
-
                             }
+                            Set<org.talend.core.model.metadata.builder.connection.MetadataTable> newTables = ConnectionHelper
+                                    .getTables(connection);
+                            if (newTables != null && !newTables.isEmpty() && tableToReload == null) {
+                                Iterator it = newTables.iterator();
+                                while (it.hasNext() && tableToReload == null) {
+                                    MetadataTable table = (MetadataTable) it.next();
+                                    String label = table.getLabel();
+                                    if (tableLabel != null) {
+                                        if (label != null && label.equals(tableLabel)) {
+                                            tableToReload = ConvertionHelper.convert(table);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
                         }
                     }
                     if (tableToReload != null) {
@@ -708,12 +772,16 @@ public class UpdateNodeParameterCommand extends Command {
                             tableToReload.setDbms(oldTable.getDbms());
                             tablesInNode.remove(index);
                             tablesInNode.add(index, tableToReload);
+                            builtIn = false;
                         }
                     }
                 }
 
             }
-
+            // bug 23326
+            if (builtIn) { // bult-in
+                node.setPropertyValue(EParameterName.SCHEMA_TYPE.getName(), EmfComponent.BUILTIN);
+            }
         }
     }
 

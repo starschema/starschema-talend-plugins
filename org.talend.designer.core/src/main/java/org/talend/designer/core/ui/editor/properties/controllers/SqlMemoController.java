@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -21,6 +21,7 @@ import org.eclipse.jface.fieldassist.DecoratedField;
 import org.eclipse.jface.fieldassist.FieldDecoration;
 import org.eclipse.jface.fieldassist.FieldDecorationRegistry;
 import org.eclipse.jface.fieldassist.IControlCreator;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
@@ -32,6 +33,7 @@ import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FormAttachment;
@@ -53,9 +55,11 @@ import org.talend.core.CorePlugin;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.language.LanguageManager;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.QueryUtil;
 import org.talend.core.model.metadata.builder.connection.Query;
+import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
+import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
@@ -73,6 +77,7 @@ import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.ui.editor.cmd.PropertyChangeCommand;
 import org.talend.designer.core.ui.editor.cmd.RepositoryChangeQueryCommand;
 import org.talend.designer.core.ui.editor.nodes.Node;
+import org.talend.designer.core.ui.preferences.TalendDesignerPrefConstants;
 import org.talend.repository.model.IProxyRepositoryFactory;
 
 /**
@@ -101,6 +106,7 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
      * 
      * @see java.beans.PropertyChangeListener#propertyChange(java.beans.PropertyChangeEvent)
      */
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // TODO Auto-generated method stub
 
@@ -108,10 +114,12 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
 
     SelectionListener listenerSelection = new SelectionListener() {
 
+        @Override
         public void widgetDefaultSelected(SelectionEvent e) {
 
         }
 
+        @Override
         public void widgetSelected(SelectionEvent e) {
             Command cmd = createCommand();
             executeCommand(cmd);
@@ -198,6 +206,7 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
 
         final DecoratedField dField1 = new DecoratedField(subComposite, SWT.PUSH, new IControlCreator() {
 
+            @Override
             public Control createControl(Composite parent, int style) {
                 return new Button(parent, style);
             }
@@ -214,6 +223,9 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
         openSQLEditorButton.setData(PARAMETER_NAME, param.getName());
         openSQLEditorButton.setEnabled(!param.isReadOnly());
         openSQLEditorButton.addSelectionListener(listenerSelection);
+        if (param.getFieldType() == EParameterFieldType.MEMO_SQL) {
+            openSQLEditorButton.setEnabled(ExtractMetaDataUtils.haveLoadMetadataNode());
+        }
 
         FormData data1 = new FormData();
         data1.right = new FormAttachment(100, -ITabbedPropertyConstants.HSPACE);
@@ -226,6 +238,7 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
 
         IControlCreator txtCtrl = new IControlCreator() {
 
+            @Override
             public Control createControl(final Composite parent, final int style) {
                 return createColorStyledText(parent, style);
             }
@@ -265,6 +278,7 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
         }
         queryText.addKeyListener(new KeyListener() {
 
+            @Override
             public void keyPressed(KeyEvent e) {
                 if (switchParam != null) {
                     switchParam.setValue(Boolean.FALSE);
@@ -272,6 +286,7 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
 
             }
 
+            @Override
             public void keyReleased(KeyEvent e) {
             }
 
@@ -338,6 +353,7 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
     public int estimateRowSize(Composite subComposite, IElementParameter param) {
         IControlCreator txtCtrl = new IControlCreator() {
 
+            @Override
             public Control createControl(final Composite parent, final int style) {
                 return createColorStyledText(parent, style);
             }
@@ -413,7 +429,7 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
         // open sql builder in repository mode, just use query object, no need for connection information
         ConnectionParameters connParameters = new ConnectionParameters();
         String queryId = (String) elem.getPropertyValue(EParameterName.REPOSITORY_QUERYSTORE_TYPE.getName());
-        Query query = MetadataTool.getQueryFromRepository(queryId);
+        Query query = MetadataToolHelper.getQueryFromRepository(queryId);
         DatabaseConnectionItem item = findRepositoryItem(queryId);
         if (item != null) {
             connParameters.setRepositoryName(item.getProperty().getLabel());
@@ -500,7 +516,10 @@ public class SqlMemoController extends AbstractElementPropertySectionController 
 
     private ColorStyledText createColorStyledText(final Composite parent, final int style) {
         ColorStyledText colorText = new ColorStyledText(parent, style, CorePlugin.getDefault().getPreferenceStore(), "tsql"); //$NON-NLS-1$
-        Font font = new Font(null, "courier", 8, SWT.NONE); //$NON-NLS-1$
+        IPreferenceStore preferenceStore = CorePlugin.getDefault().getPreferenceStore();
+        String fontType = preferenceStore.getString(TalendDesignerPrefConstants.MEMO_TEXT_FONT);
+        FontData fontData = new FontData(fontType);
+        Font font = new Font(null, fontData);
         addResourceDisposeListener(colorText, font);
         colorText.setFont(font);
         return colorText;

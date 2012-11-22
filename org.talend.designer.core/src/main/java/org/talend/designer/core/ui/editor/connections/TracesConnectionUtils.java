@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,13 +19,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.talend.commons.ui.runtime.exception.ExceptionHandler;
+import org.talend.commons.utils.PasswordEncryptUtil;
 import org.talend.core.CorePlugin;
+import org.talend.core.database.EDatabaseTypeName;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
+import org.talend.core.model.metadata.MetadataTalendType;
+import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
+import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
+import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
 import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
+import org.talend.core.sqlbuilder.util.ConnectionParameters;
+import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
+import org.talend.sqlbuilder.repository.utility.NotReallyNeedSchemaDBS;
 
 /**
  * cLi class global comment. Detailled comment
@@ -223,8 +233,8 @@ public class TracesConnectionUtils {
                         addedColumns.add(curColumn.getLabel());
                     }
                 }
-                CorePlugin.getDefault().getDesignerCoreService().updateTraceColumnValues(curConnection, changedNameColumns,
-                        addedColumns);
+                CorePlugin.getDefault().getDesignerCoreService()
+                        .updateTraceColumnValues(curConnection, changedNameColumns, addedColumns);
             }
         }
     }
@@ -245,5 +255,91 @@ public class TracesConnectionUtils {
             }
         }
         return null;
+    }
+
+    /**
+     * DOC hwang Comment method "createConnection".
+     */
+    public static DatabaseConnection createConnection(ConnectionParameters parameters) {
+        String dbType = parameters.getDbType();
+        boolean isNeedSchema = EDatabaseTypeName.getTypeFromDbType(dbType).isNeedSchema();
+        String productName = EDatabaseTypeName.getTypeFromDisplayName(dbType).getProduct();
+        // boolean isOralceWithSid = productName.equals(EDatabaseTypeName.ORACLEFORSID.getProduct());
+
+        String schema = parameters.getSchema();
+        if (EDatabaseTypeName.TERADATA.getProduct().equals(productName)) {
+            schema = parameters.getDbName();
+        }
+
+        if ("".equals(schema) && EDatabaseTypeName.INFORMIX.getProduct().equals(productName)) { //$NON-NLS-1$
+            schema = parameters.getUserName();
+        }
+
+        boolean isSchemaInValid = (schema == null) || (schema.equals("\'\'")) || (schema.equals("\"\"")) //$NON-NLS-1$ //$NON-NLS-2$
+                || (schema.trim().equals("")); //$NON-NLS-1$
+        // from 616 till line 622 modified by hyWang
+        NotReallyNeedSchemaDBS dbs = new NotReallyNeedSchemaDBS();
+        dbs.init();
+        List<String> names = dbs.getNeedSchemaDBNames();
+        boolean ifNeedSchemaDB = names.contains(productName);
+        if (isNeedSchema && isSchemaInValid && !ifNeedSchemaDB) { //$NON-NLS-1$
+            parameters.setConnectionComment(Messages.getString("SQLBuilderRepositoryNodeManager.connectionComment")); //$NON-NLS-1$
+            return null;
+        }
+        DatabaseConnection connection = ConnectionFactory.eINSTANCE.createDatabaseConnection();
+        connection.setFileFieldName(parameters.getFilename());
+        connection.setDatabaseType(dbType);
+        connection.setUsername(parameters.getUserName());
+        connection.setPort(parameters.getPort());
+        // added by hyWang,to let repository node has encrypted password
+        try {
+            String encryptedPassword = null;
+            encryptedPassword = PasswordEncryptUtil.encryptPassword(parameters.getPassword());
+            connection.setPassword(encryptedPassword);
+        } catch (Exception e) {
+            // e.printStackTrace();
+            ExceptionHandler.process(e);
+        }
+        if (dbType != null && dbType.equals(EDatabaseTypeName.ORACLE_OCI.getDisplayName())
+                && parameters.getLocalServiceName() != null && !"".equals(parameters.getLocalServiceName())) {
+            connection.setSID(parameters.getLocalServiceName());
+        } else {
+            connection.setSID(parameters.getDbName());
+        }
+        connection.setLabel(parameters.getDbName());
+        connection.setDatasourceName(parameters.getDatasource());
+        if ("".equals(connection.getLabel())) { //$NON-NLS-1$
+            connection.setLabel(parameters.getDatasource());
+        }
+        final String product = EDatabaseTypeName.getTypeFromDisplayName(connection.getDatabaseType()).getProduct();
+        connection.setProductId(product);
+        if (MetadataTalendType.getDefaultDbmsFromProduct(product) != null) {
+            final String mapping = MetadataTalendType.getDefaultDbmsFromProduct(product).getId();
+            connection.setDbmsId(mapping);
+        }
+
+        if (!isSchemaInValid && isNeedSchema) {
+            schema = schema.replaceAll("\'", ""); //$NON-NLS-1$ //$NON-NLS-2$
+            schema = schema.replaceAll("\"", ""); //$NON-NLS-1$ //$NON-NLS-2$
+            connection.setUiSchema(schema); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        connection.setServerName(parameters.getHost());
+        connection.setAdditionalParams(parameters.getJdbcProperties());
+
+        String driverClassByDbType = null;
+        if (parameters.getDriverClass() != null) {
+            driverClassByDbType = parameters.getDriverClass();
+        } else {
+            driverClassByDbType = ExtractMetaDataUtils.getDriverClassByDbType(dbType);
+        }
+
+        connection.setDriverClass(driverClassByDbType);
+        connection.setDriverJarPath(parameters.getDriverJar());
+        connection.setURL(parameters.getCombineURL());
+
+        connection.setDBRootPath(parameters.getDirectory());
+        connection.setDbVersionString(parameters.getDbVersion());
+
+        return connection;
     }
 }

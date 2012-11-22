@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,6 +12,7 @@
 // ============================================================================
 package org.talend.core.ui.context.model.table;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.swt.widgets.TreeItem;
@@ -39,31 +40,20 @@ public class ContextTableCellModifier extends AbstractContextCellModifier {
      * @see org.eclipse.jface.viewers.ICellModifier#canModify(java.lang.Object, java.lang.String)
      */
     public boolean canModify(Object element, String property) {
-        IContextParameter para = null;
-        if (getModelManager().isReadOnly()) {
+        if (getModelManager().isReadOnly())
             return false;
-        }
-        List<IContext> contextList = getParentMode().getContexts();
-        for (int i = 0; i < (contextList.size() + 1); i++) {
-            String colProperty = getParentMode().getColumnProperties()[i];
-            if (property.equals(colProperty)) {
-                para = getRealParameter(colProperty, element);
+
+        if (element instanceof ContextTableTabParentModel) {
+            ContextTableTabParentModel contextTableTabParentModel = (ContextTableTabParentModel) element;
+            IContextParameter contextPara = contextTableTabParentModel.getContextParameter();
+            if (contextPara != null) {
+                String sourceId = contextPara.getSource();
+                if (IContextParameter.BUILT_IN.equals(sourceId) && !ContextTableConstants.COLUMN_NAME_PROPERTY.equals(property)) {
+                    return true;
+                }
             }
         }
-
-        if (para == null) {
-            return false;
-        }
-
-        if (!para.isBuiltIn() && !isRepositoryMode()) {
-            // not built-in, not update
-            return false;
-        }
-
-        if (property.equals(ContextTableConstants.COLUMN_NAME_PROPERTY)) {
-            return false;
-        }
-        return true;
+        return false;
 
     }
 
@@ -73,18 +63,21 @@ public class ContextTableCellModifier extends AbstractContextCellModifier {
      * @see org.eclipse.jface.viewers.ICellModifier#getValue(java.lang.Object, java.lang.String)
      */
     public Object getValue(Object element, String property) {
-        IContextParameter para = null;
-        List<IContext> contextList = getParentMode().getContexts();
-        for (int i = 0; i < (contextList.size() + 1); i++) {
-            if (property.equals(getParentMode().getColumnProperties()[i])) {
-                para = getRealParameter(getParentMode().getColumnProperties()[i], element);
-            }
-        }
-
-        if (para != null) {
-            for (IContext context : contextList) {
-                if (property.equals(context.getName())) {
-                    return para.getValue();
+        // IContextParameter para = null;
+        // Only built-in can edit, so must be ContextTableTabParentModel.
+        if (element instanceof ContextTableTabParentModel) {
+            ContextTableTabParentModel contextTableTabParentModel = (ContextTableTabParentModel) element;
+            IContextParameter contextPara = contextTableTabParentModel.getContextParameter();
+            List<IContext> contextList = getParentMode().getContexts();
+            if (contextList != null && contextList.size() > 0) {
+                for (IContext context : contextList) {
+                    String contextName = context.getName();
+                    if (property.equals(contextName)) {
+                        String tempSourceId = contextPara.getSource();
+                        String tempName = contextPara.getName();
+                        IContextParameter tempContextPara = context.getContextParameter(tempSourceId, tempName);
+                        return tempContextPara.getValue();
+                    }
                 }
             }
         }
@@ -109,19 +102,34 @@ public class ContextTableCellModifier extends AbstractContextCellModifier {
             return null;
         }
 
-        if (element instanceof GroupBySourceTableParent) {
-            if (IContextParameter.BUILT_IN.equals(((GroupBySourceTableParent) element).getSourceId())) {
-                IContextParameter builtContextParameter = ((GroupBySourceTableParent) element).getContextParameter();
-                if (builtContextParameter != null) {
-                    para = context.getContextParameter(builtContextParameter.getName());
+        if (parentMode.isGroupBySource()) {
+            if (element instanceof ContextTableTabParentModel) {
+                if (IContextParameter.BUILT_IN.equals(((ContextTableTabParentModel) element).getSourceId())) {
+                    IContextParameter builtContextParameter = ((ContextTableTabParentModel) element).getContextParameter();
+                    if (builtContextParameter != null) {
+                        para = context.getContextParameter(builtContextParameter.getName());
+                    }
                 }
+            } else if (element instanceof ContextTableTabChildModel) {
+                ContextTableTabChildModel child = (ContextTableTabChildModel) element;
+                String sourceId = child.getContextParameter().getSource();
+                para = context.getContextParameter(sourceId, ((ContextTableTabChildModel) element).getContextParameter()
+                        .getName());
             }
-        } else if (element instanceof GroupBySourceTableSon) {
-            para = context.getContextParameter(((GroupBySourceTableSon) element).getParameter().getName());
-        } else if (element instanceof GroupByNothingTableParent) {
-            para = context.getContextParameter(((GroupByNothingTableParent) element).getContextParameter().getName());
+        } else {
+            if (element instanceof ContextTableTabParentModel) {
+                ContextTableTabParentModel contextTableTabParentModel = (ContextTableTabParentModel) element;
+                IContextParameter contextPara = contextTableTabParentModel.getContextParameter();
+                if (contextPara != null) {
+                    String sourceId = contextPara.getSource();
+                    String sourceName = contextPara.getName();
+                    para = context.getContextParameter(sourceId, sourceName);
+                }
+            } else if (element instanceof ContextTableTabChildModel) {
+                ContextTableTabChildModel child = (ContextTableTabChildModel) element;
+                para = child.getContextParameter();
+            }
         }
-
         return para;
     }
 
@@ -133,6 +141,10 @@ public class ContextTableCellModifier extends AbstractContextCellModifier {
     public void modify(Object element, final String property, final Object value) {
         TreeItem item = (TreeItem) element;
         final Object object = item.getData();
+
+        // add all nodes that need to update.
+        List<Object> list = new ArrayList<Object>();
+        list.add(object);
 
         IContextParameter para = null;
         List<IContext> contextList = getParentMode().getContexts();
@@ -147,6 +159,14 @@ public class ContextTableCellModifier extends AbstractContextCellModifier {
             return;
         }
 
+        String originalName = para.getName();
+        String sourceId = null;
+
+        if (element instanceof ContextTableTabChildModel) {
+            ContextTableTabChildModel child = (ContextTableTabChildModel) element;
+            sourceId = child.getContextParameter().getSource();
+        }
+
         for (IContext context : contextList) {
             if (property.equals(context.getName())) {
                 if (para.getValue().equals(value)) {
@@ -156,6 +176,33 @@ public class ContextTableCellModifier extends AbstractContextCellModifier {
             }
         }
         // set updated flag.
-        setAndRefreshFlags(object, para);
+        List<Object> updateObjs = new ArrayList<Object>();
+        updateObjs.add(object);
+        lookupSameNameNode(para.getSource(), originalName, item, updateObjs);
+        updateRelatedNode(updateObjs.toArray(), para);
+        // setAndRefreshFlags(object, para);
+    }
+
+    /**
+     * To look up all nodes that have the same variable name from input model.
+     * 
+     * @param nodeName
+     * @return
+     */
+    private Object[] lookupSameNameNode(String sourceId, String nodeName, TreeItem item, List<Object> updateObjs) {
+        TreeItem[] items = item.getParent().getItems();
+        if (items != null && items.length > 0) {
+            for (TreeItem tempItem : items) {
+                Object obj = tempItem.getData();
+                if (obj instanceof ContextTableTabChildModel) {
+                    ContextTableTabChildModel child = (ContextTableTabChildModel) obj;
+                    String tempSourceId = child.getContextParameter().getSource();
+                    String name = child.getName();
+                    if (!sourceId.equals(tempSourceId) && name.equals(name))
+                        updateObjs.add(obj);
+                }
+            }
+        }
+        return updateObjs.toArray();
     }
 }

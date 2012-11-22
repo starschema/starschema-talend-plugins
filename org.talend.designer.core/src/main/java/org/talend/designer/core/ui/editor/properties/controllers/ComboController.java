@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -46,6 +46,7 @@ import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.swt.colorstyledtext.ColorStyledText;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.ITDQPatternService;
+import org.talend.core.ITDQRuleService;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
 import org.talend.core.model.metadata.builder.ConvertionHelper;
@@ -472,6 +473,7 @@ public class ComboController extends AbstractElementPropertySectionController {
     public void refresh(IElementParameter param, boolean check) {
         String paramName = param.getName();
         boolean isPatternList = StringUtils.equals(paramName, "PATTERN_LIST");
+        boolean isRule = StringUtils.equals(paramName, "DQRULES_LIST");
         CCombo combo = (CCombo) hashCurControls.get(paramName);
 
         if (combo == null || combo.isDisposed()) {
@@ -479,14 +481,15 @@ public class ComboController extends AbstractElementPropertySectionController {
         }
 
         // for feature 8147
-        try {
+        // if it is pattern,then it can get ITDQPatternService's instance
+        if (isPatternList) {
             ITDQPatternService service = null;
             try {
                 service = (ITDQPatternService) GlobalServiceRegister.getDefault().getService(ITDQPatternService.class);
             } catch (RuntimeException e) {
                 // nothing to do
             }
-            if (service != null && elem instanceof Node && isPatternList) {
+            if (service != null && elem instanceof Node) {
 
                 Node node = (Node) elem;
 
@@ -494,13 +497,20 @@ public class ComboController extends AbstractElementPropertySectionController {
 
                 service.overridePatternList(typeParam, param);
             }
-
-        } catch (Exception e) {
-            // nothing to do
+        }
+        if (isRule) {
+            ITDQRuleService service = null;
+            try {
+                service = (ITDQRuleService) GlobalServiceRegister.getDefault().getService(ITDQRuleService.class);
+            } catch (RuntimeException e) {
+                // nothing to do
+            }
+            if (service != null) {
+                service.fillTDQRuleList(param);
+            }
         }
 
         Object value = param.getValue();
-
         if (value instanceof String) {
             String strValue = ""; //$NON-NLS-1$
             int nbInList = 0, nbMax = param.getListItemsValue().length;
@@ -518,11 +528,12 @@ public class ComboController extends AbstractElementPropertySectionController {
                 combo.setItems(paramItems);
             }
             // bug 19837
-            if (isPatternList) {
+            if (isPatternList || isRule) {
                 combo.setText("".equals(strValue) ? (String) value : strValue);
             } else {
                 combo.setText(strValue);
             }
+
             combo.setVisible(true);
         }
 
@@ -549,10 +560,17 @@ public class ComboController extends AbstractElementPropertySectionController {
                 stringToDisplay.add(originalList[i]);
             }
         }
-        // MOD gdbu 2011-6-15 bug : 19836
-        String[] toArray = stringToDisplay.toArray(new String[0]);
-        Arrays.sort(toArray, String.CASE_INSENSITIVE_ORDER);
-        return toArray;
-        // ~19836
+
+        // MOD msjian 2012-3-20 TDQ-1340: sort regex pattern list, revert 19836 MOD by gdbu
+        return stringToDisplay.toArray(new String[0]);
+        // MOD gdbu 2011-6-1 bug : 19836
+        // String[] toArray = stringToDisplay.toArray(new String[0]);
+        // String paramName = param.getName();
+        // if (!"VALIDATION_TYPE".equals(paramName)) { // TDI-19822 don't sort for VALIDATION_TYPE parameter
+        // Arrays.sort(toArray, String.CASE_INSENSITIVE_ORDER);
+        // }
+        // return toArray;
+        // // ~19836
+        // TDQ-1340~
     }
 }

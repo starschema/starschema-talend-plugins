@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,6 +19,7 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.talend.core.PluginChecker;
 import org.talend.core.model.repository.IRepositoryPrefConstants;
 import org.talend.core.model.repository.RepositoryManager;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.repository.ui.views.IRepositoryView;
 
@@ -37,8 +38,8 @@ public class RepositoryPreferencePage extends FieldEditorPreferencePage implemen
 
         if (PluginChecker.isRefProjectLoaded()) {
 
-            addField(new BooleanFieldEditor(IRepositoryPrefConstants.MERGE_REFERENCE_PROJECT, Messages
-                    .getString("PerformancePreferencePage.RepositoryPreferencePage.ReferenceProjectMerged"),//$NON-NLS-1$
+            addField(new BooleanFieldEditor(IRepositoryPrefConstants.MERGE_REFERENCE_PROJECT,
+                    Messages.getString("PerformancePreferencePage.RepositoryPreferencePage.ReferenceProjectMerged"),//$NON-NLS-1$
                     getFieldEditorParent()));
         }
 
@@ -57,8 +58,10 @@ public class RepositoryPreferencePage extends FieldEditorPreferencePage implemen
     @Override
     public void dispose() {
         super.dispose();
-        IRepositoryView view = RepositoryManager.getRepositoryView();
-        view.refresh();
+        IRepositoryView view = RepositoryManagerHelper.findRepositoryView();
+        if (view != null) {
+            view.refresh();
+        }
     }
 
 }

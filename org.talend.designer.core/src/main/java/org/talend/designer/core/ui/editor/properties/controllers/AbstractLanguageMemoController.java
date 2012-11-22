@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -364,6 +364,7 @@ public abstract class AbstractLanguageMemoController extends AbstractElementProp
         codeGenereateButton = new Button(parent, SWT.CENTER);
         codeGenereateButton.setText(Messages.getString("AbstractLanguageMemoController.generateCode")); //$NON-NLS-1$
         codeGenereateButton.setToolTipText(Messages.getString("AbstractLanguageMemoController.generateSampleCode")); //$NON-NLS-1$
+        codeGenereateButton.setEnabled(!elem.isReadOnly());
 
         GridData layoutData = new GridData();
         layoutData.horizontalAlignment = SWT.CENTER;

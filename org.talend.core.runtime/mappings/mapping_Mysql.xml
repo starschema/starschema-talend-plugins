@@ -38,7 +38,7 @@
 			<dbType type="SET" ignoreLen="true" ignorePre="true" />
 			<dbType type="TEXT" ignorePre="true" />
 			<dbType type="TIME" ignoreLen="true" ignorePre="true" />
-			<dbType type="TIMESTAMP" ignorePre="true" />
+			<dbType type="TIMESTAMP" ignoreLen="true" ignorePre="true" />
 			<dbType type="TINYBLOB" ignoreLen="true" ignorePre="true" />
 			<dbType type="TINYINT" ignorePre="true" />
 			<dbType type="TINYINT UNSIGNED" ignoreLen="true" ignorePre="true" />

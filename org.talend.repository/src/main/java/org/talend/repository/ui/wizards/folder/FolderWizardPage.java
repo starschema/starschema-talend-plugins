@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -32,7 +32,7 @@ import org.talend.repository.model.RepositoryConstants;
 /**
  * Page for new project details. <br/>
  * 
- * $Id: FolderWizardPage.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: FolderWizardPage.java 83889 2012-05-19 08:18:10Z nrousseau $
  * 
  */
 public class FolderWizardPage extends WizardPage {
@@ -54,7 +54,11 @@ public class FolderWizardPage extends WizardPage {
         this.defaultLabel = defaultLabel;
 
         setTitle(Messages.getString("NewFolderWizard.title")); //$NON-NLS-1$
-        setDescription(DESC);
+        if (defaultLabel == null) {
+            setDescription(DESC);
+        } else {
+            setDescription("");
+        }
 
         nameStatus = createOkStatus();
     }
@@ -102,11 +106,11 @@ public class FolderWizardPage extends WizardPage {
     protected void checkFieldsValue() {
         // Field Name
         if (nameText.getText().length() == 0) {
-            nameStatus = new Status(IStatus.ERROR, RepositoryPlugin.PLUGIN_ID, IStatus.OK, Messages
-                    .getString("NewFolderWizard.nameEmpty"), null); //$NON-NLS-1$
+            nameStatus = new Status(IStatus.ERROR, RepositoryPlugin.PLUGIN_ID, IStatus.OK,
+                    Messages.getString("NewFolderWizard.nameEmpty"), null); //$NON-NLS-1$
         } else if (!Pattern.matches(RepositoryConstants.FOLDER_PATTERN, nameText.getText())) {
-            nameStatus = new Status(IStatus.ERROR, RepositoryPlugin.PLUGIN_ID, IStatus.OK, Messages
-                    .getString("NewFolderWizard.nameIncorrect"), null); //$NON-NLS-1$
+            nameStatus = new Status(IStatus.ERROR, RepositoryPlugin.PLUGIN_ID, IStatus.OK,
+                    Messages.getString("NewFolderWizard.nameIncorrect"), null); //$NON-NLS-1$
         } else if ((defaultLabel == null || !defaultLabel.equals(nameText.getText()))
                 && !((FolderWizard) getWizard()).isValid(nameText.getText())) {
             nameStatus = new Status(IStatus.ERROR, RepositoryPlugin.PLUGIN_ID, IStatus.OK, Messages.getString(
@@ -132,7 +136,7 @@ public class FolderWizardPage extends WizardPage {
             setErrorMessage(message2);
             setMessage(""); //$NON-NLS-1$
         } else {
-            if (message2.length() == 0) {
+            if (message2.length() == 0 && defaultLabel == null) {
                 message2 = DESC;
             }
             setMessage(message2);
@@ -145,7 +149,7 @@ public class FolderWizardPage extends WizardPage {
     }
 
     public void setName(String name) {
-        this.nameText.setText(name);
+        nameText.setText(name);
     }
 
     private static IStatus createOkStatus() {

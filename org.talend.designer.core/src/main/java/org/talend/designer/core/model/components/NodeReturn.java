@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,15 +12,18 @@
 // ============================================================================
 package org.talend.designer.core.model.components;
 
+import java.util.List;
+
 import org.talend.core.language.LanguageManager;
 import org.talend.core.model.metadata.types.JavaTypesManager;
+import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INodeReturn;
 import org.talend.designer.core.i18n.Messages;
 
 /**
  * Return parameters for each component. These returns are described in the xml file of the component. <br/>
  * 
- * $Id: NodeReturn.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: NodeReturn.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class NodeReturn implements INodeReturn {
@@ -34,6 +37,8 @@ public class NodeReturn implements INodeReturn {
     private String availability;
 
     private String varName;
+
+    private String showIf;
 
     protected final static String UNIQUE_NAME = "__UNIQUE_NAME__"; //$NON-NLS-1$
 
@@ -156,6 +161,18 @@ public class NodeReturn implements INodeReturn {
             return displayType;
         default:
             return type;
+        }
+    }
+
+    public void setShowIf(String showIf) {
+        this.showIf = showIf;
+    }
+
+    public boolean isShow(List<? extends IElementParameter> listParam) {
+        if (showIf == null || "".equals(showIf)) {
+            return true;
+        } else {
+            return Expression.evaluate(showIf, listParam);
         }
     }
 }

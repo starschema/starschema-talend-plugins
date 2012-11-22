@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,10 +12,7 @@
 // ============================================================================
 package org.talend.core.model.repository;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
-import java.util.StringTokenizer;
 
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IEditorInput;
@@ -46,8 +43,6 @@ import org.talend.repository.ui.views.IRepositoryView;
  * ggu class global comment. Detailled comment
  */
 public final class RepositoryManager {
-
-    public static final String ITEM_SEPARATOR = "--";
 
     public static final String PATTERNS_SEPARATOR = ","; //$NON-NLS-1$
 
@@ -202,6 +197,7 @@ public final class RepositoryManager {
             IRepositoryView repositoryView = getRepositoryView();
             if (repositoryView != null) {
                 repositoryView.refresh(type);
+                repositoryView.refresh();
             }
         }
     }
@@ -372,51 +368,6 @@ public final class RepositoryManager {
             ExceptionHandler.process(e);
         }
         return false;
-    }
-
-    public static String[] getFiltersByPreferenceKey(String key) {
-        String allValues = getPreferenceStore().getString(key);
-        if (allValues == null || "".equals(allValues)) {
-            return null;
-        }
-        String[] split = allValues.split(ITEM_SEPARATOR);
-        return split;
-    }
-
-    public static String[] convertFromString(String patterns, String separator) {
-        StringTokenizer tokenizer = new StringTokenizer(patterns, separator, true);
-        int tokenCount = tokenizer.countTokens();
-        List result = new ArrayList(tokenCount);
-        boolean escape = false;
-        boolean append = false;
-        while (tokenizer.hasMoreTokens()) {
-            String token = tokenizer.nextToken().trim();
-            if (separator.equals(token)) {
-                if (!escape)
-                    escape = true;
-                else {
-                    addPattern(result, separator);
-                    append = true;
-                }
-            } else {
-                if (!append)
-                    result.add(token);
-                else
-                    addPattern(result, token);
-                append = false;
-                escape = false;
-            }
-        }
-        return (String[]) result.toArray(new String[result.size()]);
-    }
-
-    private static void addPattern(List list, String pattern) {
-        if (list.isEmpty())
-            list.add(pattern);
-        else {
-            int index = list.size() - 1;
-            list.set(index, ((String) list.get(index)) + pattern);
-        }
     }
 
 }

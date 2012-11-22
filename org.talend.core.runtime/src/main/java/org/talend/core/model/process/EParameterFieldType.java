@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -31,6 +31,7 @@ public enum EParameterFieldType {
     RADIO,
     MEMO,
     SCHEMA_TYPE,
+    PLSAP_SCHEMA_TYPE,
     SCHEMA_XPATH_QUERYS,
     QUERYSTORE_TYPE,
     GUESS_SCHEMA,
@@ -62,13 +63,18 @@ public enum EParameterFieldType {
     PALO_DIM_SELECTION,
     WSDL2JAVA,
     GENERATEGRAMMARCONTROLLER,
+    GENERATE_SURVIVORSHIP_RULES_CONTROLLER, // sizhaoliu TDQ-3356
     ICON_SELECTION,
     RULE_TYPE, // hywang add for feature 6484
     TNS_EDITOR,
     BROWSE_REPORTS, // bzhou add for feature 9745
     JAVA_COMMAND,
     VALIDATION_RULE_TYPE,
-    DCSCHEMA;// Datacert custom EparameterFieldType for DCSchemaController
+    DCSCHEMA, // Datacert custom EparameterFieldType for DCSchemaController
+    TREE_TABLE, // hcyi TDI-17115
+	SURVIVOR_RELATION, // sizhaoliu TDQ-3724
+
+	ROUTE_RESOURCE_TYPE;// Xiaopeng Li TESB-6226
 
     public String getName() {
         return toString();

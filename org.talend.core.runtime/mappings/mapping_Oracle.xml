@@ -16,7 +16,7 @@
 			<dbType type="INTEGER" ignoreLen="true" ignorePre="true"/>
 			<dbType type="PLS_INTEGER" ignoreLen="true" ignorePre="true"/>
 			<dbType type="REAL" ignoreLen="true" ignorePre="true"/>
-			<dbType type="LONG" ignoreLen="true" ignorePre="true"/>
+			<dbType type="LONG" defaultLength="100" ignoreLen="true" ignorePre="true"/>
 			<dbType type="FLOAT" ignoreLen="true" ignorePre="true"/>
 			<dbType type="BINARY_FLOAT" ignoreLen="true" ignorePre="true"/>
 			<dbType type="DOUBLE PRECISION" ignoreLen="true" ignorePre="true"/>
@@ -38,6 +38,7 @@
 				<talendType type="id_List">
 				</talendType>
 				<talendType type="id_Boolean">
+					<dbType type="INTEGER" />
 				</talendType>
 				<talendType type="id_Byte">						
 				</talendType>

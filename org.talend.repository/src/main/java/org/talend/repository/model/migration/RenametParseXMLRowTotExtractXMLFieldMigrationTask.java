@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,8 +38,8 @@ import org.talend.designer.core.model.utils.emf.talendfile.ProcessType;
 public class RenametParseXMLRowTotExtractXMLFieldMigrationTask extends AbstractJobMigrationTask {
 
     public ExecutionResult execute(Item item) {
-    	ProcessType processType = getProcessType(item);
-		
+        ProcessType processType = getProcessType(item);
+
         if (getProject().getLanguage() == ECodeLanguage.JAVA && processType != null) {
             try {
                 IComponentFilter filter1 = new NameComponentFilter("tParseXMLRow"); //$NON-NLS-1$
@@ -61,14 +61,11 @@ public class RenametParseXMLRowTotExtractXMLFieldMigrationTask extends AbstractJ
                                 }
                             }
                         }
-
                     }
                 };
-                IComponentConversion renameComponentConversion = new RenameComponentConversion("tExtractXMLField"); //$NON-NLS-1$
-
-                ModifyComponentsAction.searchAndModify(item, processType, filter1, Arrays.<IComponentConversion> asList(
-                        renameComponentConversion, changeNodeNameConversion));
-
+                // bug 22125
+                ModifyComponentsAction.searchAndModify(item, processType, filter1,
+                        Arrays.<IComponentConversion> asList(new RenameComponentConversion("tExtractXMLField")));
                 return ExecutionResult.SUCCESS_WITH_ALERT;
             } catch (Exception e) {
                 ExceptionHandler.process(e);

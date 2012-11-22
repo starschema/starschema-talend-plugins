@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,6 +14,8 @@ package org.talend.core.service;
 
 import org.eclipse.core.runtime.Path;
 import org.talend.core.IService;
+import org.talend.core.model.metadata.builder.connection.Connection;
+import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
 
 /**
  * ggu class global comment. Detailled comment
@@ -21,4 +23,8 @@ import org.talend.core.IService;
 public interface IMetadataManagmentUiService extends IService {
 
     public String getAndOpenXSDFileDialog(Path initPath);
+
+    public ContextType getContextTypeForContextMode(Connection connection);
+
+    public String getOriginalValue(ContextType contextType, final String value);
 }

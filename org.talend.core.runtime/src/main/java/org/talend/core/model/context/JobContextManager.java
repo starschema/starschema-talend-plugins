@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -208,20 +208,30 @@ public class JobContextManager implements IContextManager {
      * @param uniqueName
      * @return true if the name is unique
      */
-    public boolean checkValidParameterName(String contextName) {
+    public boolean checkValidParameterName(String oldContextName, String newContextName) {
         for (IContextParameter contextParameter : listContext.get(0).getContextParameterList()) {
-            if (contextParameter.getName().equals(contextName)
-                    || contextParameter.getName().toLowerCase().equals(contextName.toLowerCase())) {
-                return false;
+            // TDI-17682:avoid to compare the lower/uper case with the parameter itself
+            if (oldContextName != null) {
+                if (contextParameter.getName() != oldContextName) {
+                    if (contextParameter.getName().equals(newContextName)
+                            || contextParameter.getName().toLowerCase().equals(newContextName.toLowerCase())) {
+                        return false;
+                    }
+                }
+            } else {
+                if (contextParameter.getName().equals(newContextName)
+                        || contextParameter.getName().toLowerCase().equals(newContextName.toLowerCase())) {
+                    return false;
+                }
             }
         }
         if (LanguageManager.getCurrentLanguage() == ECodeLanguage.JAVA) {
             // for java, the var name not be named with java keywords.
-            if (ContextUtils.isJavaKeyWords(contextName)) {
+            if (ContextUtils.isJavaKeyWords(newContextName)) {
                 return false;
             }
         }
-        return Pattern.matches(RepositoryConstants.CONTEXT_AND_VARIABLE_PATTERN, contextName);
+        return Pattern.matches(RepositoryConstants.CONTEXT_AND_VARIABLE_PATTERN, newContextName);
     }
 
     public IContext getContext(String name) {

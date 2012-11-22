@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,14 +12,13 @@
 // ============================================================================
 package org.talend.core.utils;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.csvreader.CsvReader;
+import org.skife.csv.CSVReader;
+import org.skife.csv.SimpleReader;
 
 /**
  * Detailled comment <br/>
@@ -50,15 +49,22 @@ public class CsvArray {
 
         String[] row = null;
 
-        CsvReader csvReader = new CsvReader(new BufferedReader(new InputStreamReader(new java.io.FileInputStream(is),
-                encoding == null ? ENCODING : encoding)), ';');
-        csvReader.setRecordDelimiter('\n');
-        csvReader.setSkipEmptyRecords(true);
-        csvReader.setTextQualifier('"');
-        csvReader.setEscapeMode(com.csvreader.CsvReader.ESCAPE_MODE_DOUBLED);
-        while (csvReader.readRecord()) {
-            array.add(csvReader.getValues());
+        // CSVReader csvReader = new CsvReader(new BufferedReader(new InputStreamReader(new java.io.FileInputStream(is),
+        // encoding == null ? ENCODING : encoding)), ';');
+        // csvReader.setRecordDelimiter('\n');
+        // csvReader.setSkipEmptyRecords(true);
+        // csvReader.setTextQualifier('"');
+        // csvReader.setEscapeMode(com.csvreader.CsvReader.ESCAPE_MODE_DOUBLED);
+        // while (csvReader.readRecord()) {
+        // array.add(csvReader.getValues());
+        // }
+        CSVReader csvReader = new SimpleReader();// (new FileReader(is), '\n');
+        csvReader.setSeperator(';');
+        List items = csvReader.parse(is);
+        for (Object item : items) {
+            array.add((String[]) item);
         }
+
         this.add(row);
         return array;
     }
@@ -79,9 +85,9 @@ public class CsvArray {
         rows = new ArrayList<String[]>();
     }
 
-    // public static void main(String[]args) throws IOException{
+    // public static void main(String[] args) throws IOException {
     // CsvArray c = new CsvArray();
-    // c = c.createFrom(new File("d:/temp/in.csv"));
+    // c = c.createFrom(new File("e:/testOraout.csv"));
     // System.out.println(c.getRows().size());
     // for (String[] string : c.getRows()) {
     // for (String string2 : string) {

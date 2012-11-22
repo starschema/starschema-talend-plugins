@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -36,10 +36,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
-import org.eclipse.ui.IViewPart;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.utils.threading.ExecutionLimiter;
@@ -71,6 +67,7 @@ import org.talend.core.model.properties.FolderItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.properties.tab.IDynamicProperty;
 import org.talend.cwm.helper.ConnectionHelper;
 import org.talend.designer.core.DesignerPlugin;
@@ -87,7 +84,7 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.ui.views.IRepositoryView;
-import org.talend.repository.ui.views.RepositoryContentProvider;
+import org.talend.repository.viewer.ui.provider.RepositoryContentProvider;
 
 /**
  * yzhang class global comment. Detailled comment <br/>
@@ -451,8 +448,8 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
                     IElementParameter repositoryPropertyType = elem.getElementParameterFromField(
                             EParameterFieldType.PROPERTY_TYPE, param.getCategory());
                     if (repositoryPropertyType != null) {
-                        List<String> list2 = tablesMap.get(repositoryPropertyType.getChildParameters().get(
-                                EParameterName.REPOSITORY_PROPERTY_TYPE.getName()).getValue());
+                        List<String> list2 = tablesMap.get(repositoryPropertyType.getChildParameters()
+                                .get(EParameterName.REPOSITORY_PROPERTY_TYPE.getName()).getValue());
                         boolean isNeeded = list2 != null && !list2.isEmpty();
                         if (repositoryTableNameList.length > 0 && repositoryConnectionValueList.length > 0 && isNeeded) {
                             repositoryType.setValue(getDefaultRepository(param, true, repositoryConnectionValueList[0]));
@@ -469,12 +466,12 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
                     IElementParameter repositoryPropertyType = elem.getElementParameterFromField(
                             EParameterFieldType.PROPERTY_TYPE, param.getCategory());
                     if (repositoryPropertyType != null) {
-                        List<String> list2 = queriesMap.get(repositoryPropertyType.getChildParameters().get(
-                                EParameterName.REPOSITORY_PROPERTY_TYPE.getName()).getValue());
+                        List<String> list2 = queriesMap.get(repositoryPropertyType.getChildParameters()
+                                .get(EParameterName.REPOSITORY_PROPERTY_TYPE.getName()).getValue());
                         boolean isNeeded = list2 != null && !list2.isEmpty();
                         if (repositoryQueryNameList.length > 0 && repositoryConnectionValueList.length > 0 && isNeeded) {
-                            repositoryType.setValue(getDefaultRepository(elem
-                                    .getElementParameterFromField(EParameterFieldType.SCHEMA_TYPE), false,
+                            repositoryType.setValue(getDefaultRepository(
+                                    elem.getElementParameterFromField(EParameterFieldType.SCHEMA_TYPE), false,
                                     repositoryConnectionValueList[0]));
                         }
                     }
@@ -500,26 +497,19 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
      */
     private List<ConnectionItem> getConnectionItems() throws PersistenceException {
         List<ConnectionItem> list = new ArrayList<ConnectionItem>();
-        IWorkbenchWindow activeWorkbench = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-        if (activeWorkbench != null) {
-            IWorkbenchPage activePage = activeWorkbench.getActivePage();
-            if (activePage != null) {
-                IViewPart findView = activePage.findView(IRepositoryView.VIEW_ID);
-                if (findView instanceof IRepositoryView) {
-                    IRepositoryView repositoryView = (IRepositoryView) findView;
-                    TreeViewer viewer = (TreeViewer) repositoryView.getViewer();
-                    IContentProvider contentProvider = viewer.getContentProvider();
-                    if (contentProvider instanceof RepositoryContentProvider) {
-                        RepositoryContentProvider provider = (RepositoryContentProvider) contentProvider;
-                        RepositoryNode metadataConNode = provider.getMetadataNode();
-                        for (IRepositoryNode connectionItem : metadataConNode.getChildren()) {
-                            if (viewer.isExpandable(connectionItem)) {
-                                provider.getChildren(connectionItem);
-                            }
-                            for (IRepositoryNode node : connectionItem.getChildren()) {
-                                addConnectionItem(viewer, provider, list, (RepositoryNode) node);
-                            }
-                        }
+        IRepositoryView repositoryView = RepositoryManagerHelper.findRepositoryView();
+        if (repositoryView != null) {
+            TreeViewer viewer = (TreeViewer) repositoryView.getViewer();
+            IContentProvider contentProvider = viewer.getContentProvider();
+            if (contentProvider instanceof RepositoryContentProvider) {
+                RepositoryContentProvider provider = (RepositoryContentProvider) contentProvider;
+                RepositoryNode metadataConNode = provider.getRootRepositoryNode(ERepositoryObjectType.METADATA);
+                for (IRepositoryNode connectionItem : metadataConNode.getChildren()) {
+                    if (viewer.isExpandable(connectionItem)) {
+                        provider.getChildren(connectionItem);
+                    }
+                    for (IRepositoryNode node : connectionItem.getChildren()) {
+                        addConnectionItem(viewer, provider, list, (RepositoryNode) node);
                     }
                 }
             }
@@ -776,7 +766,8 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
             if (curParam.getCategory() == section) {
                 if (curParam.getFieldType() != EParameterFieldType.TECHNICAL) {
                     if (curParam.isShow(listParam)) {
-                        AbstractElementPropertySectionController controller = generator.getController(curParam.getFieldType(), this);
+                        AbstractElementPropertySectionController controller = generator.getController(curParam.getFieldType(),
+                                this);
 
                         if (controller == null) {
                             continue;
@@ -818,8 +809,8 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
                             // System.out.println("show:" + curParam.getName()+
                             // " field:"+curParam.getField());
                             numInRow++;
-                            AbstractElementPropertySectionController controller = generator.getController(curParam.getFieldType(),
-                                    this);
+                            AbstractElementPropertySectionController controller = generator.getController(
+                                    curParam.getFieldType(), this);
 
                             if (controller == null) {
                                 continue;
@@ -1004,8 +995,8 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
                         if (curParam.isShow(listParam)) {
                             // System.out.println("show:" + curParam.getName()+
                             // " field:"+curParam.getField());
-                            AbstractElementPropertySectionController controller = generator.getController(curParam.getFieldType(),
-                                    this);
+                            AbstractElementPropertySectionController controller = generator.getController(
+                                    curParam.getFieldType(), this);
 
                             if (controller == null) {
                                 break;
@@ -1082,8 +1073,8 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
         for (int i = 0; i < listParam.size(); i++) {
             if (listParam.get(i).getCategory() == section) {
                 if (listParam.get(i).isShow(listParam)) {
-                    AbstractElementPropertySectionController controller = generator.getController(listParam.get(i).getFieldType(),
-                            this);
+                    AbstractElementPropertySectionController controller = generator.getController(
+                            listParam.get(i).getFieldType(), this);
                     if (controller != null) {
                         controller.refresh(listParam.get(i), checkErrorsWhenViewRefreshed);
                     }
@@ -1251,7 +1242,7 @@ public class DynamicComposite extends ScrolledComposite implements IDynamicPrope
             int detail = event.getDetail();
             if ((getElement() instanceof org.talend.designer.core.ui.editor.connections.Connection)
                     && (event.getCommand() instanceof ChangeMetadataCommand)
-                    && (0 != (detail & CommandStack.POST_EXECUTE) || 0 != (detail & CommandStack.POST_REDO) // 
+                    && (0 != (detail & CommandStack.POST_EXECUTE) || 0 != (detail & CommandStack.POST_REDO) //
                     || 0 != (detail & CommandStack.POST_REDO))) {
                 addComponents(true);
                 refresh();

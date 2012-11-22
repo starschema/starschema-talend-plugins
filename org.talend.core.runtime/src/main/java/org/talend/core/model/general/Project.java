@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,8 +12,11 @@
 // ============================================================================
 package org.talend.core.model.general;
 
+import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.ui.PlatformUI;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.model.process.IElement;
+import org.talend.core.model.properties.ExchangeUser;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.User;
 
@@ -266,6 +269,32 @@ public class Project {
 
     public void setSandboxProject(boolean isSandboxProject) {
         this.isSandboxProject = isSandboxProject;
+    }
+
+    public ExchangeUser getExchangeUser() {
+        ExchangeUser user = PropertiesFactory.eINSTANCE.createExchangeUser();
+        if (project.getAuthor() != null) {
+            IPreferenceStore prefStore = PlatformUI.getPreferenceStore();
+            String connectionEmail = project.getAuthor().getLogin();
+            String string = prefStore.getString(connectionEmail);
+            if (string != null) {
+                String[] split = string.split(":");
+                if (split.length == 3) {
+                    user.setLogin(split[0]);
+                    user.setUsername(split[1]);
+                    user.setPassword(split[2]);
+                } else {
+                    user.setLogin("");
+                    user.setUsername("");
+                    user.setPassword("");
+                }
+            }
+        }
+        return user;
+    }
+
+    public void setExchangeUser(ExchangeUser exchangeUser) {
+        // project.setExchangeUser(exchangeUser);
     }
 
 }

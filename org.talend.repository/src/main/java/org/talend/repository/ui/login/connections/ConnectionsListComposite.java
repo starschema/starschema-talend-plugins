@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -41,7 +41,9 @@ import org.talend.commons.ui.swt.tableviewer.behavior.IColumnImageProvider;
 import org.talend.commons.ui.swt.tableviewer.selection.ILineSelectionListener;
 import org.talend.commons.ui.swt.tableviewer.selection.LineSelectionEvent;
 import org.talend.commons.utils.data.bean.IBeanPropertyAccessors;
+import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.general.ConnectionBean;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.repository.i18n.Messages;
 
 /**
@@ -62,6 +64,9 @@ public class ConnectionsListComposite extends Composite {
 
     private ExtendedTableModel<ConnectionBean> model;
 
+    private IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+            IBrandingService.class);
+
     /**
      * DOC smallet ConnectionsComposite constructor comment.
      * 
@@ -73,16 +78,21 @@ public class ConnectionsListComposite extends Composite {
 
         // PreferenceManipulator prefManipulator = new
         // PreferenceManipulator(CorePlugin.getDefault().getPreferenceStore());
-        // this.list = prefManipulator.readConnections();
-        this.list = ConnectionUserPerReader.getInstance().readConnections();
+        // list = prefManipulator.readConnections();
+        list = ConnectionUserPerReader.getInstance().readConnections();
 
         if (list.isEmpty()) {
-            list.add(ConnectionBean.getDefaultConnectionBean());
+            boolean isOnlyRemoteConnection = brandingService.getBrandingConfiguration().isOnlyRemoteConnection();
+            if (!isOnlyRemoteConnection) {
+                list.add(ConnectionBean.getDefaultConnectionBean());
+            } else {
+                list.add(ConnectionBean.getDefaultRemoteConnectionBean());
+            }
         }
 
-        this.model = new ExtendedTableModel<ConnectionBean>(null, list);
+        model = new ExtendedTableModel<ConnectionBean>(null, list);
 
-        toolkit = new FormToolkit(this.getDisplay());
+        toolkit = new FormToolkit(getDisplay());
         Form form = toolkit.createForm(this);
         Composite formBody = form.getBody();
 
@@ -119,7 +129,7 @@ public class ConnectionsListComposite extends Composite {
 
             @Override
             protected ExtendedToolbarView initToolBar() {
-                return new ConnectionsListButtonsToolBar(getMainComposite(), SWT.NONE, this.getExtendedTableViewer());
+                return new ConnectionsListButtonsToolBar(getMainComposite(), SWT.NONE, getExtendedTableViewer());
             }
 
             @Override
@@ -174,7 +184,7 @@ public class ConnectionsListComposite extends Composite {
     }
 
     public ConnectionFormComposite getConnectionsFormComposite() {
-        return this.connectionsFormComposite;
+        return connectionsFormComposite;
     }
 
     public void setConnectionsFormComposite(ConnectionFormComposite connectionsFormComposite) {
@@ -206,7 +216,7 @@ public class ConnectionsListComposite extends Composite {
     }
 
     public List<ConnectionBean> getList() {
-        return this.list;
+        return list;
     }
 
     /**

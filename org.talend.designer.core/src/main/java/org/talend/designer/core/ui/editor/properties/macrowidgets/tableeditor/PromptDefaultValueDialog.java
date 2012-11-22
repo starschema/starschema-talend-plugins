@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jface.dialogs.Dialog;
-import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CCombo;
 import org.eclipse.swt.custom.TableEditor;
@@ -56,11 +55,10 @@ public class PromptDefaultValueDialog extends Dialog {
         setInput(inputs);
     }
 
-    @Override
-    protected void createButtonsForButtonBar(Composite parent) {
-        createButton(parent, IDialogConstants.OK_ID, "OK", true); //$NON-NLS-1$
-    }
-
+    // @Override
+    // protected void createButtonsForButtonBar(Composite parent) {
+    //        createButton(parent, IDialogConstants.OK_ID, "OK", true); //$NON-NLS-1$
+    // }
     @Override
     protected Control createDialogArea(Composite parent) {
         Composite composite = (Composite) super.createDialogArea(parent);
@@ -69,7 +67,7 @@ public class PromptDefaultValueDialog extends Dialog {
         GridData data = new GridData(GridData.FILL_BOTH);
         // size of dialog
         data.heightHint = 240;
-        data.widthHint = 260;
+        data.widthHint = 290;
         composite.setLayoutData(data);
         createTable(composite);
 
@@ -95,11 +93,11 @@ public class PromptDefaultValueDialog extends Dialog {
         table.setHeaderVisible(true);
 
         TableColumn nameColumn = new TableColumn(table, SWT.NONE);
-        nameColumn.setWidth(120);
+        nameColumn.setWidth(119);
         nameColumn.setText(Messages.getString("PromptDefaultValueDialog.column")); //$NON-NLS-1$
 
         TableColumn defaultColumn = new TableColumn(table, SWT.NONE);
-        defaultColumn.setWidth(108);
+        defaultColumn.setWidth(139);
         defaultColumn.setText(Messages.getString("PromptDefaultValueDialog.defaultValue")); //$NON-NLS-1$
         editors = new ArrayList<TableEditor>();
     }
@@ -194,7 +192,9 @@ public class PromptDefaultValueDialog extends Dialog {
                 CCombo combo = (CCombo) control;
                 int index = combo.getSelectionIndex();
                 Object[] values = row.parameter.getListItemsValue();
-                row.defaultValue = values[index];
+                if (values.length > index && index != -1) {
+                    row.defaultValue = values[index];
+                }
             }
         }
         super.okPressed();

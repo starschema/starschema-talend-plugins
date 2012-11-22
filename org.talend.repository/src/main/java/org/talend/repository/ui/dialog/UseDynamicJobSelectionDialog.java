@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,10 +19,8 @@ import org.apache.commons.lang.ArrayUtils;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.GridLayoutFactory;
-import org.eclipse.jface.viewers.AbstractTreeViewer;
 import org.eclipse.jface.viewers.CheckboxTreeViewer;
 import org.eclipse.jface.viewers.ICheckStateListener;
-import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.IShellProvider;
@@ -35,18 +33,13 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TreeItem;
-import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.internal.wizards.datatransfer.DataTransferMessages;
-import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.swt.advanced.composite.FilteredCheckboxTree;
-import org.talend.core.CorePlugin;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.model.IRepositoryNode.ENodeType;
 import org.talend.repository.model.RepositoryNode;
-import org.talend.repository.ui.views.CheckboxRepositoryTreeViewer;
-import org.talend.repository.ui.views.IRepositoryView;
-import org.talend.repository.ui.views.RepositoryView;
+import org.talend.repository.viewer.ui.provider.RepositoryViewerProvider;
 
 /**
  * DOC yhch class global comment. Detailled comment <br/>
@@ -58,17 +51,11 @@ public class UseDynamicJobSelectionDialog extends Dialog {
 
     private FilteredCheckboxTree filteredCheckboxTree;
 
-    private CheckboxRepositoryView exportItemsTreeViewer;
-
-    private IRepositoryView repositoryView = RepositoryView.show();
-
     List<RepositoryNode> repositoryNodes = new ArrayList<RepositoryNode>();
 
-    ERepositoryObjectType type;
+    // ERepositoryObjectType type;
 
     String repositoryType;
-
-    ITypeProcessor typeProcessor;
 
     public UseDynamicJobSelectionDialog(IShellProvider parentShell) {
         super(parentShell);
@@ -78,7 +65,7 @@ public class UseDynamicJobSelectionDialog extends Dialog {
             boolean isSelectUseDynamic) {
         super(parentShell);
         setShellStyle(SWT.SHELL_TRIM | SWT.APPLICATION_MODAL | getDefaultOrientation());
-        this.type = type;
+        // this.type = type;
         /*
          * avoid select self repository node for Process Type.
          * 
@@ -98,6 +85,10 @@ public class UseDynamicJobSelectionDialog extends Dialog {
         shell.setText(Messages.getString("UseDynamicJobSelectionDialog.selectJobShellText"));
     }
 
+    private CheckboxTreeViewer getItemsTreeViewer() {
+        return filteredCheckboxTree.getViewer();
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -115,13 +106,14 @@ public class UseDynamicJobSelectionDialog extends Dialog {
 
         createTreeViewer(container);
         createSelectionButton(container);
+
+        CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
         exportItemsTreeViewer.refresh();
         // force loading all nodes
-        TreeViewer viewer = exportItemsTreeViewer.getViewer();
-        viewer.expandAll();
-        viewer.collapseAll();
+        exportItemsTreeViewer.expandAll();
+        exportItemsTreeViewer.collapseAll();
         // expand to level of metadata connection
-        viewer.expandToLevel(4);
+        exportItemsTreeViewer.expandToLevel(4);
         setCheckedNodes();
         return container;
     }
@@ -140,7 +132,6 @@ public class UseDynamicJobSelectionDialog extends Dialog {
             repositoryNodes.add(repositoryObject);
         }
         filteredCheckboxTree.dispose();
-        exportItemsTreeViewer.dispose();
         super.okPressed();
     }
 
@@ -153,10 +144,10 @@ public class UseDynamicJobSelectionDialog extends Dialog {
     }
 
     public RepositoryNode[] getCheckNodes() {
-        CheckboxTreeViewer viewer = (CheckboxTreeViewer) exportItemsTreeViewer.getViewer();
+        CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
         List<RepositoryNode> ret = new ArrayList<RepositoryNode>();
-        for (int i = 0; i < viewer.getCheckedElements().length; i++) {
-            RepositoryNode node = (RepositoryNode) viewer.getCheckedElements()[i];
+        for (int i = 0; i < exportItemsTreeViewer.getCheckedElements().length; i++) {
+            RepositoryNode node = (RepositoryNode) exportItemsTreeViewer.getCheckedElements()[i];
             if (node.getType() == ENodeType.REPOSITORY_ELEMENT) {
                 ret.add(node);
             }
@@ -165,11 +156,11 @@ public class UseDynamicJobSelectionDialog extends Dialog {
     }
 
     public void setCheckedNodes() {
-        CheckboxTreeViewer viewer = (CheckboxTreeViewer) exportItemsTreeViewer.getViewer();
+        CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
         if (repositoryNodes != null || repositoryNodes.size() != 0) {
-            viewer.setCheckedElements(repositoryNodes.toArray());
+            exportItemsTreeViewer.setCheckedElements(repositoryNodes.toArray());
         }
-        viewer.collapseAll();
+        exportItemsTreeViewer.collapseAll();
     }
 
     private void createTreeViewer(Composite itemComposite) {
@@ -177,15 +168,15 @@ public class UseDynamicJobSelectionDialog extends Dialog {
 
             @Override
             protected CheckboxTreeViewer doCreateTreeViewer(Composite parent, int style) {
-                exportItemsTreeViewer = new CheckboxRepositoryView();
-                try {
-                    exportItemsTreeViewer.init(repositoryView.getViewSite());
-                } catch (PartInitException e) {
-                    ExceptionHandler.process(e);
-                }
-                exportItemsTreeViewer.createPartControl(parent);
+                RepositoryViewerProvider provider = new RepositoryViewerProvider() {
 
-                return (CheckboxTreeViewer) exportItemsTreeViewer.getViewer();
+                    @Override
+                    protected ERepositoryObjectType getCheckingType() {
+                        return ERepositoryObjectType.PROCESS;
+                    }
+
+                };
+                return (CheckboxTreeViewer) provider.createViewer(parent);
             }
 
             @Override
@@ -206,7 +197,8 @@ public class UseDynamicJobSelectionDialog extends Dialog {
                 return false;
             }
         };
-        exportItemsTreeViewer.getViewer().addFilter(new ViewerFilter() {
+        CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+        exportItemsTreeViewer.addFilter(new ViewerFilter() {
 
             @Override
             public boolean select(Viewer viewer, Object parentElement, Object element) {
@@ -217,11 +209,13 @@ public class UseDynamicJobSelectionDialog extends Dialog {
     }
 
     public void addCheckStateListener(ICheckStateListener listener) {
-        ((CheckboxTreeViewer) exportItemsTreeViewer.getViewer()).addCheckStateListener(listener);
+        CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+        exportItemsTreeViewer.addCheckStateListener(listener);
     }
 
     public void removeCheckStateListener(ICheckStateListener listener) {
-        ((CheckboxTreeViewer) exportItemsTreeViewer.getViewer()).removeCheckStateListener(listener);
+        CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+        exportItemsTreeViewer.removeCheckStateListener(listener);
     }
 
     private boolean filterRepositoryNode(RepositoryNode node) {
@@ -274,7 +268,8 @@ public class UseDynamicJobSelectionDialog extends Dialog {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                ((CheckboxTreeViewer) exportItemsTreeViewer.getViewer()).setAllChecked(true);
+                CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+                exportItemsTreeViewer.setAllChecked(true);
             }
         });
 
@@ -286,7 +281,8 @@ public class UseDynamicJobSelectionDialog extends Dialog {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                ((CheckboxTreeViewer) exportItemsTreeViewer.getViewer()).setAllChecked(false);
+                CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+                exportItemsTreeViewer.setAllChecked(false);
             }
         });
 
@@ -298,7 +294,8 @@ public class UseDynamicJobSelectionDialog extends Dialog {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                exportItemsTreeViewer.getViewer().expandAll();
+                CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+                exportItemsTreeViewer.expandAll();
             }
         });
         setButtonLayoutData(expandBtn);
@@ -309,88 +306,19 @@ public class UseDynamicJobSelectionDialog extends Dialog {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                exportItemsTreeViewer.getViewer().collapseAll();
+                CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+                exportItemsTreeViewer.collapseAll();
             }
         });
         setButtonLayoutData(collapseBtn);
     }
 
     /**
-     * Repository view with checkbox
-     * 
-     * DOC yhch UseDynamicJobSelectionDialog class global comment. Detailled comment <br/>
-     * 
-     * $Id: talend.epf 1 2006-09-29 17:06:40 +0000 (ææäº, 29 ä¹æ 2006) nrousseau $
-     * 
-     */
-    class CheckboxRepositoryView extends RepositoryView {
-
-        @Override
-        protected TreeViewer createTreeViewer(Composite parent) {
-            return new CheckboxRepositoryTreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
-        }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see org.talend.repository.ui.views.RepositoryView#createPartControl(org.eclipse.swt.widgets.Composite)
-         */
-        @Override
-        public void createPartControl(Composite parent) {
-            super.createPartControl(parent);
-            CorePlugin.getDefault().getRepositoryService().removeRepositoryChangedListener(this);
-        }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see org.talend.repository.ui.views.RepositoryView#refresh(java.lang.Object)
-         */
-        @Override
-        public void refresh(Object object) {
-            refresh();
-            if (object != null) {
-                getViewer().expandToLevel(object, AbstractTreeViewer.ALL_LEVELS);
-            }
-        }
-
-        @Override
-        protected void makeActions() {
-        }
-
-        @Override
-        protected void hookContextMenu() {
-        }
-
-        @Override
-        protected void contributeToActionBars() {
-        }
-
-        @Override
-        protected void initDragAndDrop() {
-        }
-
-        @Override
-        protected void hookDoubleClickAction() {
-        }
-
-        @Override
-        public void addFilters() {
-        }
-
-        @Override
-        public void createActionComposite(Composite parent) {
-        }
-
-    }
-
-    /**
      * DOC nrousseau Comment method "dispose".
      */
     public void dispose() {
-        ((CheckboxTreeViewer) exportItemsTreeViewer.getViewer()).setCheckedElements(ArrayUtils.EMPTY_OBJECT_ARRAY);
-        exportItemsTreeViewer.dispose();
-        repositoryView = null;
+        CheckboxTreeViewer exportItemsTreeViewer = getItemsTreeViewer();
+        exportItemsTreeViewer.setCheckedElements(ArrayUtils.EMPTY_OBJECT_ARRAY);
         exportItemsTreeViewer = null;
         repositoryNodes.clear();
         repositoryNodes = null;

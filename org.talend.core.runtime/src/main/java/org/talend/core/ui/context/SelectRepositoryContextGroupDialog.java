@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -456,13 +456,33 @@ public class SelectRepositoryContextGroupDialog extends SelectionDialog {
 
             if (element instanceof ContextType) {
                 ContextType contextType = (ContextType) element;
-                if (isExistedContextGroup(contextType.getName())) {
+                if (isExistedContextGroupInJob(contextType.getName())) {
                     return false;
                 }
             }
             return true;
         }
 
+    }
+
+    /**
+     * Added by Marvin Wang on Jun. 6, 2012 for judging if the context group from repository exists in job context
+     * groups without case sensitive.
+     * 
+     * @param repContextGrpName is not <code>null<code>.
+     * @return
+     */
+    private boolean isExistedContextGroupInJob(String repContextGrpName) {
+        List<IContext> contexts = manager.getListContext();
+        if (contexts != null && contexts.size() > 0) {
+            for (IContext context : manager.getListContext()) {
+                String contextName = context.getName();
+                if (contextName != null && repContextGrpName != null
+                        && contextName.toLowerCase().equals(repContextGrpName.toLowerCase()))
+                    return true;
+            }
+        }
+        return false;
     }
 
     private boolean isExistedContextGroup(String name) {

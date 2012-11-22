@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -108,11 +108,14 @@ public final class ImportDemoProjectAction extends Action {
 
                         String demoFilePath = demoProjectBean.getDemoProjectFilePath();
                         EDemoProjectFileType demoProjectFileType = demoProjectBean.getDemoProjectFileType();
-                        String pluginID = ResourcesPlugin.PLUGIN_ID;
+                        String pluginID = ResourcesPlugin.PLUGIN_ID;                        
                         if (techName.equals("TALENDDEMOSPERL")) { //$NON-NLS-1$
                             pluginID = "org.talend.resources.perl"; //$NON-NLS-1$
                         } else if (techName.equals("TDQEEDEMOJAVA")) { //$NON-NLS-1$
-                            pluginID = "org.talend.datacleansing.core.ui"; //$NON-NLS-1$
+                            pluginID = ResourcesPlugin.TDQ_PLUGIN_ID;
+                        }
+                        if(demoProjectBean.getPluginId()!=null){
+                            pluginID=demoProjectBean.getPluginId();
                         }
                         Bundle bundle = Platform.getBundle(pluginID);
 
@@ -123,7 +126,7 @@ public final class ImportDemoProjectAction extends Action {
                         if (demoProjectFileType.getName().equalsIgnoreCase("folder")) { //$NON-NLS-1$
                             ImportProjectsUtilities.importProjectAs(shell, techName, techName, filePath, monitorWrap);
                         } else {// type.equalsIgnoreCase("archive")
-                            ImportProjectsUtilities.importArchiveProject(shell, techName, filePath, monitorWrap);
+                            ImportProjectsUtilities.importArchiveProjectAs(shell, techName, techName, filePath, monitorWrap);
 
                         }
                         lastImportedName = techName;

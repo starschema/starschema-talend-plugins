@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -47,7 +47,7 @@ public class NodeUtil {
      * @param node
      * @return List<? extends IConnection>
      */
-    
+
     public static List<? extends IConnection> getOutgoingCamelSortedConnections(INode node) {
         List<IConnection> conns = null;
 
@@ -57,27 +57,31 @@ public class NodeUtil {
             Collections.sort(conns, new Comparator<IConnection>() {
 
                 public int compare(IConnection o1, IConnection o2) {
-                    if(EConnectionType.ROUTE_WHEN==o1.getLineStyle())
+                    if (EConnectionType.ROUTE_WHEN == o1.getLineStyle())
                         return -1;
-                    if(EConnectionType.ROUTE_OTHER==o1.getLineStyle())
-                        if(EConnectionType.ROUTE_WHEN==o2.getLineStyle())
+                    if (EConnectionType.ROUTE_OTHER == o1.getLineStyle())
+                        if (EConnectionType.ROUTE_WHEN == o2.getLineStyle())
                             return 1;
-                    if(EConnectionType.ROUTE_ENDBLOCK==o1.getLineStyle()) {
-                        if(EConnectionType.ROUTE_WHEN==o2.getLineStyle() || EConnectionType.ROUTE_OTHER==o2.getLineStyle())
+                    if (EConnectionType.ROUTE_ENDBLOCK == o1.getLineStyle()) {
+                        if (EConnectionType.ROUTE_WHEN == o2.getLineStyle() || EConnectionType.ROUTE_OTHER == o2.getLineStyle())
                             return 2;
-                        if(EConnectionType.ROUTE_TRY==o2.getLineStyle() || EConnectionType.ROUTE_CATCH==o2.getLineStyle() || EConnectionType.ROUTE_FINALLY==o2.getLineStyle())
+                        if (EConnectionType.ROUTE_TRY == o2.getLineStyle() || EConnectionType.ROUTE_CATCH == o2.getLineStyle()
+                                || EConnectionType.ROUTE_FINALLY == o2.getLineStyle())
                             return 3;
+                        if (EConnectionType.ROUTE == o2.getLineStyle()) {
+                            return 4;
+                        }
                     }
-                    if(EConnectionType.ROUTE_TRY==o1.getLineStyle())
+                    if (EConnectionType.ROUTE_TRY == o1.getLineStyle())
                         return -1;
-                    if(EConnectionType.ROUTE_CATCH==o1.getLineStyle())
-                        if(EConnectionType.ROUTE_TRY==o2.getLineStyle())
+                    if (EConnectionType.ROUTE_CATCH == o1.getLineStyle())
+                        if (EConnectionType.ROUTE_TRY == o2.getLineStyle())
                             return 1;
-                    if(EConnectionType.ROUTE_FINALLY==o1.getLineStyle())
-                        if(EConnectionType.ROUTE_TRY==o2.getLineStyle() || EConnectionType.ROUTE_CATCH==o2.getLineStyle())
+                    if (EConnectionType.ROUTE_FINALLY == o1.getLineStyle())
+                        if (EConnectionType.ROUTE_TRY == o2.getLineStyle() || EConnectionType.ROUTE_CATCH == o2.getLineStyle())
                             return 2;
-                    
-                    return 0;                 
+
+                    return 0;
                 }
 
             });
@@ -85,7 +89,7 @@ public class NodeUtil {
 
         return conns;
     }
-    
+
     public static List<? extends IConnection> getOutgoingSortedConnections(INode node) {
 
         List<IConnection> conns = null;
@@ -330,6 +334,12 @@ public class NodeUtil {
      * @return
      */
     public static Set<? extends IConnection> getAllInLineJobConnections(INode node) {
+        Set<String> uniqueNamesDone = new HashSet<String>();
+        uniqueNamesDone.add(node.getUniqueName());
+        return getAllInLineJobConnections(node, uniqueNamesDone);
+    }
+
+    private static Set<? extends IConnection> getAllInLineJobConnections(INode node, Set<String> uniqueNamesDone) {
         Set<IConnection> conns = new HashSet<IConnection>();
 
         List<? extends IConnection> outgoingConnections = node.getOutgoingConnections();
@@ -342,7 +352,10 @@ public class NodeUtil {
                 IConnection connection = outgoingConnections.get(i);
                 INode nextNode = connection.getTarget();
 
-                conns.addAll(getAllInLineJobConnections(nextNode)); // follow this way
+                if (!uniqueNamesDone.contains(nextNode.getUniqueName())) {
+                    uniqueNamesDone.add(nextNode.getUniqueName());
+                    conns.addAll(getAllInLineJobConnections(nextNode, uniqueNamesDone)); // follow this way
+                }
             }
         }
         return conns;

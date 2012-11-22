@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -45,7 +45,7 @@ import org.talend.designer.core.utils.ResourceDisposeUtil;
  * This class create a figure with the given image. <br/>
  * eh
  * 
- * $Id: NodeContainerFigure.java 57359 2011-03-25 05:47:58Z hywang $
+ * $Id: NodeContainerFigure.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class NodeContainerFigure extends Figure {

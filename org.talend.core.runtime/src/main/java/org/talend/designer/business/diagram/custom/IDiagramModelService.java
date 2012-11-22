@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,23 +13,24 @@
 package org.talend.designer.business.diagram.custom;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.emf.common.notify.AdapterFactory;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.edit.ui.provider.AdapterFactoryLabelProvider;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.views.properties.tabbed.TabbedPropertySheetWidgetFactory;
 import org.talend.core.IService;
 import org.talend.core.model.business.BusinessAlignment;
 import org.talend.core.model.business.BusinessType;
 import org.talend.core.model.properties.BusinessProcessItem;
 import org.talend.core.model.repository.IRepositoryEditorInput;
+import org.talend.core.model.repository.IRepositoryObject;
 
 /**
  * DOC qian class global comment. An implementation of the IRunProcessService. <br/>
@@ -52,10 +53,6 @@ public interface IDiagramModelService extends IService {
 
     public BusinessType getBusinessModelType(Object part);
 
-    public AdapterFactory getBusinessItemProviderAdapterFactory();
-
-    public AdapterFactoryLabelProvider getRepositoryFactoryProxyLabelProvider(AdapterFactory factory);
-
     public EObject getEObject(ISelection selection);
 
     public ISelection getBusinessEditorSelection(IEditorPart editor);
@@ -73,5 +70,15 @@ public interface IDiagramModelService extends IService {
     public IFile getDiagramFileAndUpdateResource(IWorkbenchPage page, BusinessProcessItem businessProcessItem);
 
     public void addDeleteAssignmentAction(IMenuManager mgr, ISelection selection);
+    
+    public boolean isInstanceOfCompartmentEditPart(Object o);
+    
+    public Object getBusinessAppearanceComposite(Composite parent, int style, TabbedPropertySheetWidgetFactory widgetFactory,
+            ISelection selection);
+    public Object getBusinessRulersAndGridComposite(Composite parent, int style, TabbedPropertySheetWidgetFactory widgetFactory,
+            IRepositoryObject obj);
+    public Object getBusinessAssignmentComposite(Composite parent, int style, TabbedPropertySheetWidgetFactory widgetFactory,
+            ISelection selection);
 
+    public boolean isInstanceOfBusinessAssignmentComposite(Object o);
 }

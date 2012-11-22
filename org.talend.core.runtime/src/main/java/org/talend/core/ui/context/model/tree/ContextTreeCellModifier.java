@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,11 +12,13 @@
 // ============================================================================
 package org.talend.core.ui.context.model.tree;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.swt.widgets.TreeItem;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.ui.context.ContextTreeValuesComposite;
 import org.talend.core.ui.context.model.AbstractContextCellModifier;
-import org.talend.core.ui.context.model.tree.GroupByVariableProvider.Son;
 
 /**
  * cli class global comment. Detailled comment
@@ -91,8 +93,8 @@ public class ContextTreeCellModifier extends AbstractContextCellModifier {
 
         if (element instanceof IContextParameter) {
             para = (IContextParameter) element;
-        } else if (element instanceof Son) {
-            para = ((Son) element).parameter;
+        } else if (element instanceof ContextTreeTabChildModel) {
+            para = ((ContextTreeTabChildModel) element).getContextParameter();
         }
         return para;
     }
@@ -110,6 +112,7 @@ public class ContextTreeCellModifier extends AbstractContextCellModifier {
         if (para == null) {
             return;
         }
+        String originalName = para.getName();
         if (property.equals(ContextTreeConstants.VALUE_COLUMN_PROPERTY)) {
             if (para.getDisplayValue().equals(value)) {
                 getParentMode().getViewer().getTree().update();
@@ -131,8 +134,35 @@ public class ContextTreeCellModifier extends AbstractContextCellModifier {
         }
 
         // set updated flag.
-        setAndRefreshFlags(object, para);
+        List<Object> updateObjs = new ArrayList<Object>();
+        updateObjs.add(object);
+        lookupSameNameNode(para.getSource(), originalName, item, updateObjs);
+        updateRelatedNode(updateObjs.toArray(), para);
+        // setAndRefreshFlags(object, para);
 
+    }
+
+    /**
+     * To look up all nodes that have the same variable name from input model.
+     * 
+     * @param nodeName
+     * @return
+     */
+    private Object[] lookupSameNameNode(String sourceId, String nodeName, TreeItem item, List<Object> updateObjs) {
+        TreeItem[] items = item.getParent().getItems();
+        if (items != null && items.length > 0) {
+            for (TreeItem tempItem : items) {
+                Object obj = tempItem.getData();
+                if (obj instanceof ContextTreeTabParentModel) {
+                    ContextTreeTabParentModel parent = (ContextTreeTabParentModel) obj;
+                    String tempSourceId = parent.getSourceId();
+                    String name = parent.getName();
+                    if (!sourceId.equals(tempSourceId) && nodeName.equals(name))
+                        updateObjs.add(obj);
+                }
+            }
+        }
+        return updateObjs.toArray();
     }
 
 }

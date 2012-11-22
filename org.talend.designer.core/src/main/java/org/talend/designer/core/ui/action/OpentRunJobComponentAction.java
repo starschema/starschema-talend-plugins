@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -16,7 +16,6 @@ import java.util.List;
 
 import org.eclipse.gef.ui.actions.SelectionAction;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PartInitException;
@@ -33,7 +32,6 @@ import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.nodes.NodePart;
 import org.talend.designer.core.ui.views.properties.ComponentSettingsView;
 import org.talend.designer.runprocess.ItemCacheManager;
-import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC zli class global comment. Detailled comment add for featrue 13361
@@ -100,12 +98,7 @@ public class OpentRunJobComponentAction extends SelectionAction {
                         IEditorPart editorPart = page.findEditor(fileEditorInput);
 
                         if (editorPart == null) {
-                            IViewPart viewPart = page.findView(IRepositoryView.VIEW_ID);
-                            if (viewPart != null) {
-                                fileEditorInput.setView((IRepositoryView) viewPart);
-                                fileEditorInput.setRepositoryNode(null);
-                                page.openEditor(fileEditorInput, MultiPageTalendEditor.ID, true);
-                            }
+                            page.openEditor(fileEditorInput, MultiPageTalendEditor.ID, true);
                         } else {
                             page.activate(editorPart);
                         }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,23 +14,24 @@ package org.talend.core.ui;
 
 import java.util.Map;
 
-import org.eclipse.jface.wizard.IWizard;
-import org.eclipse.ui.IWorkbench;
-import org.talend.core.IService;
+import org.talend.core.IProviderService;
+import org.talend.core.model.metadata.builder.connection.Concept;
+import org.talend.core.model.metadata.builder.connection.MDMConnection;
 import org.talend.core.model.process.INode;
 import org.talend.core.model.properties.MDMConnectionItem;
-import org.talend.repository.model.RepositoryNode;
 
 /**
  * DOC hwang class global comment. Detailled comment
  */
-public interface IMDMProviderService extends IService {
-
-    public IWizard newMDMWizard(IWorkbench workbench, boolean creation, RepositoryNode node, String[] existingNames);
+public interface IMDMProviderService extends IProviderService {
 
     public boolean isMDMNode(final INode node);
 
     public MDMConnectionItem getRepositoryItem(final INode node);
 
     public boolean isRepositorySchemaLine(INode node, Map<String, Object> lineValue);
+
+    public boolean initConcepts(MDMConnection mdmConn);
+
+    public String getXPathPrefixValue(Concept concept);
 }

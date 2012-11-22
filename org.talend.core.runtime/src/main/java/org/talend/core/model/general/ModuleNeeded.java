@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,6 +13,9 @@
 package org.talend.core.model.general;
 
 import java.util.List;
+
+import org.talend.core.model.process.IElementParameter;
+import org.talend.core.runtime.CoreRuntimePlugin;
 
 /**
  * This bean is use to manage needed moduless (perl) and libraries (java).<br/>
@@ -29,6 +32,13 @@ public class ModuleNeeded {
     private String informationMsg;
 
     private boolean required;
+
+    private String requiredIf;
+
+    // bundleName and bundleVersion for osgi system,feature 0023460
+    private String bundleName;
+
+    private String bundleVersion;
 
     private ELibraryInstallStatus status = ELibraryInstallStatus.UNKNOWN;
 
@@ -72,24 +82,42 @@ public class ModuleNeeded {
         this.required = required;
     }
 
-    public ModuleNeeded(String context, String moduleName, String informationMsg, boolean required, List<String> installURL) {
+    public ModuleNeeded(String context, String moduleName, String informationMsg, boolean required, List<String> installURL,
+            String requiredIf) {
         super();
         this.context = context;
         this.moduleName = moduleName;
         this.informationMsg = informationMsg;
         this.required = required;
         this.installURL = installURL;
+        this.requiredIf = requiredIf;
     }
 
-    // public ModuleNeeded(String context, String moduleName, String informationMsg, boolean required,
-    // List<InstallModule> installModule) {
-    // super();
-    // this.context = context;
-    // this.moduleName = moduleName;
-    // this.informationMsg = informationMsg;
-    // this.required = required;
-    // this.installModule = installModule;
-    // }
+    public String getRequiredIf() {
+        return requiredIf;
+    }
+
+    /**
+     * Check if the library is required depends the condition of "required if". Note that if the flag "required=true" in
+     * the xml of component, it will never check in the required_if.
+     * 
+     * In some cases where we only want to check the basic "required=true" and not the required_if (module view for
+     * example), it's possible to simply give null parameter.
+     * 
+     * @param listParam
+     * @return
+     */
+    public boolean isRequired(List<? extends IElementParameter> listParam) {
+        if (required) { // if flag required is set, then forget the "required if" test.
+            return required;
+        }
+        boolean isRequired = false;
+
+        if (requiredIf != null && listParam != null) {
+            isRequired = CoreRuntimePlugin.getInstance().getDesignerCoreService().evaluate(requiredIf, listParam);
+        }
+        return isRequired;
+    }
 
     /**
      * Getter for installURL.
@@ -187,5 +215,32 @@ public class ModuleNeeded {
      */
     public void setShow(boolean isShow) {
         this.isShow = isShow;
+    }
+
+    public String getBundleName() {
+        return bundleName;
+    }
+
+    public void setBundleName(String bundleName) {
+        this.bundleName = bundleName;
+    }
+
+    public String getBundleVersion() {
+        return bundleVersion;
+    }
+
+    public void setBundleVersion(String bundleVersion) {
+        this.bundleVersion = bundleVersion;
+    }
+
+    @Override
+    public String toString() {
+        if (bundleName == null) {
+            return moduleName;
+        } else if (bundleVersion == null) {
+            return moduleName + "[" + bundleName + "]";
+        } else {
+            return moduleName + "[" + bundleName + ":" + bundleVersion + "]";
+        }
     }
 }

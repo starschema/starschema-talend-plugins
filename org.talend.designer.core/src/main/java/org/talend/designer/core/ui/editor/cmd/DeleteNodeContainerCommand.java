@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -34,7 +34,7 @@ import org.talend.designer.core.ui.editor.process.Process;
 /**
  * Delete a list of nodes in the process. <br/>
  * 
- * $Id: DeleteNodeContainerCommand.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: DeleteNodeContainerCommand.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class DeleteNodeContainerCommand extends Command {
@@ -67,6 +67,7 @@ public class DeleteNodeContainerCommand extends Command {
             List<IConnection> outputList = (List<IConnection>) node.getOutgoingConnections();
             boolean builtIn = node.getConnectorFromType(EConnectionType.FLOW_MAIN).isMultiSchema()
                     | node.getConnectorFromType(EConnectionType.TABLE).isMultiSchema();
+
             for (IConnection connection : inputList) {
                 // see bug 0002633: "rejects" link disappears at times.
                 if (connection != null && connection.getSourceNodeConnector() != null) {
@@ -79,19 +80,19 @@ public class DeleteNodeContainerCommand extends Command {
                     Node jobletnode = (Node) prevNode.getJobletNode();
                     ((JobletContainer) jobletnode.getNodeContainer()).getOutputs().remove(connection);
                     if (!nodeList.contains(jobletnode)) {
+                        boolean builtInJobletNode = jobletnode.getConnectorFromType(EConnectionType.FLOW_MAIN).isMultiSchema()
+                                | node.getConnectorFromType(EConnectionType.TABLE).isMultiSchema();
                         jobletnode.removeOutput(connection);
-                        if (!jobletnode.getComponent().getName().equals("tMap") && !jobletnode.isELTComponent())
+                        if (!builtInJobletNode)
                             process.removeUniqueConnectionName(connection.getUniqueName());
                     }
                 }
                 if (!nodeList.contains(prevNode)) {
-                    // see bug 0004577
-                    // INodeConnector nodeConnector = prevNode.getConnectorFromType(connection.getLineStyle());
-                    // if (!connection.getSourceNodeConnector().equals(nodeConnector)) {
-                    // nodeConnector.setCurLinkNbOutput(nodeConnector.getCurLinkNbOutput() - 1);
-                    // }
+                    boolean builtInPrevNode = prevNode.getConnectorFromType(EConnectionType.FLOW_MAIN).isMultiSchema()
+                            | node.getConnectorFromType(EConnectionType.TABLE).isMultiSchema();
+
                     prevNode.removeOutput(connection);
-                    if (!prevNode.getComponent().getName().equals("tMap") && !prevNode.isELTComponent())
+                    if (!builtInPrevNode)
                         process.removeUniqueConnectionName(connection.getUniqueName());
                 }
             }
@@ -102,7 +103,9 @@ public class DeleteNodeContainerCommand extends Command {
                     ((JobletContainer) jobletnode.getNodeContainer()).getInputs().remove(connection);
                     if (!nodeList.contains(jobletnode)) {
                         jobletnode.removeInput(connection);
-                        if (!jobletnode.getComponent().getName().equals("tMap") && !jobletnode.isELTComponent())
+                        boolean builtInJobletNode = jobletnode.getConnectorFromType(EConnectionType.FLOW_MAIN).isMultiSchema()
+                                | node.getConnectorFromType(EConnectionType.TABLE).isMultiSchema();
+                        if (!builtInJobletNode)
                             process.removeUniqueConnectionName(connection.getUniqueName());
                     }
                 }
@@ -170,24 +173,16 @@ public class DeleteNodeContainerCommand extends Command {
                 if ((prevNode instanceof Node) && ((Node) prevNode).getJobletNode() != null) {
                     Node jobletnode = (Node) prevNode.getJobletNode();
                     ((JobletContainer) jobletnode.getNodeContainer()).getOutputs().add(connection);
-                    // if (!nodeList.contains(jobletnode)) {
-                    // jobletnode.addOutput(connection);
-                    // if (!jobletnode.getComponent().getName().equals("tMap") && !jobletnode.isELTComponent())
-                    // process.addUniqueConnectionName(connection.getUniqueName());
-                    // }
                 }
                 if (!nodeList.contains(prevNode)) {
                     prevNode.addOutput(connection);
-                    // see bug 0005635: Undo after delete, doesn't set back correctly the number of connections linked.
-                    // need to undo for 4577
-                    // INodeConnector nodeConnector = prevNode.getConnectorFromType(connection.getLineStyle());
-                    // nodeConnector.setCurLinkNbOutput(nodeConnector.getCurLinkNbOutput() + 1);
                     connection.reconnect();
-                    if (connection.getLineStyle().hasConnectionCategory(IConnectionCategory.UNIQUE_NAME)) {
+                    boolean builtInPrevNode = prevNode.getConnectorFromType(EConnectionType.FLOW_MAIN).isMultiSchema()
+                            | node.getConnectorFromType(EConnectionType.TABLE).isMultiSchema();
+                    if (connection.getLineStyle().hasConnectionCategory(IConnectionCategory.UNIQUE_NAME) && !builtInPrevNode) {
                         // for bug 10024
                         // see 10583
                         String name = connection.getUniqueName();
-                        // name = process.generateUniqueConnectionName(name);
                         process.addUniqueConnectionName(name);
                     }
                 }
@@ -197,11 +192,6 @@ public class DeleteNodeContainerCommand extends Command {
                 if ((nextNode instanceof Node) && ((Node) nextNode).getJobletNode() != null) {
                     Node jobletnode = (Node) nextNode.getJobletNode();
                     ((JobletContainer) jobletnode.getNodeContainer()).getInputs().add(connection);
-                    // if (!nodeList.contains(jobletnode)) {
-                    // jobletnode.addInput(connection);
-                    // if (!jobletnode.getComponent().getName().equals("tMap") && !jobletnode.isELTComponent())
-                    // process.addUniqueConnectionName(connection.getUniqueName());
-                    // }
                 }
                 if (!nodeList.contains(nextNode)) {
                     nextNode.addInput(connection);

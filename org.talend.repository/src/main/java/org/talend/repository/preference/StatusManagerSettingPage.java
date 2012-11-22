@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,7 +29,6 @@ import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.ICheckStateListener;
 import org.eclipse.jface.viewers.ITreeViewerListener;
 import org.eclipse.jface.viewers.TreeExpansionEvent;
-import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.Window;
@@ -58,7 +57,6 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.internal.progress.ProgressMonitorJobsDialog;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
@@ -92,9 +90,8 @@ import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryPreferenceStore;
 import org.talend.repository.model.nodes.IProjectRepositoryNode;
 import org.talend.repository.ui.dialog.StatusConfirmSettingDialog;
-import org.talend.repository.ui.views.CheckboxRepositoryTreeViewer;
-import org.talend.repository.ui.views.RepositoryCheckBoxView;
-import org.talend.repository.ui.views.RepositoryView;
+import org.talend.repository.viewer.ui.provider.RepoCommonViewerProvider;
+import org.talend.repository.viewer.ui.viewer.CheckboxRepositoryTreeViewer;
 
 /**
  * DOC gldu class global comment. Detailled comment
@@ -154,7 +151,6 @@ public class StatusManagerSettingPage extends ProjectSettingPage {
         gridLayout.horizontalSpacing = 0;
         composite.setLayout(gridLayout);
         GridData gridData = new GridData(GridData.FILL_BOTH);
-        gridData.heightHint = 400;
         gridData.widthHint = 570;
         composite.setLayoutData(gridData);
         IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
@@ -179,15 +175,11 @@ public class StatusManagerSettingPage extends ProjectSettingPage {
     private void addRepositoryTreeViewer(Composite leftComposite) {
         GridData gridData = new GridData(GridData.FILL_BOTH);
         gridData.widthHint = 210;
+        gridData.heightHint = 400;
         leftComposite.setLayoutData(gridData);
-        RepositoryCheckBoxView view = new RepositoryCheckBoxView();
-        try {
-            view.init(RepositoryView.show().getViewSite());
-        } catch (PartInitException e) {
-            ExceptionHandler.process(e);
-        }
-        view.createPartControl(leftComposite);
-        treeViewer = (CheckboxRepositoryTreeViewer) view.getViewer();
+
+        RepoCommonViewerProvider provider = RepoCommonViewerProvider.CHECKBOX;
+        treeViewer = (CheckboxRepositoryTreeViewer) provider.createViewer(leftComposite);
         // filter
         treeViewer.addFilter(new ViewerFilter() {
 
@@ -227,26 +219,21 @@ public class StatusManagerSettingPage extends ProjectSettingPage {
             }
         });
 
-        expandSomeNodes(view);
+        expandSomeNodes(provider.getProjectRepositoryNode());
     }
 
-    private void expandSomeNodes(RepositoryCheckBoxView view) {
-        if (view == null) {
-            return;
-        }
-        final RepositoryNode root = view.getRoot();
+    private void expandSomeNodes(IProjectRepositoryNode root) {
         if (root instanceof IProjectRepositoryNode) {
             final IProjectRepositoryNode rootNode = (IProjectRepositoryNode) root;
-            final TreeViewer viewer = view.getViewer();
             // metadata
-            IRepositoryNode metadataConNode = rootNode.getMetadataNode();
+            IRepositoryNode metadataConNode = rootNode.getRootRepositoryNode(ERepositoryObjectType.METADATA);
             if (metadataConNode != null) {
-                viewer.expandToLevel(metadataConNode, 1);
+                treeViewer.expandToLevel(metadataConNode, 1);
             }
             // code
-            IRepositoryNode codeNode = rootNode.getCodeNode();
+            IRepositoryNode codeNode = rootNode.getRootRepositoryNode(ERepositoryObjectType.CODE);
             if (codeNode != null) {
-                viewer.expandToLevel(codeNode, 1);
+                treeViewer.expandToLevel(codeNode, 1);
             }
         }
     }
@@ -693,11 +680,21 @@ public class StatusManagerSettingPage extends ProjectSettingPage {
 
             // for bug 17692
             ERepositoryObjectType objectType = object.getRepositoryNode().getObjectType();
+            ERepositoryObjectType type = object.getRepositoryNode().getContentType();
             if (!objectType.equals(ERepositoryObjectType.JOB_DOC) && !objectType.equals(ERepositoryObjectType.JOBLET_DOC)) {
                 if (isTechinalStatus()) {
-                    ERepositoryObjectType type = object.getRepositoryNode().getContentType();
-                    if (!type.equals(ERepositoryObjectType.DOCUMENTATION) && !type.equals(ERepositoryObjectType.BUSINESS_PROCESS)
-                            && !type.equals(ERepositoryObjectType.JOBLETS)) {
+                    // Modified by Marvin Wang on Jan.7, 2011 for bug Talend DI TDI-19154, should not use
+                    // obj.equals(constant) that will cause NPE.
+                    if (!ERepositoryObjectType.DOCUMENTATION.equals(type) && !ERepositoryObjectType.BUSINESS_PROCESS.equals(type)
+                            && !ERepositoryObjectType.JOBLETS.equals(type)) {
+                        // if (!type.equals(ERepositoryObjectType.DOCUMENTATION) &&
+                        // !type.equals(ERepositoryObjectType.BUSINESS_PROCESS)
+                        // && !type.equals(ERepositoryObjectType.JOBLETS)) {
+                        itemTable.setRedraw(false);
+                        tableItem = new TableItem(itemTable, SWT.NONE);
+                    }
+                } else if (isDocumentStatus()) {
+                    if (ERepositoryObjectType.DOCUMENTATION.equals(type) || ERepositoryObjectType.BUSINESS_PROCESS.equals(type)) {
                         itemTable.setRedraw(false);
                         tableItem = new TableItem(itemTable, SWT.NONE);
                     }
@@ -709,8 +706,8 @@ public class StatusManagerSettingPage extends ProjectSettingPage {
                 }
             } else {
                 if (isDocumentStatus()) {
-                    ERepositoryObjectType type = object.getRepositoryNode().getContentType();
-                    if (type.equals(ERepositoryObjectType.JOBS) || type.equals(ERepositoryObjectType.JOBLETS)) {
+                    if (type.equals(ERepositoryObjectType.JOBS) || type.equals(ERepositoryObjectType.JOBLETS)
+                            || type.equals(ERepositoryObjectType.JOB_DOC) || type.equals(ERepositoryObjectType.JOBLET_DOC)) {
                         itemTable.setRedraw(false);
                         tableItem = new TableItem(itemTable, SWT.NONE);
                     }
@@ -757,7 +754,6 @@ public class StatusManagerSettingPage extends ProjectSettingPage {
                     GridData data = new GridData(GridData.FILL_HORIZONTAL);
                     statusItemCombo.setLayoutData(data);
                     statusItemCombo.setEditable(false);
-                    ERepositoryObjectType type = object.getRepositoryNode().getContentType();
                     if (!type.equals(ERepositoryObjectType.DOCUMENTATION) && !type.equals(ERepositoryObjectType.BUSINESS_PROCESS)) {
                         statusItemCombo.setItems(toArray(technicalStatusList));
                         statusItemCombo.select(0);

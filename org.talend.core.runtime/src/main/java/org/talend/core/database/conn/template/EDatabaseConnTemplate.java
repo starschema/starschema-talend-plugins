@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -53,6 +53,9 @@ public enum EDatabaseConnTemplate {
                      EDatabaseTypeName.ORACLESN, //
                      "jdbc:oracle:thin:@(description=(address=(protocol=tcp)(host=<host>)(port=<port>))(connect_data=(service_name=<service_name>)))", //$NON-NLS-1$
                      "1521")), //$NON-NLS-1$
+
+    ORACLE_RAC(new DbConnStr(EDatabaseTypeName.ORACLE_RAC, //
+            "<host>")), //$NON-NLS-1$  
 
     ORACLE_OCI(new DbConnStr(EDatabaseTypeName.ORACLE_OCI, //
             "jdbc:oracle:oci8:@<service_name>")), //$NON-NLS-1$                 
@@ -143,8 +146,8 @@ public enum EDatabaseConnTemplate {
             "7210")), //$NON-NLS-1$
 
     SAS(new DbConnStr(EDatabaseTypeName.SAS, //
-            "jdbc:sasiom://<host>:<port>/<sid>", //$NON-NLS-1$
-            "7070")), //$NON-NLS-1$
+            "jdbc:sasiom://<host>:<port>", //$NON-NLS-1$
+            "8591")), //$NON-NLS-1$
 
     PARACCEL(new DbConnStr(EDatabaseTypeName.PARACCEL, //
             "jdbc:paraccel://<host>:<port>/<sid>", //$NON-NLS-1$
@@ -163,7 +166,10 @@ public enum EDatabaseConnTemplate {
             "xxxx")), //$NON-NLS-1$
 
     HIVE(new DbConnStr(EDatabaseTypeName.HIVE, "jdbc:hive://<host>:<port>/<sid>", //$NON-NLS-1$
-            "10000"));
+            "10000")),
+
+    HBASE(new DbConnStr(EDatabaseTypeName.HBASE, "127.0.0.1", //$NON-NLS-1$
+            "2181"));
 
     private DbConnStr connStr;
 
@@ -268,6 +274,7 @@ public enum EDatabaseConnTemplate {
             databaseType.remove(getDBTypeName(EDatabaseConnTemplate.HSQLDB_WEBSERVER, display));
             databaseType.remove(getDBTypeName(EDatabaseConnTemplate.VERTICA, display));
             databaseType.remove(getDBTypeName(EDatabaseConnTemplate.HIVE, display));
+            databaseType.remove(getDBTypeName(EDatabaseConnTemplate.HBASE, display));
         }
         if (sort) {
             String[] sortedArray = databaseType.toArray(new String[0]);
@@ -314,6 +321,8 @@ public enum EDatabaseConnTemplate {
             case IBMDB2:
             case IBMDB2_ZOS:
             case SYBASEASE:
+            case SAS:
+            case HBASE:
                 return true;
             default:
             }

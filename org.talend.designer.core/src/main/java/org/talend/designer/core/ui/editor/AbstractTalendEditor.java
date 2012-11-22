@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -61,6 +61,7 @@ import org.eclipse.gef.SnapToGeometry;
 import org.eclipse.gef.SnapToGrid;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CommandStack;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.gef.editparts.AbstractEditPart;
 import org.eclipse.gef.editparts.LayerManager;
 import org.eclipse.gef.editparts.ScalableFreeformRootEditPart;
@@ -160,6 +161,7 @@ import org.talend.designer.core.ui.action.ModifyOutputOrderAction;
 import org.talend.designer.core.ui.action.TalendConnectionCreationTool;
 import org.talend.designer.core.ui.action.ToggleSubjobsAction;
 import org.talend.designer.core.ui.editor.cmd.ConnectionCreateCommand;
+import org.talend.designer.core.ui.editor.cmd.ConnectionReconnectCommand;
 import org.talend.designer.core.ui.editor.cmd.CreateNodeContainerCommand;
 import org.talend.designer.core.ui.editor.cmd.MoveNodeCommand;
 import org.talend.designer.core.ui.editor.connections.Connection;
@@ -191,6 +193,7 @@ import org.talend.repository.job.deletion.JobResource;
 import org.talend.repository.job.deletion.JobResourceManager;
 import org.talend.repository.model.ComponentsFactoryProvider;
 import org.talend.repository.model.RepositoryConstants;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC qzhang class global comment. Detailled comment
@@ -1013,7 +1016,7 @@ public abstract class AbstractTalendEditor extends GraphicalEditorWithFlyoutPale
      * @return contributorId String
      */
     public String getContributorId() {
-        return "org.talend.repository.views.repository"; //$NON-NLS-1$
+        return IRepositoryView.VIEW_ID;
     }
 
     /**
@@ -1429,7 +1432,10 @@ public abstract class AbstractTalendEditor extends GraphicalEditorWithFlyoutPale
                         if (targetConnection != null) {
                             NodeContainer nodeContainer = new NodeContainer(node);
                             if (getProcess() instanceof Process) {
-                                execCommandStack(new CreateNodeContainerCommand((Process) getProcess(), nodeContainer, point));
+                                CreateNodeContainerCommand createCmd = new CreateNodeContainerCommand((Process) getProcess(),
+                                        nodeContainer, point);
+                                execCommandStack(createCmd);
+
                                 // reconnect the node
                                 Node originalTarget = (Node) targetConnection.getTarget();
                                 INodeConnector targetConnector = node.getConnectorFromType(EConnectionType.FLOW_MAIN);
@@ -1458,27 +1464,26 @@ public abstract class AbstractTalendEditor extends GraphicalEditorWithFlyoutPale
                                         }
                                     }
                                 }
-                                // bug 22272:if add a tUnite component onto a flow,the flow style should be
-                                // FLOW_MERGE,not FLOW_MAIN
-                                if (node.getComponent().getName().equals("tUnite")) {
-                                    targetConnection.reconnect(targetConnection.getSource(), node, EConnectionType.FLOW_MERGE);
-                                } else {
-                                    targetConnection.reconnect(targetConnection.getSource(), node, EConnectionType.FLOW_MAIN);
-                                }
+
+                                ConnectionReconnectCommand cmd2 = new ConnectionReconnectCommand(targetConnection);
+                                cmd2.setNewTarget(node);
+                                execCommandStack(cmd2);
 
                                 // System.out.print("new: " + targetConnection.getSource().getUniqueName() + "-----"
                                 // + targetConnection.getUniqueName() + "----->"
                                 // + targetConnection.getTarget().getUniqueName() + "(new)");
 
-                                INodeConnector nodeConnector = node.getConnectorFromName(targetConnector.getName());
-                                nodeConnector.setCurLinkNbInput(nodeConnector.getCurLinkNbInput() + 1);
+                                // INodeConnector nodeConnector = node.getConnectorFromName(targetConnector.getName());
+                                // nodeConnector.setCurLinkNbInput(nodeConnector.getCurLinkNbInput() + 1);
                                 List<Object> nodeArgs = CreateComponentOnLinkHelper.getTargetArgs(targetConnection, node);
                                 ConnectionCreateCommand nodeCmd = new ConnectionCreateCommand(node, targetConnector.getName(),
                                         nodeArgs, false);
                                 nodeCmd.setTarget(originalTarget);
-                                INodeConnector originalNodeConnector = originalTarget.getConnectorFromName(targetConnection
-                                        .getTargetNodeConnector().getName());
-                                originalNodeConnector.setCurLinkNbInput(originalNodeConnector.getCurLinkNbInput() - 1);
+                                // INodeConnector originalNodeConnector =
+                                // originalTarget.getConnectorFromName(targetConnection
+                                // .getTargetNodeConnector().getName());
+                                // originalNodeConnector.setCurLinkNbInput(originalNodeConnector.getCurLinkNbInput() -
+                                // 1);
                                 execCommandStack(nodeCmd);
 
                                 // System.out.println("-----" + nodeCmd.getConnection().getUniqueName() + "(new)----->"
@@ -1749,47 +1754,45 @@ public abstract class AbstractTalendEditor extends GraphicalEditorWithFlyoutPale
                 } catch (IllegalAccessException e) {
                     ExceptionHandler.process(e);
                 }
-                if (!(request instanceof CreateRequest)) {
-                    return;
-                }
+                if (request instanceof CreateRequest) {
+                    Object node = ((CreateRequest) request).getNewObject();
+                    RootEditPart rep = getViewer().getRootEditPart().getRoot();
 
-                Object node = ((CreateRequest) request).getNewObject();
-                RootEditPart rep = getViewer().getRootEditPart().getRoot();
-
-                Point viewOriginalPosition = new Point();
-                if (rep instanceof ScalableFreeformRootEditPart) {
-                    ScalableFreeformRootEditPart root = (ScalableFreeformRootEditPart) rep;
-                    Viewport viewport = (Viewport) root.getFigure();
-                    viewOriginalPosition = viewport.getViewLocation();
-                }
-
-                org.eclipse.draw2d.geometry.Point draw2dPosition = new org.eclipse.draw2d.geometry.Point(mouseEvent.x
-                        + viewOriginalPosition.x, mouseEvent.y + viewOriginalPosition.y);
-                SubjobContainerPart containerPart = null;
-
-                for (Object child : getProcessPart().getChildren()) {
-                    if (child instanceof SubjobContainerPart) {
-                        SubjobContainer container = (SubjobContainer) ((SubjobContainerPart) child).getModel();
-                        if (container.getSubjobContainerRectangle().contains(draw2dPosition)) {
-                            containerPart = (SubjobContainerPart) child;
-                        }
-                    }
-                }
-
-                if (containerPart != null) {
-                    List<org.talend.designer.core.ui.editor.connections.Connection> connections = CreateComponentOnLinkHelper
-                            .getConnection(containerPart, draw2dPosition, (Node) node);
-                    for (org.talend.designer.core.ui.editor.connections.Connection connection : connections) {
-                        CreateComponentOnLinkHelper.selectConnection(connection, containerPart);
+                    Point viewOriginalPosition = new Point();
+                    if (rep instanceof ScalableFreeformRootEditPart) {
+                        ScalableFreeformRootEditPart root = (ScalableFreeformRootEditPart) rep;
+                        Viewport viewport = (Viewport) root.getFigure();
+                        viewOriginalPosition = viewport.getViewLocation();
                     }
 
-                    if (connections.isEmpty()) {
-                        CreateComponentOnLinkHelper.unselectAllConnections(containerPart);
-                    }
-                } else {
+                    org.eclipse.draw2d.geometry.Point draw2dPosition = new org.eclipse.draw2d.geometry.Point(mouseEvent.x
+                            + viewOriginalPosition.x, mouseEvent.y + viewOriginalPosition.y);
+                    SubjobContainerPart containerPart = null;
+
                     for (Object child : getProcessPart().getChildren()) {
                         if (child instanceof SubjobContainerPart) {
-                            CreateComponentOnLinkHelper.unselectAllConnections((SubjobContainerPart) child);
+                            SubjobContainer container = (SubjobContainer) ((SubjobContainerPart) child).getModel();
+                            if (container.getSubjobContainerRectangle().contains(draw2dPosition)) {
+                                containerPart = (SubjobContainerPart) child;
+                            }
+                        }
+                    }
+
+                    if (containerPart != null && node instanceof Node) {
+                        List<org.talend.designer.core.ui.editor.connections.Connection> connections = CreateComponentOnLinkHelper
+                                .getConnection(containerPart, draw2dPosition, (Node) node);
+                        for (org.talend.designer.core.ui.editor.connections.Connection connection : connections) {
+                            CreateComponentOnLinkHelper.selectConnection(connection, containerPart);
+                        }
+
+                        if (connections.isEmpty()) {
+                            CreateComponentOnLinkHelper.unselectAllConnections(containerPart);
+                        }
+                    } else {
+                        for (Object child : getProcessPart().getChildren()) {
+                            if (child instanceof SubjobContainerPart) {
+                                CreateComponentOnLinkHelper.unselectAllConnections((SubjobContainerPart) child);
+                            }
                         }
                     }
                 }
@@ -1858,10 +1861,12 @@ public abstract class AbstractTalendEditor extends GraphicalEditorWithFlyoutPale
                                 }
                             }
                             if (node != null) {
+
                                 String helpLink = (String) node.getPropertyValue(EParameterName.HELP.getName());
-                                String requiredHelpLink = "org.talend.help." + node.getComponent().getName();
+                                String requiredHelpLink = ((Process) node.getProcess()).getBaseHelpLink()
+                                        + node.getComponent().getName();
                                 if (helpLink == null || "".equals(helpLink) || !requiredHelpLink.equals(helpLink)) {
-                                    helpLink = "org.talend.help." + node.getComponent().getName();
+                                    helpLink = ((Process) node.getProcess()).getBaseHelpLink() + node.getComponent().getName();
                                 }
                                 PlatformUI.getWorkbench().getHelpSystem().displayHelp(helpLink);
                             }

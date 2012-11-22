@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -24,19 +24,17 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkbenchWindowActionDelegate;
 import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
-import org.talend.core.CorePlugin;
 import org.talend.core.model.metadata.builder.connection.CDCConnection;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.properties.DatabaseConnectionItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.i18n.Messages;
-import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.IRepositoryNode.ENodeType;
 import org.talend.repository.model.IRepositoryNode.EProperties;
+import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.ui.actions.AContextualAction;
 import org.talend.repository.ui.views.IRepositoryView;
-import org.talend.repository.ui.views.RepositoryView;
 
 /**
  */
@@ -74,13 +72,16 @@ public final class ExportItemAction extends AContextualAction implements IWorkbe
                 Object nodProperty = node.getProperties(EProperties.CONTENT_TYPE);
                 ERepositoryObjectType contentType = node.getContentType();
 
-                if (nodProperty != ERepositoryObjectType.JOB_DOC && nodProperty != ERepositoryObjectType.JOBLET_DOC
-                        && contentType != ERepositoryObjectType.GENERATED && contentType != ERepositoryObjectType.JOBS
-                        && contentType != ERepositoryObjectType.JOBLETS && contentType != ERepositoryObjectType.SQLPATTERNS
-                        && nodProperty != ERepositoryObjectType.METADATA_CON_CDC
-                        && nodProperty != ERepositoryObjectType.METADATA_CON_TABLE
-                        && nodProperty != ERepositoryObjectType.METADATA_CON_QUERY
-                        && nodProperty != ERepositoryObjectType.SVN_ROOT) {
+                if (!ERepositoryObjectType.JOB_DOC.equals(nodProperty) && !ERepositoryObjectType.JOBLET_DOC.equals(nodProperty)
+                        && !ERepositoryObjectType.GENERATED.equals(nodProperty)
+                        && !ERepositoryObjectType.JOBS.equals(nodProperty) && !ERepositoryObjectType.JOBLETS.equals(nodProperty)
+                        && !ERepositoryObjectType.SQLPATTERNS.equals(nodProperty)
+                        && !ERepositoryObjectType.METADATA_CON_CDC.equals(nodProperty)
+                        && !ERepositoryObjectType.METADATA_CON_TABLE.equals(nodProperty)
+                        && !ERepositoryObjectType.METADATA_CON_QUERY.equals(nodProperty)
+                        && !ERepositoryObjectType.SVN_ROOT.equals(nodProperty)
+                        && !ERepositoryObjectType.SERVICESOPERATION.equals(nodProperty)
+                        && !ERepositoryObjectType.SERVICESPORT.equals(nodProperty)) {
                     visible = true;
                 }
                 // for cdc
@@ -124,20 +125,20 @@ public final class ExportItemAction extends AContextualAction implements IWorkbe
 
     @Override
     protected void doRun() {
-        final TreeViewer repositoryTreeView = CorePlugin.getDefault().getRepositoryService().getRepositoryTreeView();
-        if (repositoryTreeView != null) {
-            repositoryTreeView.getTree().setFocus();
+        IRepositoryView repositoryView = getViewPart();
+        if (repositoryView != null && repositoryView.getViewer() instanceof TreeViewer) {
+            ((TreeViewer) repositoryView.getViewer()).getTree().setFocus();
         }
         ExportItemWizard wizard = new ExportItemWizard();
-        IWorkbench workbench = this.getViewPart().getViewSite().getWorkbenchWindow().getWorkbench();
+        IWorkbench workbench = getWorkbench();
         wizard.setWindowTitle(EXPORT_ITEM);
-        if (toolbarAction == false) {
+        if (!toolbarAction) {
             wizard.init(workbench, (IStructuredSelection) this.getSelection());
         } else {
-            IRepositoryView repositoryView = RepositoryView.show();
-            IStructuredSelection selection = (IStructuredSelection) repositoryView.getViewer().getSelection();
-
-            wizard.init(workbench, selection);
+            if (repositoryView != null) {
+                IStructuredSelection selection = (IStructuredSelection) repositoryView.getViewer().getSelection();
+                wizard.init(workbench, selection);
+            }
         }
 
         Shell activeShell = Display.getCurrent().getActiveShell();

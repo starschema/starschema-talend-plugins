@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,7 +12,6 @@
 // ============================================================================
 package org.talend.designer.core.ui.action;
 
-import org.eclipse.gmf.runtime.diagram.ui.editparts.CompartmentEditPart;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.ISelection;
@@ -65,7 +64,7 @@ public class ShowJobSettingsViewAction extends Action {
                     if (type == BusinessType.CONNECTION || type == BusinessType.NOTE || type == BusinessType.SHAP) {
 
                         view.refresh(false, firstElement);
-                    } else if (type == BusinessType.PROCESS || firstElement instanceof CompartmentEditPart) {
+                    } else if (type == BusinessType.PROCESS || service.isInstanceOfCompartmentEditPart(firstElement)) {
                         view.refresh(false, PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
                                 .getActiveEditor());
                     }

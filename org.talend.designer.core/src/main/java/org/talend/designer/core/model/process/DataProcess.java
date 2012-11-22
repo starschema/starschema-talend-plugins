@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,14 +29,13 @@ import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.core.PluginChecker;
 import org.talend.core.model.components.IComponent;
-import org.talend.core.model.components.IComponentsFactory;
 import org.talend.core.model.components.IMultipleComponentConnection;
 import org.talend.core.model.components.IMultipleComponentItem;
 import org.talend.core.model.components.IMultipleComponentManager;
 import org.talend.core.model.components.IMultipleComponentParameter;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.builder.connection.ConditionType;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.metadata.builder.connection.RuleType;
@@ -59,6 +58,8 @@ import org.talend.core.model.process.IProcess;
 import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.process.UniqueNodeNameGenerator;
 import org.talend.core.model.properties.Item;
+import org.talend.core.model.properties.PropertiesFactory;
+import org.talend.core.model.properties.Property;
 import org.talend.core.model.properties.ValidationRulesConnectionItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
@@ -73,6 +74,7 @@ import org.talend.designer.core.model.components.ElementParameter;
 import org.talend.designer.core.model.process.jobsettings.JobSettingsManager;
 import org.talend.designer.core.model.process.statsandlogs.StatsAndLogsManager;
 import org.talend.designer.core.model.utils.emf.talendfile.AbstractExternalData;
+import org.talend.designer.core.model.utils.emf.talendfile.RoutinesParameterType;
 import org.talend.designer.core.ui.editor.connections.Connection;
 import org.talend.designer.core.ui.editor.jobletcontainer.JobletContainer;
 import org.talend.designer.core.ui.editor.nodecontainer.NodeContainer;
@@ -86,7 +88,7 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 /**
  * This class will create the list of nodes that will be used to generate the code.
  * 
- * $Id: DataProcess.java 62624 2011-06-16 09:44:35Z hwang $
+ * $Id: DataProcess.java 86502 2012-06-29 07:15:42Z bchen $
  * 
  */
 public class DataProcess {
@@ -123,13 +125,13 @@ public class DataProcess {
 
     private List<INode> dataNodeList;
 
-    private final Process process;
+    private final IProcess process;
 
     private IProcess duplicatedProcess;
 
     private List<String> shortUniqueNameList = null;
 
-    public DataProcess(Process process) {
+    public DataProcess(IProcess process) {
         this.process = process;
     }
 
@@ -152,6 +154,14 @@ public class DataProcess {
         for (IElementParameter sourceParam : sourceElement.getElementParameters()) {
             IElementParameter targetParam = targetElement.getElementParameter(sourceParam.getName());
             if (targetParam != null) {
+
+                if (sourceParam.getName().equals(EParameterName.DB_TYPE.getName())
+                        && sourceParam.getValue().toString().matches("^.*[a|A][c|C][c|C][e|E][s|S][s|S].*$")) {
+
+                    sourceElement.getElementParameter(EParameterName.DBNAME.getName()).setValue(
+                            sourceElement.getElementParameter(EParameterName.DBFILE.getName()).getValue());
+                }
+
                 targetParam.setContextMode(sourceParam.isContextMode());
                 targetParam.setValue(sourceParam.getValue());
                 if (targetParam.getFieldType() == EParameterFieldType.TABLE) {
@@ -160,6 +170,9 @@ public class DataProcess {
                 }
                 for (String name : targetParam.getChildParameters().keySet()) {
                     IElementParameter targetChildParam = targetParam.getChildParameters().get(name);
+                    if (sourceParam.getChildParameters() == null) {
+                        continue;
+                    }
                     IElementParameter sourceChildParam = sourceParam.getChildParameters().get(name);
                     targetChildParam.setValue(sourceChildParam.getValue());
                     if (targetChildParam.getFieldType() == EParameterFieldType.TABLE) {
@@ -221,7 +234,7 @@ public class DataProcess {
             dataNode = new DataNode();
         } else {
             // mapper
-            dataNode = (AbstractNode) ExternalNodesFactory.getInstance(graphicalNode.getPluginFullName());
+            dataNode = (AbstractNode) ExternalNodesFactory.getInstance(graphicalNode.getComponent().getPluginExtension());
             IExternalData externalData = graphicalNode.getExternalData();
             IExternalNode externalNode = graphicalNode.getExternalNode();
             if (externalData != null) {
@@ -235,7 +248,6 @@ public class DataProcess {
         dataNode.setActivate(graphicalNode.isActivate());
         dataNode.setStart(graphicalNode.isStart());
         dataNode.setMetadataList(graphicalNode.getMetadataList());
-        dataNode.setPluginFullName(graphicalNode.getPluginFullName());
         dataNode.setComponent(graphicalNode.getComponent());
         dataNode.setElementParameters(graphicalNode.getComponent().createElementParameters(dataNode));
         dataNode.setListConnector(graphicalNode.getListConnector());
@@ -255,7 +267,7 @@ public class DataProcess {
         if (graphicalNode.isDummy() && !graphicalNode.isActivate()) {
             IComponent component = ComponentsFactoryProvider.getInstance().get("tDummyRow"); //$NON-NLS-1$
             if (component != null) { // only if component is available
-                dataNode = new DataNode(component, uniqueName); //$NON-NLS-1$
+                dataNode = new DataNode(component, uniqueName);
                 dataNode.setActivate(true);
                 dataNode.setStart(graphicalNode.isStart());
                 dataNode.setMetadataList(graphicalNode.getMetadataList());
@@ -288,7 +300,7 @@ public class DataProcess {
             if (!connection.isActivate()) {
                 continue;
             }
-            IElementParameter monitorParam = connection.getElementParameter(EParameterName.MONITOR_CONNECTION.getName()); //$NON-NLS-1$
+            IElementParameter monitorParam = connection.getElementParameter(EParameterName.MONITOR_CONNECTION.getName());
             if (monitorParam != null && (!connection.getLineStyle().equals(EConnectionType.FLOW_REF))
                     && ((Boolean) monitorParam.getValue())) {
                 addvFlowMeterBetween(dataNode, buildDataNodeFromNode(connection.getTarget(), prefix), connection,
@@ -592,6 +604,8 @@ public class DataProcess {
                     outgoingConnections.add(0, connection);
                 }
             }
+            // for feature TDI-17041, Impossible to add imports from a virtual component.
+            dataNode.getModulesNeeded().addAll(graphicalNode.getModulesNeeded());
 
             // set informations for the last node, so the outgoing connections.
             INode outputNode = itemsMap.get(multipleComponentManager.getOutput());
@@ -749,17 +763,21 @@ public class DataProcess {
             }
 
             AbstractNode curNode;
-            if (component.getPluginFullName().equals(IComponentsFactory.COMPONENTS_LOCATION)) {
+            if (component.getPluginExtension() == null) {
                 curNode = new DataNode(component, uniqueName);
             } else {
                 // mapper
-                curNode = (AbstractNode) ExternalNodesFactory.getInstance(graphicalNode.getPluginFullName());
+                curNode = (AbstractNode) ExternalNodesFactory.getInstance(component.getPluginExtension());
                 IExternalData externalData = graphicalNode.getExternalData();
+                IExternalNode externalNode = graphicalNode.getExternalNode();
                 if (externalData != null) {
                     ((IExternalNode) curNode).setExternalData(externalData);
                 }
+                // xmlmap
+                if (externalNode != null) {
+                    ((IExternalNode) curNode).setExternalEmfData(externalNode.getExternalEmfData());
+                }
                 curNode.setStart(graphicalNode.isStart());
-                curNode.setPluginFullName(graphicalNode.getPluginFullName());
                 curNode.setElementParameters(graphicalNode.getComponent().createElementParameters(curNode));
                 curNode.setListConnector(graphicalNode.getListConnector());
                 copyElementParametersValue(graphicalNode, curNode);
@@ -800,15 +818,13 @@ public class DataProcess {
                 IMetadataTable metadataTable = graphicalNode.getMetadataFromConnector(sourceConnector);
                 if (metadataTable != null) {
                     newMetadata = metadataTable.clone();
-                } else {
+                } else if (!graphicalNode.getMetadataList().isEmpty()) {
                     newMetadata = graphicalNode.getMetadataList().get(0).clone();
                 }
             }
-            if (newMetadata == null) {
-                continue;
+            if (newMetadata != null) {
+                newMetadata.setTableName(uniqueName);
             }
-
-            newMetadata.setTableName(uniqueName);
             if (graphicalNode.isDesignSubjobStartNode()) {
                 curNode.setDesignSubjobStartNode(null);
             } else {
@@ -833,7 +849,7 @@ public class DataProcess {
                 }
 
             } else {
-                if (curNode.getMetadataList() != null) {
+                if (curNode.getMetadataList() != null && newMetadata != null) {
                     curNode.getMetadataList().remove(0);
                     curNode.getMetadataList().add(newMetadata);
                 }
@@ -865,6 +881,12 @@ public class DataProcess {
         INode targetNode = null;
         for (int i = 0; i < itemList.size(); i++) {
             targetNode = itemsMap.get(itemList.get(i));
+            // We set the type of the connection which linked two components in case of a virtual component. ONLY in
+            // case of the first component
+            if (itemList.get(i).getOutputConnections().size() > 0) {
+                targetNode.setVirtualLinkTo(EConnectionType.getTypeFromName(itemList.get(i).getOutputConnections().get(0)
+                        .getConnectionType()));
+            }
             targetFound = false;
             if (targetNode != null) {
                 for (int j = 0; j < targetNode.getElementParameters().size() && !targetFound; j++) {
@@ -1122,10 +1144,10 @@ public class DataProcess {
                 dataConnec.setName(connection.getName());
                 dataConnec.setSource(refSource);
                 dataConnec.setTarget(hashNode);
-                dataConnec.setLinkNodeForHash((AbstractNode) buildCheckMap.get(connection.getTarget()));
+                dataConnec.setLinkNodeForHash(buildCheckMap.get(connection.getTarget()));
                 dataConnec.setConnectorName(connection.getConnectorName());
 
-                IElementParameter monitorParam = connection.getElementParameter(EParameterName.MONITOR_CONNECTION.getName()); //$NON-NLS-1$
+                IElementParameter monitorParam = connection.getElementParameter(EParameterName.MONITOR_CONNECTION.getName());
                 // if there is a monitor on this connection, then add the vFlowMeter and move the base lookup connection
                 // source from "graphicalNode" to the new meterNode.
                 if (monitorParam != null && ((Boolean) monitorParam.getValue())) {
@@ -1170,21 +1192,23 @@ public class DataProcess {
             return;
         }
         // if the original component is in dummy state, no need to replace it
+        // but the next need to be checked.
         if (graphicalNode.isDummy() && !graphicalNode.isActivate()) {
-            return;
-        }
-        AbstractNode dataNode;
-
-        dataNode = (AbstractNode) buildCheckMap.get(graphicalNode);
-        checkMultipleMap.put(graphicalNode, dataNode);
-        if (dataNode.isGeneratedAsVirtualComponent()) {
-            List<IMultipleComponentManager> multipleComponentManagers = graphicalNode.getComponent()
-                    .getMultipleComponentManagers();
-            try {
-                addMultipleNode(graphicalNode, multipleComponentManagers);
-            } catch (Exception e) {
-                Exception warpper = new Exception(Messages.getString("DataProcess.checkComponent", graphicalNode.getLabel()), e); //$NON-NLS-1$
-                ExceptionHandler.process(warpper);
+            // return;
+        } else {
+            AbstractNode dataNode;
+            dataNode = (AbstractNode) buildCheckMap.get(graphicalNode);
+            checkMultipleMap.put(graphicalNode, dataNode);
+            if (dataNode.isGeneratedAsVirtualComponent()) {
+                List<IMultipleComponentManager> multipleComponentManagers = graphicalNode.getComponent()
+                        .getMultipleComponentManagers();
+                try {
+                    addMultipleNode(graphicalNode, multipleComponentManagers);
+                } catch (Exception e) {
+                    Exception warpper = new Exception(
+                            Messages.getString("DataProcess.checkComponent", graphicalNode.getLabel()), e); //$NON-NLS-1$
+                    ExceptionHandler.process(warpper);
+                }
             }
         }
         for (IConnection connection : graphicalNode.getOutgoingConnections()) {
@@ -1199,7 +1223,13 @@ public class DataProcess {
             return;
         }
         // if the original component is in dummy state, no need to replace it
+        // but the next need to be checked.
         if (graphicalNode.isDummy() && !graphicalNode.isActivate()) {
+            for (IConnection connection : graphicalNode.getOutgoingConnections()) {
+                if (connection.isActivate()) {
+                    replaceEltComponents(connection.getTarget());
+                }
+            }
             return;
         }
 
@@ -1374,7 +1404,13 @@ public class DataProcess {
             return;
         }
         // if the original component is in dummy state, no need to replace it
+        // but the next need to be checked
         if (graphicalNode.isDummy() && !graphicalNode.isActivate()) {
+            for (IConnection connection : graphicalNode.getOutgoingConnections()) {
+                if (connection.isActivate()) {
+                    replaceFileScalesComponents(connection.getTarget());
+                }
+            }
             return;
         }
 
@@ -1510,7 +1546,7 @@ public class DataProcess {
                 }
             }
             if (!exist && node.isELTComponent()) {
-                buildDataNodeFromNode((Node) node);
+                buildDataNodeFromNode(node);
             }
         }
 
@@ -1587,13 +1623,11 @@ public class DataProcess {
                 replaceForValidationRules(node);
             }
         }
-
         for (INode node : newGraphicalNodeList) {
             if (node.isSubProcessStart() && node.isActivate()) {
                 replaceMultipleComponents(node);
             }
         }
-
         for (INode node : newGraphicalNodeList) {
             if (node.isSubProcessStart() && node.isActivate()) {
                 replaceFileScalesComponents(node);
@@ -1787,8 +1821,8 @@ public class DataProcess {
         if (inputComponent == null) {
             return;
         }
-        DatabaseConnection dbConnection = (DatabaseConnection) MetadataTool.getConnectionFromRepository(refSchema);
-        IMetadataTable refMetadataTable = MetadataTool.getMetadataFromRepository(refSchema);
+        DatabaseConnection dbConnection = (DatabaseConnection) MetadataToolHelper.getConnectionFromRepository(refSchema);
+        IMetadataTable refMetadataTable = MetadataToolHelper.getMetadataFromRepository(refSchema);
 
         AbstractNode nodeUseValidationRule = (AbstractNode) node;
         endNode = nodeUseValidationRule;
@@ -1803,11 +1837,12 @@ public class DataProcess {
             validRuleConnections = (List<IConnection>) nodeUseValidationRule.getOutgoingConnections();
             mainConnections = nodeUseValidationRule.getOutgoingConnections("FLOW");//$NON-NLS-1$
         }
-        if (validRuleConnections == null || validRuleConnections.size() == 0)
+        if (validRuleConnections == null || validRuleConnections.size() == 0) {
             return;
+        }
 
         if (mainConnections != null && mainConnections.size() > 0) {
-            dataConnection = (DataConnection) mainConnections.get(0);
+            dataConnection = mainConnections.get(0);
         }
 
         if (dataConnection != null) {
@@ -2048,7 +2083,7 @@ public class DataProcess {
         dataConnec.setName(joinNode.getUniqueName() + "_" + connection.getName());//$NON-NLS-1$
         dataConnec.setSource(joinNode);
         dataConnec.setTarget(hashNode);
-        dataConnec.setLinkNodeForHash((AbstractNode) buildCheckMap.get(connection.getTarget()));
+        dataConnec.setLinkNodeForHash(buildCheckMap.get(connection.getTarget()));
         dataConnec.setConnectorName(connection.getConnectorName());
 
         inputNode_outgoingConnections.add(dataConnec);
@@ -2067,7 +2102,7 @@ public class DataProcess {
             rejectLink.setLineStyle(EConnectionType.FLOW_MAIN);
             rejectLink.setMetadataTable(rejectMetadataTable);
             rejectLink.setConnectorName("REJECT"); //$NON-NLS-1$
-            rejectLink.setName(conn.getName()); //$NON-NLS-1$
+            rejectLink.setName(conn.getName());
             rejectLink.setSource(joinNode);
             rejectLink.setTarget(targetNode);
             ((List<IConnection>) joinNode.getOutgoingConnections()).add(rejectLink);
@@ -2106,8 +2141,9 @@ public class DataProcess {
             mainConnections = nodeUseValidationRule.getOutgoingConnections("FLOW");
         }
 
-        if (validRuleConnections == null || validRuleConnections.size() == 0)
+        if (validRuleConnections == null || validRuleConnections.size() == 0) {
             return;
+        }
 
         if (mainConnections != null && mainConnections.size() > 0) {
             dataConnection = (DataConnection) mainConnections.get(0);
@@ -2235,7 +2271,7 @@ public class DataProcess {
             rejectLink.setLineStyle(EConnectionType.FLOW_MAIN);
             rejectLink.setMetadataTable(rejectMetadataTable);
             rejectLink.setConnectorName("REJECT"); //$NON-NLS-1$
-            rejectLink.setName(conn.getName()); //$NON-NLS-1$
+            rejectLink.setName(conn.getName());
             rejectLink.setSource(filterNode);
             rejectLink.setTarget(targetNode);
             ((List<IConnection>) filterNode.getOutgoingConnections()).add(rejectLink);
@@ -2334,7 +2370,7 @@ public class DataProcess {
             List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
             if (conditions != null && conditions.size() > 0) {
                 for (ConditionType condition : conditions) {
-                    Map<String, Object> map = new HashMap<String, Object>();//$NON-NLS-1$
+                    Map<String, Object> map = new HashMap<String, Object>();
                     map.put("INPUT_COLUMN", condition.getInputColumn());//$NON-NLS-1$
                     map.put("FUNCTION", condition.getFunction().getLiteral()); //$NON-NLS-1$
                     map.put("OPERATOR", condition.getOperator().getLiteral()); //$NON-NLS-1$
@@ -2364,7 +2400,7 @@ public class DataProcess {
         List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
         EMap<String, String> map = rulesConnection.getInnerJoins();
         for (Entry<String, String> entry : map) {
-            Map<String, Object> tabMap = new HashMap<String, Object>();//$NON-NLS-1$
+            Map<String, Object> tabMap = new HashMap<String, Object>();
             tabMap.put("INPUT_COLUMN", entry.getKey());//$NON-NLS-1$
             tabMap.put("LOOKUP_COLUMN", entry.getValue()); //$NON-NLS-1$
             list.add(tabMap);
@@ -2429,19 +2465,21 @@ public class DataProcess {
             return;
         }
         // if the original component is in dummy state, no need to replace it
+        // but the next need to be checked
         if (node.isDummy() && !node.isActivate()) {
-            return;
-        }
-        AbstractNode dataNode;
+            // return;
+        } else {
+            AbstractNode dataNode;
 
-        dataNode = (AbstractNode) buildCheckMap.get(node);
-        checktUniteMap.put(node, dataNode);
-        if (dataNode.getComponent().useMerge()) {
-            try {
-                changeForMultipleMergeComponents(node);
-            } catch (Exception e) {
-                Exception wrapper = new Exception(Messages.getString("DataProcess.checkComponent", node.getLabel()), e); //$NON-NLS-1$
-                ExceptionHandler.process(wrapper);
+            dataNode = (AbstractNode) buildCheckMap.get(node);
+            checktUniteMap.put(node, dataNode);
+            if (dataNode.getComponent().useMerge()) {
+                try {
+                    changeForMultipleMergeComponents(node);
+                } catch (Exception e) {
+                    Exception wrapper = new Exception(Messages.getString("DataProcess.checkComponent", node.getLabel()), e); //$NON-NLS-1$
+                    ExceptionHandler.process(wrapper);
+                }
             }
         }
         List<IConnection> outputConnections = new ArrayList<IConnection>(node.getOutgoingConnections());
@@ -2528,7 +2566,7 @@ public class DataProcess {
         dataConnec.setMonitorConnection(mergeOutputConnection.isMonitorConnection());
         dataConnec.setTracesCondition(mergeOutputConnection.getTracesCondition());
         dataConnec.setEnabledTraceColumns(mergeOutputConnection.getEnabledTraceColumns());
-        dataConnec.setName(mergeOutputConnection.getName()); //$NON-NLS-1$
+        dataConnec.setName(mergeOutputConnection.getName());
         dataConnec.setSource(hashNode);
         dataConnec.setLinkNodeForHash(((DataConnection) mergeOutputConnection).getLinkNodeForHash());
         dataConnec.setElementParameters(mergeOutputConnection.getElementParameters());
@@ -2562,12 +2600,27 @@ public class DataProcess {
         INode afterMergeStart = hashNode.getSubProcessStartNode(false);
         INode mergeSubNodeStart = mergeDataNode.getSubProcessStartNode(false);
 
+        boolean changeStartNode = false;
         if (mergeDataNode.getLinkedMergeInfo() == null || mergeDataNode.getLinkedMergeInfo().isEmpty()) {
+            changeStartNode = true;
+        } else {
+            // if the next merge node don't have output connection, such as tFileOutputMSXML, means the next merge node
+            // will not be changed to tHash component. So, this node should be the start node
+            Map<INode, Integer> nextMergeNodes = mergeDataNode.getLinkedMergeInfo();
+            if (nextMergeNodes.size() == 1) {
+                INode followMergeNode = nextMergeNodes.keySet().iterator().next();
+                List nextMergeOutputConnections = NodeUtil.getOutgoingConnections(followMergeNode, IConnectionCategory.DATA);
+                if (nextMergeOutputConnections == null || nextMergeOutputConnections.isEmpty()) {
+                    changeStartNode = true;
+                }
+            }
+        }
+        if (changeStartNode) {
             INode oldStartNode = null;
             if (mergeDataNode.isThereLinkWithHash()) {
-                oldStartNode = ((AbstractNode) mergeDataNode.getSubProcessStartNode(false));
+                oldStartNode = mergeDataNode.getSubProcessStartNode(false);
             } else {
-                oldStartNode = ((AbstractNode) mergeDataNode.getDesignSubjobStartNode());
+                oldStartNode = mergeDataNode.getDesignSubjobStartNode();
             }
             ((AbstractNode) afterMergeStart).setStart(oldStartNode.isStart());
             ((AbstractNode) oldStartNode).setStart(false);
@@ -2749,15 +2802,16 @@ public class DataProcess {
         // newGraphicalNode.setExternalData(externalData);
         // }
 
-        IExternalData externalData = graphicalNode.getExternalData();
+        // IExternalData externalData = graphicalNode.getExternalData();
 
         IExternalNode externalNode = graphicalNode.getExternalNode();
         if (externalNode != null) {
-            AbstractExternalData externalEmfData = ((IExternalNode) externalNode).getExternalEmfData();
-            ((IExternalNode) newGraphicalNode.getExternalNode()).setExternalEmfData(externalEmfData);
+            AbstractExternalData externalEmfData = externalNode.getExternalEmfData();
+            newGraphicalNode.getExternalNode().setExternalEmfData(externalEmfData);
         }
-        if (externalData != null) {
-            newGraphicalNode.setExternalData(externalData);
+        // fwang fixed bug TDI-8027
+        if (graphicalNode.getExternalData() != null) {
+            newGraphicalNode.setExternalData(graphicalNode.getExternalData());
         }
 
         copyElementParametersValue(graphicalNode, newGraphicalNode);
@@ -2797,9 +2851,9 @@ public class DataProcess {
             // incomingConnections.add(dataConnec);
             copyElementParametersValue(connection, dataConnec);
             dataConnec.setTraceConnection(connection.isTraceConnection());
-
         }
         newGraphicalNode.setActivate(graphicalNode.isActivate());
+        newGraphicalNode.setStart(graphicalNode.isStart());
 
         return newGraphicalNode;
     }
@@ -2816,13 +2870,24 @@ public class DataProcess {
         }
         buildGraphicalMap.clear();
 
-        duplicatedProcess = new Process(process.getProperty());
+        Property property = null;
+        if (process instanceof IProcess2) {
+            property = ((IProcess2) process).getProperty();
+        } else {
+            property = PropertiesFactory.eINSTANCE.createProperty();
+            property.setId(graphicalNodeList.get(0).getProcess().getId() + "_generated");
+        }
+        duplicatedProcess = new Process(property);
         duplicatedProcess.setDuplicate(true);
         duplicatedProcess.setActivate(false);
         ((Process) duplicatedProcess).setGeneratingProcess(this);
         ((Process) duplicatedProcess).setProcessModified(false);
         ((Process) duplicatedProcess).setNeededRoutines(process.getNeededRoutines());
-        ((Process) duplicatedProcess).setRoutineDependencies(process.getRoutineDependencies());
+        List<RoutinesParameterType> routines = null;
+        if (process instanceof Process) {
+            routines = ((Process) process).getRoutineDependencies();
+        }
+        ((Process) duplicatedProcess).setRoutineDependencies(routines);
 
         copyElementParametersValue(graphicalNodeList.get(0).getProcess(), duplicatedProcess);
 

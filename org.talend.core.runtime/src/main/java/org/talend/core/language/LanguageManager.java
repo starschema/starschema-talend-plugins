@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -67,7 +67,7 @@ public class LanguageManager {
             // should be run only when testing
             // e.printStackTrace();
             ExceptionHandler.process(e);
-            currentLanguage = ECodeLanguage.PERL;
+            currentLanguage = ECodeLanguage.JAVA;
         }
         return currentLanguage;
     }

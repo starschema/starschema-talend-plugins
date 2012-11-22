@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -27,7 +27,7 @@ public abstract class AbstractContextCellModifier implements ICellModifier {
 
     protected boolean repositoryFlag = false;
 
-    private AbstractContextTabEditComposite parentMode;
+    protected AbstractContextTabEditComposite parentMode;
 
     public AbstractContextCellModifier(AbstractContextTabEditComposite parentMode, boolean repositoryFlag) {
         super();
@@ -51,16 +51,9 @@ public abstract class AbstractContextCellModifier implements ICellModifier {
         return parentMode.getContextModelManager().getContextManager();
     }
 
-    protected void setAndRefreshFlags(final Object object, final IContextParameter param) {
-        if (object != null) {
-            Command command = new Command() {
-
-                @Override
-                public void execute() {
-                    getParentMode().getViewer().update(object, null);
-                }
-            };
-
+    protected void updateRelatedNode(final Object[] objs, final IContextParameter param) {
+        if (objs != null && objs.length > 0) {
+            Command command = updateRelatedNodeCommand(objs, null);
             getParentMode().runCommand(command);
         }
         // set updated flag.
@@ -76,5 +69,14 @@ public abstract class AbstractContextCellModifier implements ICellModifier {
                 }
             }
         }
+    }
+
+    private Command updateRelatedNodeCommand(final Object[] objs, final String[] properties) {
+        return new Command() {
+
+            public void execute() {
+                getParentMode().getViewer().update(objs, properties);
+            }
+        };
     }
 }

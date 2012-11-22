@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,10 +14,14 @@ package org.talend.designer.core.ui.editor.nodes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -39,16 +43,16 @@ import org.talend.core.language.ECodeLanguage;
 import org.talend.core.language.LanguageManager;
 import org.talend.core.model.components.EComponentType;
 import org.talend.core.model.components.IComponent;
-import org.talend.core.model.components.IComponentsFactory;
 import org.talend.core.model.components.IMultipleComponentItem;
 import org.talend.core.model.components.IMultipleComponentManager;
 import org.talend.core.model.components.IODataComponent;
 import org.talend.core.model.general.ILibrariesService;
+import org.talend.core.model.general.ModuleNeeded;
 import org.talend.core.model.metadata.IEbcdicConstant;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.types.JavaTypesManager;
 import org.talend.core.model.metadata.types.PerlTypesManager;
 import org.talend.core.model.process.BlockCode;
@@ -76,8 +80,10 @@ import org.talend.core.prefs.ITalendCorePrefConstants;
 import org.talend.core.runtime.CoreRuntimePlugin;
 import org.talend.core.tis.ICoreTisService;
 import org.talend.core.ui.IJobletProviderService;
-import org.talend.core.ui.branding.IBrandingService;
+import org.talend.core.ui.metadata.dialog.MetadataDialog;
+import org.talend.designer.core.CheckNodeManager;
 import org.talend.designer.core.DesignerPlugin;
+import org.talend.designer.core.ICheckNodesService;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
@@ -105,7 +111,7 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 /**
  * Object that describes the node. All informations on nodes are stored in this class. <br/>
  * 
- * $Id: Node.java 62500 2011-06-15 09:57:34Z hwang $
+ * $Id: Node.java 86388 2012-06-27 10:08:36Z hwang $
  * 
  */
 public class Node extends Element implements IGraphicalNode {
@@ -138,6 +144,8 @@ public class Node extends Element implements IGraphicalNode {
     public static final String UPDATE_STATUS = "addStatus"; //$NON-NLS-1$
 
     public static final String MODIFY_NODELABEL = "modifyNodeLabel"; //$NON-NLS-1$
+
+    public static final String RETURNS_CHANGED = "returns changed";
 
     public static final int DEFAULT_SIZE = 32;
 
@@ -181,8 +189,6 @@ public class Node extends Element implements IGraphicalNode {
 
     private IProcess2 process = null;
 
-    private String pluginFullName;
-
     private boolean readOnly = false;
 
     private static final String COMPARE_STR1 = "tDBInput"; //$NON-NLS-1$
@@ -225,6 +231,44 @@ public class Node extends Element implements IGraphicalNode {
 
     private String joblet_unique_name;
 
+    private String index;
+
+    private Boolean takeSchema = null;
+
+    private EConnectionType virtualLinkTo;
+
+    private static final String TPREJOB_STR = "tPrejob"; //$NON-NLS-1$
+
+    private static final String TPOSTJOB_STR = "tPostjob"; //$NON-NLS-1$
+
+    /**
+     * Getter for index.
+     * 
+     * @return the index
+     */
+    public String getIndex() {
+        return this.index;
+    }
+
+    /**
+     * Sets the takeSchema.
+     * 
+     * @param takeSchema the takeSchema to set
+     */
+    public void setTakeSchema(Boolean takeSchema) {
+        this.takeSchema = takeSchema;
+    }
+
+    /**
+     * Sets the index.
+     * 
+     * @param index the index to set
+     */
+    public void setIndex(String index) {
+        this.index = index;
+    }
+
+    @Override
     public boolean isGeneratedByJobscriptBool() {
         return this.generatedByJobscriptBool;
     }
@@ -233,6 +277,7 @@ public class Node extends Element implements IGraphicalNode {
         this.generatedByJobscriptBool = generatedByJobscriptBool;
     }
 
+    @Override
     public boolean isTemplate() {
         return this.template;
     }
@@ -241,10 +286,12 @@ public class Node extends Element implements IGraphicalNode {
         this.template = template;
     }
 
+    @Override
     public boolean isCheckProperty() {
         return this.checkProperty;
     }
 
+    @Override
     public void setCheckProperty(boolean checkProperty) {
         this.checkProperty = checkProperty;
     }
@@ -253,6 +300,7 @@ public class Node extends Element implements IGraphicalNode {
         return this.errorFlag;
     }
 
+    @Override
     public void setErrorFlag(boolean errorFlag) {
         this.errorFlag = errorFlag;
     }
@@ -261,6 +309,7 @@ public class Node extends Element implements IGraphicalNode {
         return this.compareFlag;
     }
 
+    @Override
     public void setCompareFlag(boolean compareFlag) {
         this.compareFlag = compareFlag;
     }
@@ -269,6 +318,7 @@ public class Node extends Element implements IGraphicalNode {
         return this.errorInfo;
     }
 
+    @Override
     public void setErrorInfo(String errorInfo) {
         this.errorInfo = errorInfo;
     }
@@ -412,7 +462,7 @@ public class Node extends Element implements IGraphicalNode {
 
         setPropertyValue(EParameterName.UNIQUE_NAME.getName(), uniqueName2);
 
-        IElementParameter mappingParameter = MetadataTool.getMappingParameter((List<IElementParameter>) this
+        IElementParameter mappingParameter = MetadataToolHelper.getMappingParameter((List<IElementParameter>) this
                 .getElementParameters());
 
         for (IMetadataTable table : metadataList) {
@@ -443,6 +493,7 @@ public class Node extends Element implements IGraphicalNode {
                         table.setReadOnly(paramTable.isReadOnly());
                     }
                 }
+
             }
         }
 
@@ -469,15 +520,8 @@ public class Node extends Element implements IGraphicalNode {
             setPropertyValue(EParameterName.VALIDATION_RULES.getName(), hasValidationRule);
         }
         setHasValidationRule(hasValidationRule);
-        pluginFullName = newComponent.getPluginFullName();
-        String componentsPath = IComponentsFactory.COMPONENTS_LOCATION;
-        IBrandingService breaningService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
-                IBrandingService.class);
-        if (breaningService.isPoweredOnlyCamel()) {
-            componentsPath = IComponentsFactory.CAMEL_COMPONENTS_LOCATION;
-        }
-        if (!pluginFullName.equals(componentsPath)) {
-            externalNode = ExternalNodesFactory.getInstance(pluginFullName);
+        if (component.getPluginExtension() != null) {
+            externalNode = ExternalNodesFactory.getInstance(component.getPluginExtension());
         }
 
         if (isExternalNode()) {
@@ -510,6 +554,7 @@ public class Node extends Element implements IGraphicalNode {
         }
     }
 
+    @Override
     public IProcess getProcess() {
         return process;
     }
@@ -521,6 +566,7 @@ public class Node extends Element implements IGraphicalNode {
      * @param connType
      * @return
      */
+    @Override
     public INodeConnector getConnectorFromType(final EConnectionType connType) {
         INodeConnector nodeConnector = null;
         List<INodeConnector> listConnectors = new ArrayList<INodeConnector>();
@@ -551,6 +597,7 @@ public class Node extends Element implements IGraphicalNode {
      * @param connName
      * @return
      */
+    @Override
     public INodeConnector getConnectorFromName(final String connName) {
         INodeConnector nodeConnector = null;
         int nbConn = 0;
@@ -628,6 +675,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return unique name
      */
+    @Override
     public String getUniqueName() {
         String uniqueName = null;
         IElementParameter param = getElementParameter(EParameterName.UNIQUE_NAME.getName());
@@ -643,6 +691,7 @@ public class Node extends Element implements IGraphicalNode {
         ((Process) getProcess()).addUniqueNodeName(uniqueName);
     }
 
+    @Override
     public List<? extends INodeReturn> getReturns() {
         List<INodeReturn> allReturns = new ArrayList<INodeReturn>();
 
@@ -653,7 +702,12 @@ public class Node extends Element implements IGraphicalNode {
             getFlowToIterateReturns(allReturns);
         }
 
-        allReturns.addAll(listReturn);
+        for (INodeReturn returnNode : listReturn) {
+            if (returnNode.isShow(this.getElementParameters())) {
+                allReturns.add(returnNode);
+            }
+        }
+
         return allReturns;
     }
 
@@ -797,6 +851,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param start boolean that will give the status
      */
+    @Override
     public void setStart(final boolean start) {
         IElementParameter param = getElementParameter(EParameterName.START.getName());
         if (param == null) {
@@ -813,6 +868,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return
      */
+    @Override
     public boolean isStart() {
         return start;
     }
@@ -822,6 +878,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param location Point
      */
+    @Override
     public void setLocation(final Point location) {
         if (this.location.equals(location)) {
             return;
@@ -838,6 +895,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return Point
      */
+    @Override
     public Point getLocation() {
         return location;
     }
@@ -848,6 +906,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param titleName
      */
+    @Override
     public void setLabel(final String label) {
         this.label = label;
         if (nodeLabel.getLabelText() != label) {
@@ -979,6 +1038,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return
      */
+    @Override
     public String getLabel() {
         return label;
     }
@@ -1005,6 +1065,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param connection
      */
+    @Override
     public void addInput(final IConnection conn) {
         this.inputs.add(conn);
         fireStructureChange(INPUTS, conn);
@@ -1022,7 +1083,7 @@ public class Node extends Element implements IGraphicalNode {
             } else {
                 mainConnector = this.getConnectorFromType(EConnectionType.FLOW_MAIN);
             }
-            Boolean takeSchema = null;
+
             if (insertSet) {
                 return;
             }
@@ -1048,7 +1109,7 @@ public class Node extends Element implements IGraphicalNode {
                 // if current table has custom columns, input parameter used will be from currrent connector
                 // if no custom columns, it will use main connector, so it will allow to propagate repository
                 // information.
-                if (MetadataTool.hasCustomColumns(inputTable)) {
+                if (MetadataToolHelper.hasCustomColumns(inputTable)) {
                     inputConnector = conn.getConnectorName();
                 } else {
                     inputConnector = mainConnector.getName();
@@ -1093,13 +1154,10 @@ public class Node extends Element implements IGraphicalNode {
                                 // MetadataTool.copyTable(inputTable, targetTable);
                                 // add by wzhang for feature 7611.
                                 String dbmsId = targetTable.getDbms();
-                                MetadataTool.copyTable(dbmsId, inputTable, targetTable);
+                                MetadataToolHelper.copyTable(dbmsId, inputTable, targetTable);
                                 ChangeMetadataCommand cmc = new ChangeMetadataCommand(this, null, null, targetTable,
                                         inputSchemaParam);
-                                CommandStack cmdStack = getCommandStack();
-                                if (cmdStack != null) {
-                                    cmdStack.execute(cmc);
-                                }
+                                cmc.execute();
 
                                 ColumnListController.updateColumnList(this, null, true);
                             }
@@ -1116,6 +1174,16 @@ public class Node extends Element implements IGraphicalNode {
                         return;
                     }
                     IConnection outputConnection = null;
+                    // bug 22089:if the component's schemaType is readOnly(like tFilterRow),it should not propagated
+                    // from outputConection's target
+                    boolean isSchemaReadOnly = false;
+                    for (IElementParameter curParam : connection.getSource().getElementParameters()) {
+                        if (curParam.getFieldType() == EParameterFieldType.SCHEMA_TYPE) {
+                            if (curParam.isReadOnly()) {
+                                isSchemaReadOnly = true;
+                            }
+                        }
+                    }
                     // schema not auto-propagated or in repository mode or job generated by jobscript file
                     if ((connection.getSource().getSchemaParameterFromConnector(mainConnector.getName()) != null)) {
 
@@ -1129,7 +1197,11 @@ public class Node extends Element implements IGraphicalNode {
                             }
                         } else {
                             if (takeSchema == null) {
-                                takeSchema = getTakeSchema();
+                                if (isSchemaReadOnly) {
+                                    takeSchema = false;
+                                } else {
+                                    takeSchema = getTakeSchema();
+                                }
                             }
                         }
 
@@ -1147,13 +1219,38 @@ public class Node extends Element implements IGraphicalNode {
                             }
                         }
                         if (takeSchema.booleanValue()) {
-                            MetadataTool.copyTable(mainTargetTable, connection.getMetadataTable());
+                            MetadataToolHelper.copyTable(mainTargetTable, connection.getMetadataTable());
                             if (connection.getTarget().isELTComponent()) {
                                 IElementParameter elemParam = connection.getTarget().getElementParameter("ELT_TABLE_NAME"); //$NON-NLS-1$
                                 if (elemParam != null && elemParam.getFieldType().equals(EParameterFieldType.TEXT)) {
                                     String removeQuotes = TalendTextUtils.removeQuotes(elemParam.getValue().toString());
                                     if (!removeQuotes.equals("") && "Default".equals(connection.getName())) { //$NON-NLS-1$ //$NON-NLS-2$
                                         connection.setName(removeQuotes);
+                                    }
+                                }
+                            }
+                        } else { // add for feature TDI-17358
+                            IMetadataTable sourceTable = connection.getMetadataTable();
+                            if (sourceTable != null) {
+                                MetadataDialog dialog = new MetadataDialog(new Shell(), sourceTable.clone(),
+                                        connection.getSource(), null);
+                                dialog.setInputReadOnly(false);
+                                dialog.setOutputReadOnly(false);
+                                if (dialog.open() == MetadataDialog.OK) {
+                                    final IMetadataTable oldTable = sourceTable;
+                                    final IMetadataTable newTable = dialog.getOutputMetaData();
+                                    if (!oldTable.sameMetadataAs(newTable, IMetadataColumn.OPTIONS_NONE)) {
+                                        CommandStack cmdStack = getCommandStack();
+                                        if (cmdStack != null) {
+                                            cmdStack.execute(new Command() {
+
+                                                @Override
+                                                public void execute() {
+                                                    oldTable.setListColumns(newTable.getListColumns());
+                                                }
+
+                                            });
+                                        }
                                     }
                                 }
                             }
@@ -1171,6 +1268,7 @@ public class Node extends Element implements IGraphicalNode {
         return MessageDialog.openQuestion(new Shell(), "", Messages.getString("Node.getSchemaOrNot")); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
+    @Override
     public IElementParameter getSchemaParameterFromConnector(String connector) {
         for (IElementParameter param : getElementParameters()) {
             if (param.getFieldType().equals(EParameterFieldType.SCHEMA_TYPE) && param.getContext().equals(connector)) {
@@ -1242,6 +1340,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param connection
      */
+    @Override
     public void addOutput(final IConnection conn) {
         // add the connection on the position of the order before delete the connection
         if (conn instanceof Connection) {
@@ -1278,7 +1377,7 @@ public class Node extends Element implements IGraphicalNode {
             IMetadataTable table = conn.getMetadataTable();
             table.setTableName(conn.getName());
             String label = table.getTableName();
-            IMetadataTable metadataTable = MetadataTool.getMetadataTableFromNode(target, label);
+            IMetadataTable metadataTable = MetadataToolHelper.getMetadataTableFromNode(target, label);
             if (metadataTable == null) {
                 table.setLabel(label);
                 target.metadataList.add(table);
@@ -1308,12 +1407,13 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return List of Connection
      */
+    @Override
     public List<? extends IConnection> getIncomingConnections() {
         List<IConnection> jobletInputs = new ArrayList<IConnection>();
         if (this.isJoblet() && this.getNodeContainer() != null && !this.getNodeContainer().isCollapsed()) {
             jobletInputs.addAll(this.getNodeContainer().getInputs());
         } else {
-            jobletInputs.addAll(this.inputs);
+            return this.inputs;
         }
         return jobletInputs;
     }
@@ -1326,11 +1426,13 @@ public class Node extends Element implements IGraphicalNode {
         return this.outputs;
     }
 
+    @Override
     public void setIncomingConnections(List<? extends IConnection> connections) {
         this.inputs.clear();
         this.inputs.addAll(connections);
     }
 
+    @Override
     public void setOutgoingConnections(List<? extends IConnection> connections) {
         this.outputs.clear();
         this.outputs.addAll(connections);
@@ -1341,6 +1443,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return List of Connection
      */
+    @Override
     public List<? extends IConnection> getOutgoingConnections() {
 
         if (this.isJoblet() && this.getNodeContainer() != null && !this.getNodeContainer().isCollapsed()) {
@@ -1357,6 +1460,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param connection
      */
+    @Override
     public void removeInput(final IConnection connection) {
         this.inputs.remove(connection);
         INodeConnector mainConnector;
@@ -1410,12 +1514,13 @@ public class Node extends Element implements IGraphicalNode {
             IMetadataTable table = connection.getMetadataTable();
             if (table != null) { // hywang add for bug 0009593
                 String label = table.getTableName();
-                IMetadataTable metadataTable = MetadataTool.getMetadataTableFromNode(target, label);
+                IMetadataTable metadataTable = MetadataToolHelper.getMetadataTableFromNode(target, label);
                 if (metadataTable != null) {
                     target.metadataList.remove(metadataTable);
                     int pos = getIndex(vlist, label);
-                    if (pos != -1)
+                    if (pos != -1) {
                         vlist.remove(pos);
+                    }
                 }
             }
         }
@@ -1433,6 +1538,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param connection
      */
+    @Override
     public void removeOutput(final IConnection connection) {
         // remember the order of the connection in outputs before delete
         if (connection instanceof Connection) {
@@ -1578,6 +1684,10 @@ public class Node extends Element implements IGraphicalNode {
             firePropertyChange(UPDATE_STATUS, null, new Integer(this.currentStatus));
         }
 
+        if (id.equals(EParameterName.FORLOOP.getName())) {
+            firePropertyChange(RETURNS_CHANGED, null, null);
+        }
+
         updateVisibleData();
 
         if (id.equals("WAIT_FOR") && this.getComponent().getName().equals("tParallelize")) { //$NON-NLS-1$ //$NON-NLS-2$
@@ -1589,6 +1699,7 @@ public class Node extends Element implements IGraphicalNode {
 
     }
 
+    @Override
     public void setErrorInfoChange(final String id, Object value) {
         if (id.equals("ERRORINFO")) { //$NON-NLS-1$
             firePropertyChange(UPDATE_STATUS, null, null);
@@ -1597,10 +1708,12 @@ public class Node extends Element implements IGraphicalNode {
         }
     }
 
+    @Override
     public List<IMetadataTable> getMetadataList() {
         return this.metadataList;
     }
 
+    @Override
     public void setMetadataList(final List<IMetadataTable> metaDataList) {
         this.metadataList = metaDataList;
     }
@@ -1615,6 +1728,7 @@ public class Node extends Element implements IGraphicalNode {
         return getUniqueName();
     }
 
+    @Override
     public boolean isExternalNode() {
         if (externalNode != null) {
             return true;
@@ -1622,6 +1736,7 @@ public class Node extends Element implements IGraphicalNode {
         return false;
     }
 
+    @Override
     public IExternalNode getExternalNode() {
         if (externalNode != null) {
             externalNode.setActivate(isActivate());
@@ -1633,7 +1748,6 @@ public class Node extends Element implements IGraphicalNode {
             externalNode.setMetadataList(copyOfMetadataList);
             externalNode.setIncomingConnections(inputs);
             externalNode.setOutgoingConnections(outputs);
-            externalNode.setPluginFullName(getPluginFullName());
             externalNode.setElementParameters(getElementParameters());
             externalNode.setUniqueName(getUniqueName());
             externalNode.setSubProcessStart(isSubProcessStart());
@@ -1647,6 +1761,7 @@ public class Node extends Element implements IGraphicalNode {
         this.externalNode = externalNode;
     }
 
+    @Override
     public IExternalData getExternalData() {
         if (externalNode != null) {
             return externalNode.getExternalData();
@@ -1665,14 +1780,6 @@ public class Node extends Element implements IGraphicalNode {
         return super.clone();
     }
 
-    public String getPluginFullName() {
-        return pluginFullName;
-    }
-
-    public void setPluginFullName(String pluginFullName) {
-        this.pluginFullName = pluginFullName;
-    }
-
     public NodeContainer getNodeContainer() {
         return this.nodeContainer;
     }
@@ -1684,6 +1791,7 @@ public class Node extends Element implements IGraphicalNode {
     /**
      * @see org.talend.core.model.process.INode#setPerformanceData(java.lang.String)
      */
+    @Override
     public void setPerformanceData(String perfData) {
         String oldData = this.performanceData;
         if (!ObjectUtils.equals(oldData, perfData)) {
@@ -1702,6 +1810,7 @@ public class Node extends Element implements IGraphicalNode {
         return this.performanceData;
     }
 
+    @Override
     public boolean isActivate() {
         return this.activate;
     }
@@ -1758,6 +1867,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return
      */
+    @Override
     public boolean isDummy() {
         return dummy;
     }
@@ -1771,6 +1881,7 @@ public class Node extends Element implements IGraphicalNode {
         dummy = value;
     }
 
+    @Override
     public boolean hasRunIfLink() {
         boolean runIf = false;
         Connection connec;
@@ -1792,6 +1903,7 @@ public class Node extends Element implements IGraphicalNode {
         return runIf;
     }
 
+    @Override
     public boolean isSubProcessStart() {
         IConnection connec;
         if (isActivate()) {
@@ -1816,6 +1928,7 @@ public class Node extends Element implements IGraphicalNode {
         return true;
     }
 
+    @Override
     public IMetadataTable getMetadataTable(String metaName) {
         for (int i = 0; i < metadataList.size(); i++) {
             String tableName = metadataList.get(i).getTableName();
@@ -1826,6 +1939,7 @@ public class Node extends Element implements IGraphicalNode {
         return null;
     }
 
+    @Override
     public IMetadataTable getMetadataFromConnector(String connector) {
         for (IMetadataTable table : metadataList) {
             if (table != null && table.getAttachedConnector() != null) {
@@ -1842,14 +1956,17 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#hasConditionnalOutputs()
      */
+    @Override
     public boolean hasConditionalOutputs() {
         return component.hasConditionalOutputs();
     }
 
+    @Override
     public boolean isMultiplyingOutputs() {
         return component.isMultiplyingOutputs();
     }
 
+    @Override
     public List<BlockCode> getBlocksCodeToClose() {
         return null;
     }
@@ -1864,6 +1981,7 @@ public class Node extends Element implements IGraphicalNode {
      * @param withCondition
      * @return Start Node found.
      */
+    @Override
     public INode getSubProcessStartNode(boolean withConditions) {
         if (!withConditions) {
             // if there is the dummy state, we know we're still in the same subjob as the previous node.
@@ -1877,13 +1995,15 @@ public class Node extends Element implements IGraphicalNode {
                 if (target.getJobletNode() != null) {
                     target = target.getJobletNode();
                 }
-                if ((source.isActivate() == target.isActivate())
-                        && connection.getLineStyle().hasConnectionCategory(IConnectionCategory.MAIN)) {
-                    found = true;
-                    break;
-                }
-                if (((Node) source).isDummy() || isDummy()) {
-                    return source.getSubProcessStartNode(withConditions);
+
+                if (connection.getLineStyle().hasConnectionCategory(IConnectionCategory.MAIN)) {
+                    if (source.isActivate() == target.isActivate()) {
+                        found = true;
+                        break;
+                    }
+                    if (((Node) source).isDummy() || isDummy()) {
+                        return source.getSubProcessStartNode(withConditions);
+                    }
                 }
             }
             if (!found) {
@@ -1981,6 +2101,7 @@ public class Node extends Element implements IGraphicalNode {
         return getMainBranch(new ArrayList<INode>());
     }
 
+    @Override
     public Node getProcessStartNode(boolean withConditions) {
         // System.out.println(" --- Checking :" + this + " ---");
 
@@ -2014,6 +2135,7 @@ public class Node extends Element implements IGraphicalNode {
         return mainSubBranchNode;
     }
 
+    @Override
     public boolean sameProcessAs(INode node, boolean withConditions) {
         // System.out.println("from:" + this + " -- to:" + node);
 
@@ -2030,10 +2152,12 @@ public class Node extends Element implements IGraphicalNode {
         return currentNode.equals(otherNode);
     }
 
+    @Override
     public boolean isReadOnly() {
         return this.readOnly;
     }
 
+    @Override
     public void setReadOnly(boolean readOnly) {
         this.readOnly = readOnly;
     }
@@ -2043,6 +2167,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#setProcess(org.talend.core.model.process.IProcess)
      */
+    @Override
     public void setProcess(IProcess process) {
         if (process instanceof Process) {
             this.process = (Process) process;
@@ -2114,6 +2239,58 @@ public class Node extends Element implements IGraphicalNode {
     @SuppressWarnings("unchecked")
     private void checkParameters() {
         for (IElementParameter param : this.getElementParametersWithChildrens()) {
+            if (param.getMaxlength() > 0) {
+                String paramValue = param.getValue().toString();
+                paramValue.length();
+                String tmpValue;
+                if (paramValue.startsWith("\"") && paramValue.endsWith("\"")) {
+                    tmpValue = paramValue.replaceAll("\"", "");
+                } else {
+                    // tmpValue = paramValue;
+                    // don't count if don't start with "
+                    continue;
+                }
+                String factor = "\\\\\\\\";
+                Pattern pattern = Pattern.compile(factor);
+                Matcher matcher = pattern.matcher(tmpValue);
+                int lenth = 0;
+                matcher.groupCount();
+                while (matcher.find()) {
+                    lenth++;
+                }
+                String last = tmpValue.replaceAll(factor, "");
+                last = last.replaceAll("\\\\", "");
+                int realLength = last.length() + lenth;
+                if (realLength > param.getMaxlength()) {
+                    String errorMessage = Messages.getString("Node.overLength", param.getDisplayName(), param.getMaxlength()); //$NON-NLS-1$
+                    Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                }
+            }
+
+            if (param.getFieldType() == EParameterFieldType.CLOSED_LIST) {
+                String showIf = param.getShowIf();
+                String notShowIf = param.getNotShowIf();
+                IElementParameter dbTypeEle = this.getElementParameter("DBTYPE");//$NON-NLS-1$
+                if (dbTypeEle != null && showIf != null && notShowIf == null) {
+                    String dbType = (String) dbTypeEle.getValue();
+                    boolean show = false;
+                    if (showIf.contains(dbType)) {
+                        show = true;
+                    }
+                    if (show && !ArrayUtils.contains(param.getListItemsValue(), param.getValue())) {
+                        Problems.add(ProblemStatus.ERROR, this,
+                                "Unknown value in the list / Value set not supported by the component");
+                    }
+                } else if ("DQRULES_LIST".equals(param.getName()) || "PATTERN_LIST".equals(param.getName())) {
+                    // MOD for TDI-19063 Do not check value for these 2 parameters.
+                } else {
+                    if (!ArrayUtils.contains(param.getListItemsValue(), param.getValue())) {
+                        Problems.add(ProblemStatus.ERROR, this, "Unknown value in the list [" + param.getDisplayName()
+                                + "] / Value set not supported by the component");
+                    }
+                }
+            }
+
             if (param.getName().equals(EParameterName.COMMENT.getName())) {
                 String infoValue = (String) param.getValue();
                 if (infoValue != null && !infoValue.equals("")) { //$NON-NLS-1$                                             
@@ -2282,13 +2459,28 @@ public class Node extends Element implements IGraphicalNode {
                                 Problems.add(ProblemStatus.ERROR, this, errorMessage);
                             }
                         } else {
-                            String errorMessage = Messages.getString("Node.parameterEmpty", param.getDisplayName()); //$NON-NLS-1$
-                            Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                            // TESB-6191
+                            if (getComponent() != null && "cTalendJob".equals(getComponent().getName())) {
+                                IElementParameter fromRepository = getElementParameter("FROM_REPOSITORY_JOB");
+                                Object isFromRepository = fromRepository.getValue();
+                                if (isFromRepository != null && "true".equals(isFromRepository.toString())) {
+                                    String errorMessage = Messages.getString("Node.parameterEmpty", param.getDisplayName()); //$NON-NLS-1$
+                                    Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                                } else {
+                                    // ignore the cTalendJob validation if it's not use the "FROM_REPOSITORY_JOB"
+                                    // DO nothing
+                                }
+                            } else {
+                                String errorMessage = Messages.getString("Node.parameterEmpty", param.getDisplayName()); //$NON-NLS-1$
+                                Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                            }
                         }
                     }
                 }
             }
             checkValidationRule(param);
+
+            checktAggregateRow(param);
         }
 
         IElementParameter enableParallelizeParameter = getElementParameter(EParameterName.PARALLELIZE.getName());
@@ -2296,6 +2488,102 @@ public class Node extends Element implements IGraphicalNode {
             boolean x = (Boolean) enableParallelizeParameter.getValue();
             if (x) {
                 addStatus(Process.PARALLEL_STATUS);
+            }
+        }
+
+        checkRouteComponents();
+    }
+
+    /**
+     * Check special Route components DOC xpli Comment method "checkRouteComponents".
+     */
+    private void checkRouteComponents() {
+        // http://jira.talendforge.org/browse/TESB-6294
+        if (this.getComponent().getName().equals("cCXF")) {
+            IElementParameter resourceParam = this.getElementParameter(EParameterName.ROUTE_RESOURCE_TYPE_ID.getName());
+            IElementParameter wsdlFileParam = this.getElementParameter("WSDL_FILE");
+            IElementParameter serviceParam = this.getElementParameter("SERVICE_TYPE");
+            IElementParameter wsdlTypeParam = this.getElementParameter("WSDL_TYPE");
+            IElementParameter clazzParam = this.getElementParameter("SERVICE_CLASS");
+
+            // Select WSDL
+            if (serviceParam != null && "wsdlURL".equals(serviceParam.getValue())) {
+                // Select File
+                if (wsdlTypeParam != null && "file".equals(wsdlTypeParam.getValue())) {
+                    // WSDL file is empty
+                    if (wsdlFileParam == null || wsdlFileParam.getValue() == null
+                            || wsdlFileParam.getValue().toString().isEmpty()
+                            || wsdlFileParam.getValue().toString().equals("\"\"")) {
+                        String errorMessage = Messages.getString("Node.parameterEmpty", wsdlFileParam.getDisplayName()); //$NON-NLS-1$
+                        Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                    }
+                } // Select Repository
+                else if (wsdlTypeParam != null && "repo".equals(wsdlTypeParam.getValue())) {
+                    // WSDL file is empty
+                    if (resourceParam == null || resourceParam.getValue() == null
+                            || resourceParam.getValue().toString().isEmpty()) {
+                        String errorMessage = Messages.getString("Node.parameterEmpty", resourceParam.getDisplayName()); //$NON-NLS-1$
+                        Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                    }
+                }
+            }
+            // Select Service class
+            else if (serviceParam != null && "serviceClass".equals(serviceParam.getValue())) {
+                // Service class is empty
+                if (clazzParam == null || clazzParam.getValue() == null || clazzParam.getValue().toString().isEmpty()) {
+                    String errorMessage = Messages.getString("Node.parameterEmpty", clazzParam.getDisplayName()); //$NON-NLS-1$
+                    Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                }
+            }
+        }
+
+    }
+
+    private void checktAggregateRow(IElementParameter param) {
+        EParameterFieldType fieldType = param.getFieldType();
+        if ("tAggregateRow".equals(component.getName()) && EParameterFieldType.TABLE.equals(fieldType)
+                && EParameterName.GROUPBYS.name().equals(param.getName())) {
+            Set<String> duplicatedColumns = new HashSet<String>();
+            List<String> existColumns = new ArrayList<String>();
+            if (param.getValue() instanceof List) {
+                for (Object obj : (List) param.getValue()) {
+                    if (obj instanceof Map) {
+                        Map childElement = (Map) obj;
+                        Object outputColumnName = childElement.get(param.getListItemsDisplayCodeName()[0]);
+                        if (outputColumnName instanceof String) {
+                            if (existColumns.contains(outputColumnName)) {
+                                duplicatedColumns.add((String) outputColumnName);
+                            } else {
+                                existColumns.add((String) outputColumnName);
+                            }
+                        }
+
+                    }
+                }
+            }
+            IElementParameter relatedParam = getElementParameter(EParameterName.OPERATIONS.name());
+            if (relatedParam != null && relatedParam.getValue() instanceof List) {
+                for (Object obj : (List) relatedParam.getValue()) {
+                    if (obj instanceof Map) {
+                        Map childElement = (Map) obj;
+                        Object outputColumnName = childElement.get(relatedParam.getListItemsDisplayCodeName()[0]);
+                        if (outputColumnName instanceof String) {
+                            if (existColumns.contains(outputColumnName)) {
+                                duplicatedColumns.add((String) outputColumnName);
+                            } else {
+                                existColumns.add((String) outputColumnName);
+                            }
+                        }
+                    }
+                }
+            }
+            if (!duplicatedColumns.isEmpty()) {
+                String errorMessage = "Duplicated output columns exist in Group by or Operations table: ";
+                for (String columnName : duplicatedColumns) {
+                    errorMessage += columnName + ",";
+                }
+                errorMessage = errorMessage.substring(0, errorMessage.length() - 1);
+                Problems.add(ProblemStatus.ERROR, this, errorMessage);
             }
         }
     }
@@ -2437,6 +2725,43 @@ public class Node extends Element implements IGraphicalNode {
         }
     }
 
+    /**
+     * 
+     * DOC hcyi Comment method "checkHasMultiPrejobOrPostJobComponents".
+     */
+    private void checkHasMultiPrejobOrPostJobComponents() {
+        if (PluginChecker.isJobLetPluginLoaded()) {
+            IJobletProviderService jobletService = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
+                    IJobletProviderService.class);
+            if (jobletService != null) {
+                if (jobletService.isJobletComponent(this)) {
+                    Map<String, INode> multiNodes = new HashMap<String, INode>();
+                    for (INode node : process.getGeneratingNodes()) {
+                        String componentName = node.getComponent().getName();
+                        if (componentName != null && componentName.equals(TPREJOB_STR)) {
+                            if (!multiNodes.containsKey(TPREJOB_STR)) {
+                                multiNodes.put(TPREJOB_STR, node);
+                            } else {
+                                String errorMessage = Messages.getString(
+                                        "Node.checkHasMultiPrejobOrPostJobComponents", TPREJOB_STR); //$NON-NLS-1$
+                                Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                            }
+                        }
+                        if (componentName != null && componentName.equals(TPOSTJOB_STR)) {
+                            if (!multiNodes.containsKey(TPOSTJOB_STR)) {
+                                multiNodes.put(TPOSTJOB_STR, node);
+                            } else {
+                                String errorMessage = Messages.getString(
+                                        "Node.checkHasMultiPrejobOrPostJobComponents", TPOSTJOB_STR); //$NON-NLS-1$
+                                Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public void checkLinks() {
         boolean isJoblet = false;
         if (PluginChecker.isJobLetPluginLoaded()) {
@@ -2498,7 +2823,10 @@ public class Node extends Element implements IGraphicalNode {
                         || (getCurrentActiveLinksNbInput(EConnectionType.RUN_IF) > 0)
                         || (getCurrentActiveLinksNbInput(EConnectionType.ON_COMPONENT_OK) > 0)
                         || (getCurrentActiveLinksNbInput(EConnectionType.ON_COMPONENT_ERROR) > 0)
-                        || (getCurrentActiveLinksNbInput(EConnectionType.ROUTE_WHEN) > 0)) {
+                /*
+                 * http://jira.talendforge.org/browse/TESB-4858 Modified By LiXiaopeng 2012-2-13 ||
+                 * (getCurrentActiveLinksNbInput(EConnectionType.ROUTE_WHEN) > 0)
+                 */) {
 
                     String errorMessage = Messages.getString("Node.errorMessage2"); //$NON-NLS-1$
                     Problems.add(ProblemStatus.ERROR, this, errorMessage);
@@ -2641,7 +2969,7 @@ public class Node extends Element implements IGraphicalNode {
         } else {
             mainConnector = this.getConnectorFromType(EConnectionType.FLOW_MAIN);
         }
-
+        List<INodeConnector> mainConnectors = this.getConnectorsFromType(EConnectionType.FLOW_MAIN);
         if (mainConnector != null && !isExternalNode()) {
             IMetadataTable table = getMetadataFromConnector(mainConnector.getName());
 
@@ -2704,7 +3032,7 @@ public class Node extends Element implements IGraphicalNode {
                     int indexOfDynamicField = 0;
                     int lastNotCustom = 0;
                     for (IMetadataColumn col : meta.getListColumns()) {
-                        if (col.getTalendType().equals("id_Dynamic")) { //$NON-NLS-1$
+                        if (col.getTalendType() != null && col.getTalendType().equals("id_Dynamic")) { //$NON-NLS-1$
                             nbDynamic++;
                             indexOfDynamicField = meta.getListColumns().indexOf(col);
                         }
@@ -2712,24 +3040,28 @@ public class Node extends Element implements IGraphicalNode {
                             lastNotCustom = meta.getListColumns().indexOf(col);
                         }
                     }
-                    if (nbDynamic > 1) {
-                        String errorMessage = Messages.getString("Node.onlyOneDynamicPerSchema"); //$NON-NLS-1$
-                        Problems.add(ProblemStatus.ERROR, this, errorMessage);
-                    }
-                    if (nbDynamic > 0 && (indexOfDynamicField != lastNotCustom)) {
-                        String errorMessage = Messages.getString("Node.dynamicShouldBeLastType"); //$NON-NLS-1$
-                        Problems.add(ProblemStatus.ERROR, this, errorMessage);
-                    }
-                    if (nbDynamic > 0 && service == null) {
-                        String errorMessage = Messages.getString("Node.dynamicNotSupported"); //$NON-NLS-1$
-                        Problems.add(ProblemStatus.ERROR, this, errorMessage);
-                    }
-                    if (nbDynamic > 0 && service != null) {
-                        if (!service.isSupportDynamicType(this.getComponent().getName())) {
-                            String errorMessage = Messages.getString("Node.componentDoesntSupportDynamic"); //$NON-NLS-1$
+
+                    if (!isJoblet()) {
+                        if (nbDynamic > 1) {
+                            String errorMessage = Messages.getString("Node.onlyOneDynamicPerSchema"); //$NON-NLS-1$
                             Problems.add(ProblemStatus.ERROR, this, errorMessage);
                         }
+                        if (nbDynamic > 0 && (indexOfDynamicField != lastNotCustom)) {
+                            String errorMessage = Messages.getString("Node.dynamicShouldBeLastType"); //$NON-NLS-1$
+                            Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                        }
+                        if (nbDynamic > 0 && service == null) {
+                            String errorMessage = Messages.getString("Node.dynamicNotSupported"); //$NON-NLS-1$
+                            Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                        }
+                        if (nbDynamic > 0 && service != null) {
+                            if (!service.isSupportDynamicType(this.getComponent().getName())) {
+                                String errorMessage = Messages.getString("Node.componentDoesntSupportDynamic"); //$NON-NLS-1$
+                                Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                            }
+                        }
                     }
+
                 }
             }
         }
@@ -2740,7 +3072,9 @@ public class Node extends Element implements IGraphicalNode {
             if (mainConnector.isMultiSchema()) {
                 if (getMetadataList() != null) {
                     for (IMetadataTable meta : getMetadataList()) {
-                        if (meta.getListColumns().size() == 0 && !isCheckMultiSchemaForMSField()) { // hywang add
+                        String componentName = this.getComponent().getName();
+                        if (!componentName.equals("tRESTRequest") && meta.getListColumns().size() == 0
+                                && !isCheckMultiSchemaForMSField() && isSingleSchemaForEBCDIC(meta)) {
                             String tableLabel = meta.getTableName();
                             if (meta.getLabel() != null) {
                                 tableLabel = meta.getLabel();
@@ -2755,6 +3089,51 @@ public class Node extends Element implements IGraphicalNode {
 
         schemaSynchronized = true;
 
+        // see bug 22089:the getConnectorFromType() method,same connector type,but different connectors.In case
+        // the filterRow,the connector is not correct,we add the
+        // input/output schema check on it
+        if ((component.isSchemaAutoPropagated() && getComponent().getName().equals("tFilterRow"))
+                && (getMetadataList().size() != 0)) {
+            for (INodeConnector nodeConnector : mainConnectors) {
+                INodeConnector actualConnector = nodeConnector;
+                if (actualConnector != null) {
+                    int maxFlowInput = actualConnector.getMaxLinkInput();
+                    if (maxFlowInput <= 1 || getComponent().useLookup() || isELTComponent()) {
+                        IMetadataTable inputMeta = null, outputMeta = getMetadataList().get(0);
+                        if ((actualConnector.getMaxLinkInput() != 0) && (actualConnector.getMaxLinkOutput() != 0)) {
+                            IConnection inputConnecion = null;
+                            for (IConnection connection : inputs) {
+                                if (connection.isActivate()
+                                        && (connection.getLineStyle().equals(EConnectionType.FLOW_MAIN) || connection
+                                                .getLineStyle().equals(EConnectionType.TABLE))) {
+                                    inputMeta = connection.getMetadataTable();
+                                    inputConnecion = connection;
+                                }
+                            }
+                            if (inputMeta != null) {
+                                if ((!outputMeta.sameMetadataAs(inputMeta, IMetadataColumn.OPTIONS_IGNORE_KEY
+                                        | IMetadataColumn.OPTIONS_IGNORE_NULLABLE | IMetadataColumn.OPTIONS_IGNORE_COMMENT
+                                        | IMetadataColumn.OPTIONS_IGNORE_PATTERN | IMetadataColumn.OPTIONS_IGNORE_DBCOLUMNNAME
+                                        | IMetadataColumn.OPTIONS_IGNORE_DBTYPE | IMetadataColumn.OPTIONS_IGNORE_DEFAULT
+                                        | IMetadataColumn.OPTIONS_IGNORE_BIGGER_SIZE))) {
+                                    if (!outputMeta.sameMetadataAs(inputMeta, IMetadataColumn.OPTIONS_NONE)
+                                            && outputMeta.sameMetadataAs(inputMeta, IMetadataColumn.OPTIONS_IGNORE_LENGTH)) {
+                                        String warningMessage = Messages.getString("Node.lengthDiffWarning", //$NON-NLS-1$
+                                                inputConnecion.getName());
+                                        Problems.add(ProblemStatus.WARNING, this, warningMessage);
+                                    } else {
+                                        schemaSynchronized = false;
+                                        String errorMessage = Messages.getString(
+                                                "Node.differentFromSchemaDefined", inputConnecion.getName()); //$NON-NLS-1$
+                                        Problems.add(ProblemStatus.ERROR, this, errorMessage);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // test if the columns can be checked or not
         if ((component.isSchemaAutoPropagated() || getComponent().getComponentType() == EComponentType.JOBLET)
                 && (getMetadataList().size() != 0)) {
@@ -2885,6 +3264,7 @@ public class Node extends Element implements IGraphicalNode {
         }
     }
 
+    @Override
     public void checkAndRefreshNode() {
         Problems.clearAll(this);
         checkNode();
@@ -2892,6 +3272,7 @@ public class Node extends Element implements IGraphicalNode {
         Problems.refreshProblemTreeView();
     }
 
+    @Override
     public void checkNode() {
         if (isActivate()) {
             checkParameters();
@@ -2901,7 +3282,13 @@ public class Node extends Element implements IGraphicalNode {
             checkMultiComponents();
             checkStartLinks();
             checkParallelizeStates();
-
+            // TDI-21298
+            checkHasMultiPrejobOrPostJobComponents();
+            // feature 2,add a new extension point to intercept the validation action for Uniserv
+            List<ICheckNodesService> checkNodeServices = CheckNodeManager.getCheckNodesService();
+            for (ICheckNodesService checkService : checkNodeServices) {
+                checkService.checkNode(this);
+            }
             if (externalNode != null) {
                 List<Problem> problems = externalNode.getProblems();
                 if (problems != null) {
@@ -2934,10 +3321,12 @@ public class Node extends Element implements IGraphicalNode {
         }
     }
 
+    @Override
     public IComponent getComponent() {
         return this.component;
     }
 
+    @Override
     public void setComponent(IComponent component) {
         this.component = component;
     }
@@ -2986,6 +3375,7 @@ public class Node extends Element implements IGraphicalNode {
      * @see org.talend.core.model.process.INode#renameMetadataColumnName(java.lang.String, java.lang.String,
      * java.lang.String)
      */
+    @Override
     public void metadataInputChanged(IODataComponent dataComponent, String connectionToApply) {
         log.trace("InputChanged : Node=" + this + ", IOData=[" + dataComponent + "] on " + connectionToApply); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         if (externalNode != null) {
@@ -2993,6 +3383,7 @@ public class Node extends Element implements IGraphicalNode {
         }
     }
 
+    @Override
     public void metadataOutputChanged(IODataComponent dataComponent, String connectionToApply) {
         log.trace("OutputChanged : Node=" + this + ", IOData=[" + dataComponent + "] on " + connectionToApply); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         if (externalNode != null) {
@@ -3000,10 +3391,19 @@ public class Node extends Element implements IGraphicalNode {
         }
     }
 
+    @Override
     public boolean isELTComponent() {
         return getComponent().getOriginalFamilyName().startsWith("ELT"); //$NON-NLS-1$
     }
 
+    public boolean isELTMapComponent() {
+        if (isELTComponent()) {
+            return getComponent().getName().endsWith("Map");//$NON-NLS-1$
+        }
+        return false;
+    }
+
+    @Override
     public boolean isFileScaleComponent() {
         return getComponent().getOriginalFamilyName().equals("FileScale"); //$NON-NLS-1$
     }
@@ -3017,26 +3417,32 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#isThereLinkWithHash()
      */
+    @Override
     public boolean isThereLinkWithHash() {
         return process.isThereLinkWithHash(this);
     }
 
+    @Override
     public List<? extends IConnection> getOutgoingSortedConnections() {
         return org.talend.core.model.utils.NodeUtil.getOutgoingSortedConnections(this);
     }
 
+    @Override
     public List<? extends IConnection> getMainOutgoingConnections() {
         return org.talend.core.model.utils.NodeUtil.getMainOutgoingConnections(this);
     }
 
+    @Override
     public List<? extends IConnection> getOutgoingConnections(EConnectionType connectionType) {
         return org.talend.core.model.utils.NodeUtil.getOutgoingConnections(this, connectionType);
     }
 
+    @Override
     public List<? extends IConnection> getOutgoingConnections(String connectorName) {
         return org.talend.core.model.utils.NodeUtil.getOutgoingConnections(this, connectorName);
     }
 
+    @Override
     public void renameData(String oldName, String newName) {
         if (oldName.equals(newName)) {
             return;
@@ -3049,6 +3455,7 @@ public class Node extends Element implements IGraphicalNode {
         UpgradeElementHelper.renameData(this, oldName, newName);
     }
 
+    @Override
     public boolean useData(String name) {
         if (isExternalNode()) {
             return getExternalNode().useData(name);
@@ -3056,14 +3463,17 @@ public class Node extends Element implements IGraphicalNode {
         return UpgradeElementHelper.isUseData(this, name);
     }
 
+    @Override
     public boolean isThereLinkWithMerge() {
         return !getLinkedMergeInfo().isEmpty();
     }
 
+    @Override
     public Map<INode, Integer> getLinkedMergeInfo() {
         return NodeUtil.getLinkedMergeInfo(this);
     }
 
+    @Override
     public List<? extends IConnection> getIncomingConnections(EConnectionType connectionType) {
         return org.talend.core.model.utils.NodeUtil.getIncomingConnections(this, connectionType);
     }
@@ -3077,6 +3487,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return the size
      */
+    @Override
     public Dimension getSize() {
         return size;
     }
@@ -3086,6 +3497,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @param size the size to set
      */
+    @Override
     public void setSize(Dimension size) {
         this.size = size;
         firePropertyChange(SIZE, null, null);
@@ -3096,6 +3508,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return the listConnector
      */
+    @Override
     public List<? extends INodeConnector> getListConnector() {
         return listConnector;
     }
@@ -3109,6 +3522,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @return
      */
+    @Override
     public boolean checkIfCanBeStart() {
         if (isELTComponent()) {
             // is there condition link, then can't set the start.
@@ -3181,6 +3595,7 @@ public class Node extends Element implements IGraphicalNode {
      * @see org.talend.core.model.process.INode#reloadComponent(org.talend.core.model.components.IComponent,
      * java.util.Map)
      */
+    @Override
     public void reloadComponent(IComponent component, Map<String, Object> parameters) {
         reloadingComponent = true;
         currentStatus = 0;
@@ -3267,6 +3682,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#getDesignSubjobStartNode()
      */
+    @Override
     public INode getDesignSubjobStartNode() {
         return getProcessStartNode(false);
     }
@@ -3276,6 +3692,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#isDesignSubjobStartNode()
      */
+    @Override
     public boolean isDesignSubjobStartNode() {
         return this.equals(getDesignSubjobStartNode());
     }
@@ -3285,6 +3702,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#isVirtualGenerateNode()
      */
+    @Override
     public boolean isVirtualGenerateNode() {
         return false;
     }
@@ -3316,6 +3734,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#isGeneratedAsVirtualComponent()
      */
+    @Override
     public boolean isGeneratedAsVirtualComponent() {
         List<IMultipleComponentManager> multipleComponentManagers = getComponent().getMultipleComponentManagers();
         return multipleComponentManagers.size() > 0;
@@ -3333,11 +3752,35 @@ public class Node extends Element implements IGraphicalNode {
         return needMultiSchema;
     }
 
+    public boolean isSingleSchemaForEBCDIC(IMetadataTable meta) {
+        if (!getComponent().getName().contains("EBCDIC") || meta == null) {
+            return false;
+        }
+        String connector = meta.getAttachedConnector();
+        IElementParameter param = getElementParameterFromField(EParameterFieldType.SCHEMA_TYPE);
+        // get the element parameter attached to the current metadata.
+        // context normally should hold the connector information.
+        if (param != null && StringUtils.equals(connector, param.getContext())) {
+            // if we don't display the schema parameter, no need any check here.
+            if (param.isShow(getElementParameters())) {
+                // if schema is displayed for ebcdic component, then we should check
+                // the content of this schema
+                return true;
+            }
+        }
+        // the normal table should check
+        if (!meta.getTableName().equals(this.getUniqueName())) {
+            return true;
+        }
+        return false;
+    }
+
     /*
      * (non-Javadoc)
      * 
      * @see org.talend.core.model.process.INode#isUseLoopOnConditionalOutput(java.lang.String)
      */
+    @Override
     public boolean isUseLoopOnConditionalOutput(String outputName) {
         return false;
     }
@@ -3347,6 +3790,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#getUniqueShortName()
      */
+    @Override
     public String getUniqueShortName() {
         // should't be call from here, should be called from something extends AbstractNode (DataNode, ExternalNode...).
         return null;
@@ -3384,6 +3828,7 @@ public class Node extends Element implements IGraphicalNode {
      * 
      * @see org.talend.core.model.process.INode#isSubProcessContainTraceBreakpoint()
      */
+    @Override
     public boolean isSubProcessContainTraceBreakpoint() {
         boolean flag = false;
 
@@ -3404,14 +3849,17 @@ public class Node extends Element implements IGraphicalNode {
         return flag;
     }
 
+    @Override
     public Set<INode> fsComponentsInProgressBar() {
         return this.getNodeProgressBar().getIncludedNodesInProgress();
     }
 
+    @Override
     public int getPosX() {
         return location.x;
     }
 
+    @Override
     public int getPosY() {
         return location.y;
     }
@@ -3437,6 +3885,7 @@ public class Node extends Element implements IGraphicalNode {
         return isJoblet;
     }
 
+    @Override
     public INode getJobletNode() {
         return jobletNode;
     }
@@ -3453,8 +3902,25 @@ public class Node extends Element implements IGraphicalNode {
         this.joblet_unique_name = joblet_unique_name;
     }
 
+    @Override
     public List<? extends IConnection> getOutgoingCamelSortedConnections() {
         return org.talend.core.model.utils.NodeUtil.getOutgoingCamelSortedConnections(this);
+    }
+
+    @Override
+    public List<ModuleNeeded> getModulesNeeded() {
+        // same as the component, but an override is possible in the AbstractNode when generate the code
+        return component.getModulesNeeded();
+    }
+
+    @Override
+    public EConnectionType getVirtualLinkTo() {
+        return this.virtualLinkTo;
+    }
+
+    @Override
+    public void setVirtualLinkTo(EConnectionType virtualLinkTo) {
+        this.virtualLinkTo = virtualLinkTo;
     }
 
 }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -56,7 +56,10 @@ public class DynaEnum<E extends DynaEnum<E>> {
             typeElements = new LinkedHashMap<String, DynaEnum<?>>();
             elements.put(getDynaEnumClass(), typeElements);
         }
-        typeElements.put(type, this);
+        // changed by hqzhang for TDI-20504. we use the upper case string to find type, but type definition for MDM item
+        // is not in upper case, have to change them in code.
+        typeElements.put(type.toUpperCase(), this);
+        // TDI-20504 end
         this.type = type;
     }
 
@@ -74,13 +77,26 @@ public class DynaEnum<E extends DynaEnum<E>> {
     }
 
     @Override
-    public final boolean equals(Object other) {
-        return this == other;
+    public final boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof DynaEnum)) {
+            return false;
+        }
+        DynaEnum other = (DynaEnum) object;
+        if (!other.getType().equals(this.getType())) {
+            return false;
+        }
+        // if (!other.getKey().equals(this.getKey())) {
+        // return false;
+        // }
+        return true;
     }
 
     @Override
     public final int hashCode() {
-        return super.hashCode();
+        return 13 * getType().hashCode();
     }
 
     @Override
@@ -105,7 +121,10 @@ public class DynaEnum<E extends DynaEnum<E>> {
 
     @SuppressWarnings("unchecked")
     public static <T extends DynaEnum<T>> T valueOf(Class<T> enumType, String name) {
-        return (T) elements.get(enumType).get(name);
+        // changed by hqzhang for TDI-20504. we use the upper case string to find type, but type definition for MDM item
+        // is not in upper case, have to change them in code.
+        return (T) elements.get(enumType).get(name.toUpperCase());
+        // TDI-20504 end
     }
 
     @SuppressWarnings("unused")

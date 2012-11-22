@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -103,6 +103,8 @@ public class TableController extends AbstractElementPropertySectionController {
                 parentComposite, SWT.NONE, tableEditorModel, !param.isBasedOnSchema(), false);
         tableEditorView.getExtendedTableViewer().setCommandStack(getCommandStack());
         tableEditorView.setReadOnly(param.isReadOnly() || param.isRepositoryValueUsed());
+        tableEditorModel.setModifiedBeanListenable(tableEditorView.getTableViewerCreator());
+        tableEditorModel.addModifiedBeanListenerForAggregateComponent();
 
         final Table table = tableEditorView.getTable();
 
@@ -604,6 +606,13 @@ public class TableController extends AbstractElementPropertySectionController {
                                 } else {
                                     currentLine.put(items[j], oldItems[nb]);
                                 }
+                            } else {
+                                if (o instanceof String) {
+                                    Integer nb = new Integer(tmpParam.getIndexOfItemFromList((String) o));
+                                    if (nb == -1) {
+                                        currentLine.put(items[j], (String) tmpParam.getDefaultClosedListValue());
+                                    }
+                                }
                             }
                         }
                     }
@@ -640,6 +649,8 @@ public class TableController extends AbstractElementPropertySectionController {
         tmpParam = (IElementParameter) itemsValue[0];
         switch (tmpParam.getFieldType()) {
         case CONTEXT_PARAM_NAME_LIST:
+            line.put(items[0], (String) tmpParam.getDefaultClosedListValue());
+            break;
         case CLOSED_LIST:
         case COLUMN_LIST:
         case COMPONENT_LIST:

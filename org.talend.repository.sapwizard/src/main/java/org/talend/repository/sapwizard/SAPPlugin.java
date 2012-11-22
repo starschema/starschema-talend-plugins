@@ -17,6 +17,9 @@
 
 package org.talend.repository.sapwizard;
 
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.ui.IStartup;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
@@ -24,12 +27,13 @@ import org.osgi.framework.BundleContext;
  * @author Ammu
  * 
  */
-public class SAPPlugin extends AbstractUIPlugin {
+public class SAPPlugin extends AbstractUIPlugin implements IStartup {
 
 	// The plug-in ID
 	public static final String PLUGIN_ID = "org.talend.repository.sapwizard"; //$NON-NLS-1$
 	// The shared instance
 	private static SAPPlugin plugin;
+
 
 	/**
 	 * The constructor
@@ -37,29 +41,29 @@ public class SAPPlugin extends AbstractUIPlugin {
 	public SAPPlugin() {
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.ui.plugin.AbstractUIPlugin#start(org.osgi.framework.BundleContext
-	 * )
-	 */
-	public void start(BundleContext context) throws Exception {
-		super.start(context);
-		plugin = this;
-	}
 
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see
-	 * org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.BundleContext
-	 * )
+	 * @see org.eclipse.ui.plugin.AbstractUIPlugin#start(org.osgi.framework.BundleContext )
+	 */
+	public void start(BundleContext context) throws Exception {
+		super.start(context);
+		plugin = this;
+		logInfo(PLUGIN_ID + " Started");
+	}
+
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.BundleContext )
 	 */
 	public void stop(BundleContext context) throws Exception {
 		plugin = null;
 		super.stop(context);
 	}
+
 
 	/**
 	 * Returns the shared instance
@@ -68,6 +72,50 @@ public class SAPPlugin extends AbstractUIPlugin {
 	 */
 	public static SAPPlugin getDefault() {
 		return plugin;
+	}
+
+
+	@Override
+	public void earlyStartup() {
+		logInfo(PLUGIN_ID + " Started");
+	}
+
+
+	/**
+	 * @generated
+	 */
+	public void logError(String error) {
+		logError(error, null);
+	}
+
+
+	/**
+	 * @generated
+	 */
+	public void logError(String error, Throwable throwable) {
+		if (error == null && throwable != null) {
+			error = throwable.getMessage();
+		}
+		getLog().log(new Status(IStatus.ERROR, PLUGIN_ID, IStatus.OK, error, throwable));
+	}
+
+
+	/**
+	 * @generated
+	 */
+	public void logInfo(String message) {
+		logInfo(message, null);
+	}
+
+
+	/**
+	 * @generated
+	 */
+	public void logInfo(String message, Throwable throwable) {
+		if (message == null && throwable != null) {
+			message = throwable.getMessage();
+		}
+		getLog().log(new Status(IStatus.INFO, PLUGIN_ID, IStatus.OK, message, throwable));
 	}
 
 }

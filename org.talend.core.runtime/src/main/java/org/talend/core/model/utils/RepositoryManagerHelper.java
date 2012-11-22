@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.IViewPart;
+import org.eclipse.ui.IViewReference;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
@@ -42,6 +43,36 @@ public final class RepositoryManagerHelper {
 
     private static final String PERSPECTIVE_DI_ID = "org.talend.rcp.perspective"; //$NON-NLS-1$
 
+    public static IViewReference findRepositoryViewRef() {
+        IWorkbenchWindow activeWorkbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (activeWorkbenchWindow != null) {
+            IWorkbenchPage page = activeWorkbenchWindow.getActivePage();
+            if (page != null) {
+                return page.findViewReference(IRepositoryView.VIEW_ID);
+            }
+        }
+        return null;
+    }
+
+    public static IRepositoryView findRepositoryView() {
+        if (CommonsPlugin.isHeadless()) {
+            return null;
+        }
+        IViewPart part = null;
+        IWorkbenchWindow activeWorkbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (activeWorkbenchWindow != null) {
+            // bug 16594
+            IWorkbenchPage page = activeWorkbenchWindow.getActivePage();
+            if (page != null) {
+                part = page.findView(IRepositoryView.VIEW_ID);
+                if (part != null) {
+                    return (IRepositoryView) part;
+                }
+            }
+        }
+        return null;
+    }
+
     public static IRepositoryView getRepositoryView() {
         if (CommonsPlugin.isHeadless()) {
             return null;
@@ -53,15 +84,13 @@ public final class RepositoryManagerHelper {
             // bug 16594
             IWorkbenchPage page = activeWorkbenchWindow.getActivePage();
             if (page != null) {
-                part = page.findView(IRepositoryView.VIEW_ID);
+                part = findRepositoryView();
                 if (part == null) {
                     try {
                         // if the Perspective is DataProfilingPerspective refuse the
                         // RepositoryView be display by automatic
-                        if (PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getPerspective().getId()
-                                .equalsIgnoreCase("org.talend.dataprofiler.DataProfilingPerspective")) {//$NON-NLS-1$
-                            part = ((WorkbenchPage) PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage())
-                                    .getViewFactory().createView(IRepositoryView.VIEW_ID).getView(true);
+                        if (page.getPerspective().getId().equalsIgnoreCase("org.talend.dataprofiler.DataProfilingPerspective")) {//$NON-NLS-1$
+                            part = ((WorkbenchPage) page).getViewFactory().createView(IRepositoryView.VIEW_ID).getView(true);
                         } else {
                             String perId = page.getPerspective().getId();
                             if ((!"".equals(perId) || null != perId) && perId.equalsIgnoreCase(PERSPECTIVE_DI_ID)) {

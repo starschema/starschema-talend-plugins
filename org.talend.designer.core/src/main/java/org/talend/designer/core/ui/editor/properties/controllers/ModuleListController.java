@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -101,8 +101,8 @@ public class ModuleListController extends AbstractElementPropertySectionControll
                         String lastSegment = TalendTextUtils.addQuotes(Path.fromOSString(file).lastSegment());
                         if (!elem.getPropertyValue(propertyName).equals(lastSegment)) {
                             try {
-                                CorePlugin.getDefault().getLibrariesService().deployLibrary(
-                                        Path.fromOSString(file).toFile().toURL());
+                                CorePlugin.getDefault().getLibrariesService()
+                                        .deployLibrary(Path.fromOSString(file).toFile().toURL());
                             } catch (Exception e) {
                                 ExceptionHandler.process(e);
                             }
@@ -128,6 +128,7 @@ public class ModuleListController extends AbstractElementPropertySectionControll
             if (file != null && !file.equals("")) { //$NON-NLS-1$
                 String propertyName = (String) button.getData(PARAMETER_NAME);
                 String lastSegment = TalendTextUtils.addQuotes(Path.fromOSString(file).lastSegment());
+
                 if (!elem.getPropertyValue(propertyName).equals(lastSegment)) {
                     try {
                         CorePlugin.getDefault().getLibrariesService().deployLibrary(Path.fromOSString(file).toFile().toURL());

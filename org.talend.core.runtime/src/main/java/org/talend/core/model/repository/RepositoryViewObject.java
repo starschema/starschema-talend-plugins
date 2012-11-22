@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,12 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.PlatformUI;
-import org.talend.commons.CommonsPlugin;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.image.ECoreImage;
@@ -50,6 +46,7 @@ import org.talend.core.model.properties.LinkDocumentationItem;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.properties.User;
+import org.talend.core.ui.images.RepositoryImageProvider;
 import org.talend.cwm.helper.ConnectionHelper;
 import org.talend.cwm.helper.PackageHelper;
 import org.talend.repository.ProjectManager;
@@ -110,7 +107,7 @@ public class RepositoryViewObject implements IRepositoryViewObject {
         this.creationDate = property.getCreationDate();
         this.description = property.getDescription();
         this.modificationDate = property.getModificationDate();
-        this.label = property.getLabel();
+        this.label = property.getDisplayName();
         this.purpose = property.getPurpose();
         this.statusCode = property.getStatusCode();
         this.version = property.getVersion();
@@ -273,7 +270,7 @@ public class RepositoryViewObject implements IRepositoryViewObject {
             this.creationDate = property.getCreationDate();
             this.description = property.getDescription();
             this.modificationDate = property.getModificationDate();
-            this.label = property.getLabel();
+            this.label = property.getDisplayName();
             this.purpose = property.getPurpose();
             this.statusCode = property.getStatusCode();
             this.version = property.getVersion();
@@ -291,6 +288,7 @@ public class RepositoryViewObject implements IRepositoryViewObject {
                     customImage = ImageUtils.propertyLabelScale(property.getId(), customImage, ICON_SIZE.ICON_16);
                 }
             } else if (type == ERepositoryObjectType.DOCUMENTATION) {
+                this.customImage = ImageProvider.getImage(RepositoryImageProvider.getIcon(type));
                 Item item = property.getItem();
                 if (item instanceof DocumentationItem) {
                     customImage = coreSerivce.getImageWithDocExt(((DocumentationItem) item).getExtension());
@@ -301,9 +299,10 @@ public class RepositoryViewObject implements IRepositoryViewObject {
             return property;
         } catch (PersistenceException e) {
             exception = e;
-            if (!CommonsPlugin.isHeadless() && PlatformUI.isWorkbenchRunning()) {
-                MessageDialog.openError(Display.getCurrent().getActiveShell(), "Error", exception.getMessage());
-            }
+            ExceptionHandler.process(e);
+            // if (!CommonsPlugin.isHeadless() && PlatformUI.isWorkbenchRunning()) {
+            // MessageDialog.openError(Display.getCurrent().getActiveShell(), "Error", exception.getMessage());
+            // }
         }
         return null;
     }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,7 +20,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceRunnable;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.jobs.ISchedulingRule;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.operation.IRunnableWithProgress;
@@ -28,7 +33,6 @@ import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.ICheckStateListener;
 import org.eclipse.jface.viewers.ITreeViewerListener;
 import org.eclipse.jface.viewers.TreeExpansionEvent;
-import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.Window;
@@ -55,7 +59,6 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.internal.progress.ProgressMonitorJobsDialog;
 import org.talend.commons.exception.LoginException;
 import org.talend.commons.exception.PersistenceException;
@@ -66,6 +69,7 @@ import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.commons.ui.swt.advanced.composite.ThreeCompositesSashForm;
 import org.talend.commons.utils.VersionUtils;
 import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.general.Project;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.ItemState;
@@ -76,6 +80,7 @@ import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.model.routines.RoutinesUtil;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.core.ui.images.CoreImageProvider;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.RepositoryWorkUnit;
@@ -89,19 +94,17 @@ import org.talend.repository.model.RepositoryConstants;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.nodes.IProjectRepositoryNode;
 import org.talend.repository.ui.dialog.ItemsVersionConfirmDialog;
-import org.talend.repository.ui.views.CheckboxRepositoryTreeViewer;
-import org.talend.repository.ui.views.IRepositoryView;
-import org.talend.repository.ui.views.RepositoryCheckBoxView;
-import org.talend.repository.ui.views.RepositoryView;
+import org.talend.repository.viewer.ui.provider.RepoCommonViewerProvider;
+import org.talend.repository.viewer.ui.viewer.CheckboxRepositoryTreeViewer;
 
 /**
  * DOC aimingchen class global comment. Detailled comment
  */
 public class VersionManagementPage extends ProjectSettingPage {
 
-    private Button versionBtn;
-
     private boolean isApplied;
+
+    private boolean allowVerchange = true;
 
     /*
      * (non-Javadoc)
@@ -118,7 +121,6 @@ public class VersionManagementPage extends ProjectSettingPage {
         gridLayout.horizontalSpacing = 0;
         composite.setLayout(gridLayout);
         GridData gridData = new GridData(GridData.FILL_BOTH);
-        gridData.heightHint = 400;
         gridData.widthHint = 570;
         composite.setLayoutData(gridData);
         IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
@@ -184,16 +186,14 @@ public class VersionManagementPage extends ProjectSettingPage {
     private void addRepositoryTreeViewer(Composite leftComposite) {
         GridData gridData = new GridData(GridData.FILL_BOTH);
         gridData.widthHint = 210;
+        gridData.heightHint = 400;
         leftComposite.setLayoutData(gridData);
-        RepositoryCheckBoxView view = new RepositoryCheckBoxView();
-        try {
-            view.init(RepositoryView.show().getViewSite());
-        } catch (PartInitException e) {
-            ExceptionHandler.process(e);
-        }
-        view.createPartControl(leftComposite);
-        processItems(versionObjects, view.getRoot());
-        treeViewer = (CheckboxRepositoryTreeViewer) view.getViewer();
+
+        RepoCommonViewerProvider provider = RepoCommonViewerProvider.CHECKBOX;
+        treeViewer = (CheckboxRepositoryTreeViewer) provider.createViewer(leftComposite);
+
+        IProjectRepositoryNode projectRepositoryNode = provider.getProjectRepositoryNode();
+        processItems(versionObjects, (RepositoryNode) projectRepositoryNode);
         // filter
         treeViewer.addFilter(new ViewerFilter() {
 
@@ -233,27 +233,20 @@ public class VersionManagementPage extends ProjectSettingPage {
             }
         });
 
-        expandSomeNodes(view);
+        expandSomeNodes(projectRepositoryNode);
     }
 
-    private void expandSomeNodes(RepositoryCheckBoxView view) {
-        if (view == null) {
-            return;
+    private void expandSomeNodes(final IProjectRepositoryNode rootNode) {
+
+        // metadata
+        IRepositoryNode metadataConNode = rootNode.getRootRepositoryNode(ERepositoryObjectType.METADATA);
+        if (metadataConNode != null) {
+            treeViewer.expandToLevel(metadataConNode, 1);
         }
-        final RepositoryNode root = view.getRoot();
-        if (root instanceof IProjectRepositoryNode) {
-            final IProjectRepositoryNode rootNode = (IProjectRepositoryNode) root;
-            final TreeViewer viewer = view.getViewer();
-            // metadata
-            IRepositoryNode metadataConNode = rootNode.getMetadataNode();
-            if (metadataConNode != null) {
-                viewer.expandToLevel(metadataConNode, 1);
-            }
-            // code
-            IRepositoryNode codeNode = rootNode.getCodeNode();
-            if (codeNode != null) {
-                viewer.expandToLevel(codeNode, 1);
-            }
+        // code
+        IRepositoryNode codeNode = rootNode.getRootRepositoryNode(ERepositoryObjectType.CODE);
+        if (codeNode != null) {
+            treeViewer.expandToLevel(codeNode, 1);
         }
     }
 
@@ -350,6 +343,7 @@ public class VersionManagementPage extends ProjectSettingPage {
         removeBtn.setToolTipText(Messages.getString("VersionManagementDialog.RemoveTip")); //$NON-NLS-1$
         removeBtn.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 TableItem[] selections = itemTable.getSelection();
                 itemTable.setRedraw(false);
@@ -427,6 +421,10 @@ public class VersionManagementPage extends ProjectSettingPage {
         fixedVersionBtn.setText(Messages.getString("VersionManagementDialog.FixedVersion")); //$NON-NLS-1$
         fixedVersionBtn.setSelection(true); // default
 
+        IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                IBrandingService.class);
+        allowVerchange = brandingService.getBrandingConfiguration().isAllowChengeVersion();
+
         Composite versionComposit = new Composite(option, SWT.NONE);
         GridLayout layout = new GridLayout(8, false);
         layout.horizontalSpacing = 1;
@@ -447,9 +445,11 @@ public class VersionManagementPage extends ProjectSettingPage {
         majorBtn = new Button(versionComposit, SWT.NONE);
         majorBtn.setText("M"); //$NON-NLS-1$
         majorBtn.setToolTipText(Messages.getString("VersionManagementDialog.MajorVersionTip")); //$NON-NLS-1$
+        majorBtn.setEnabled(allowVerchange);
         minorBtn = new Button(versionComposit, SWT.NONE);
         minorBtn.setText("m"); //$NON-NLS-1$
         minorBtn.setToolTipText(Messages.getString("VersionManagementDialog.MinorVersionTip")); //$NON-NLS-1$
+        minorBtn.setEnabled(allowVerchange);
 
         Label label = new Label(versionComposit, SWT.NONE);
         label.setText(""); //$NON-NLS-1$
@@ -478,6 +478,7 @@ public class VersionManagementPage extends ProjectSettingPage {
 
         eachVersionBtn = new Button(option, SWT.RADIO);
         eachVersionBtn.setText(Messages.getString("VersionManagementDialog.EachVersion")); //$NON-NLS-1$
+        eachVersionBtn.setEnabled(allowVerchange);
 
         versionLatest = new Button(option, SWT.CHECK);
         versionLatest.setText(Messages.getString("VersionManagementDialog.FixVersion"));
@@ -516,6 +517,7 @@ public class VersionManagementPage extends ProjectSettingPage {
         });
         majorBtn.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 String version = maxVersionText.getText();
                 version = VersionUtils.upMajor(version);
@@ -525,6 +527,7 @@ public class VersionManagementPage extends ProjectSettingPage {
         });
         minorBtn.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 String version = maxVersionText.getText();
                 version = VersionUtils.upMinor(version);
@@ -534,6 +537,7 @@ public class VersionManagementPage extends ProjectSettingPage {
         });
         revertBtn.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 maxVersionText.setText(VersionUtils.DEFAULT_VERSION); // set min version
                 researchMaxVersion();
@@ -743,8 +747,8 @@ public class VersionManagementPage extends ProjectSettingPage {
     }
 
     private void checkFixedButtons() {
-        majorBtn.setEnabled(isFixedVersion());
-        minorBtn.setEnabled(isFixedVersion());
+        majorBtn.setEnabled(isFixedVersion() && allowVerchange);
+        minorBtn.setEnabled(isFixedVersion() && allowVerchange);
         revertBtn.setEnabled(isFixedVersion());
         // versionLatest.setEnabled(isFixedVersion());
     }
@@ -755,9 +759,9 @@ public class VersionManagementPage extends ProjectSettingPage {
         }
         TableEditor[] editors = (TableEditor[]) item.getData(ITEM_EDITOR_KEY);
         if (editors != null) {
-            for (int j = 0; j < editors.length; j++) {
-                editors[j].getEditor().dispose();
-                editors[j].dispose();
+            for (TableEditor editor : editors) {
+                editor.getEditor().dispose();
+                editor.dispose();
             }
         }
         item.dispose();
@@ -863,6 +867,7 @@ public class VersionManagementPage extends ProjectSettingPage {
 
                 tableMajorBtn.addSelectionListener(new SelectionAdapter() {
 
+                    @Override
                     public void widgetSelected(SelectionEvent e) {
                         String version = object.getNewVersion();
                         version = VersionUtils.upMajor(version);
@@ -873,6 +878,7 @@ public class VersionManagementPage extends ProjectSettingPage {
                 });
                 tableMinorBtn.addSelectionListener(new SelectionAdapter() {
 
+                    @Override
                     public void widgetSelected(SelectionEvent e) {
                         String version = object.getNewVersion();
                         version = VersionUtils.upMinor(version);
@@ -992,9 +998,9 @@ public class VersionManagementPage extends ProjectSettingPage {
 
     @SuppressWarnings("restriction")
     private void updateItemsVersion() {
-        IRunnableWithProgress runnable = new IRunnableWithProgress() {
+        final IWorkspaceRunnable runnable = new IWorkspaceRunnable() {
 
-            public void run(final IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
+            public void run(final IProgressMonitor monitor) throws CoreException {
                 RepositoryWorkUnit<Object> rwu = new RepositoryWorkUnit<Object>(project, "Update items version") {
 
                     @Override
@@ -1012,8 +1018,9 @@ public class VersionManagementPage extends ProjectSettingPage {
                             if (repositoryObject != null && repositoryObject.getProperty() != null) {
                                 if (!object.getNewVersion().equals(repositoryObject.getVersion())) {
                                     final Item item = object.getItem();
-                                    item.getProperty().setVersion(object.getNewVersion());
-                                    monitor.subTask(item.getProperty().getLabel());
+                                    Property itemProperty = item.getProperty();
+                                    itemProperty.setVersion(object.getNewVersion());
+                                    monitor.subTask(itemProperty.getLabel());
 
                                     types.add(object.getRepositoryNode().getObjectType());
 
@@ -1021,13 +1028,13 @@ public class VersionManagementPage extends ProjectSettingPage {
                                         // for bug 12853 ,version management doesn't work for joblet because eResource
                                         // is null
                                         IRepositoryViewObject obj = null;
-                                        if (item.getProperty().eResource() == null) {
+                                        if (itemProperty.eResource() == null) {
                                             ItemState state = item.getState();
                                             if (state != null && state.getPath() != null) {
-                                                obj = FACTORY.getLastVersion(project, item.getProperty().getId(),
-                                                        state.getPath(), object.getRepositoryNode().getObjectType());
+                                                obj = FACTORY.getLastVersion(project, itemProperty.getId(), state.getPath(),
+                                                        object.getRepositoryNode().getObjectType());
                                             } else {
-                                                obj = FACTORY.getLastVersion(project, item.getProperty().getId());
+                                                obj = FACTORY.getLastVersion(project, itemProperty.getId());
                                             }
                                         }
                                         if (obj != null) {
@@ -1035,8 +1042,8 @@ public class VersionManagementPage extends ProjectSettingPage {
                                             FACTORY.save(project, obj.getProperty());
                                             builder.addOrUpdateItem(obj.getProperty().getItem(), true);
                                         } else {
-                                            String id = item.getProperty().getId();
-                                            FACTORY.save(project, item.getProperty());
+                                            String id = itemProperty.getId();
+                                            FACTORY.save(project, itemProperty);
                                             if (versionLatest.getSelection()) {
                                                 builder.updateItemVersion(item, object.getOldVersion(), id, versions, true);
                                             }
@@ -1054,12 +1061,16 @@ public class VersionManagementPage extends ProjectSettingPage {
                         } catch (PersistenceException e) {
                             ExceptionHandler.process(e);
                         }
+                        // the following is commented cause the refresh is now automatically done when file are changed
+                        // on the file system.
                         // for bug 20256,first open studio,don't expand repositoryTree,
                         // open projectSetting,change item Verson,then expand Tree,routine,jobscript and metadata always
                         // use old version.must refresh all tree.
                         // RepositoryManager.refresh(types);
-                        IRepositoryView view = RepositoryManager.getRepositoryView();
-                        view.refresh();
+                        // IRepositoryView view = RepositoryManagerHelper.findRepositoryView();
+                        // if (view != null) {
+                        // view.refresh();
+                        // }
                     }
                 };
                 rwu.setAvoidUnloadResources(true);
@@ -1068,9 +1079,24 @@ public class VersionManagementPage extends ProjectSettingPage {
             }
         };
 
+        IRunnableWithProgress iRunnableWithProgress = new IRunnableWithProgress() {
+
+            public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
+                IWorkspace workspace = ResourcesPlugin.getWorkspace();
+                try {
+                    ISchedulingRule schedulingRule = workspace.getRoot();
+                    // the update the project files need to be done in the workspace runnable to avoid all notification
+                    // of changes before the end of the modifications.
+                    workspace.run(runnable, schedulingRule, IWorkspace.AVOID_UPDATE, monitor);
+                } catch (CoreException e) {
+                    ExceptionHandler.process(e);
+                }
+
+            }
+        };
         final ProgressMonitorJobsDialog dialog = new ProgressMonitorJobsDialog(null);
         try {
-            dialog.run(false, false, runnable);
+            dialog.run(false, false, iRunnableWithProgress);
         } catch (InvocationTargetException e) {
             ExceptionHandler.process(e);
         } catch (InterruptedException e) {

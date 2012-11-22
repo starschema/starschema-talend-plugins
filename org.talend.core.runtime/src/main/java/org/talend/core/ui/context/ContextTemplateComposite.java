@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -64,14 +64,13 @@ import org.talend.core.model.properties.ContextItem;
 import org.talend.core.prefs.ITalendCorePrefConstants;
 import org.talend.core.runtime.i18n.Messages;
 import org.talend.core.ui.context.action.ContextBuiltinToRepositoryAction;
+import org.talend.core.ui.context.model.ContextTabChildModel;
 import org.talend.core.ui.context.model.ContextViewerProvider;
 import org.talend.core.ui.context.model.template.ContextCellModifier;
 import org.talend.core.ui.context.model.template.ContextColumnSorterListener;
 import org.talend.core.ui.context.model.template.ContextConstant;
-import org.talend.core.ui.context.model.template.ContextParameterParent;
-import org.talend.core.ui.context.model.template.ContextParameterSon;
-import org.talend.core.ui.context.model.template.ContextParameterSortedParent;
-import org.talend.core.ui.context.model.template.ContextParameterSortedSon;
+import org.talend.core.ui.context.model.template.ContextVariableTabChildModel;
+import org.talend.core.ui.context.model.template.ContextVariableTabParentModel;
 import org.talend.core.ui.context.model.template.ContextViewerSorter;
 import org.talend.core.ui.context.model.template.GroupByNothingProvider;
 import org.talend.core.ui.context.model.template.GroupBySourceProvider;
@@ -309,14 +308,37 @@ public class ContextTemplateComposite extends AbstractContextTabEditComposite {
 
     }
 
-    public boolean renameParameter(final String oldParamName, final String newParamName, boolean reposFlag) {
-        IContextParameter param = getContextManager().getDefaultContext().getContextParameter(oldParamName);
-        if (param != null && !param.isBuiltIn() && !reposFlag) {
-            // not built-in, not update
+    public boolean renameParameter(final String oldParamName, String sourceId, final String newParamName, boolean reposFlag) {
+        if (!getContextManager().checkValidParameterName(oldParamName, newParamName)) {
+            MessageDialog
+                    .openError(
+                            this.getShell(),
+                            Messages.getString("ContextProcessSection.errorTitle"), Messages.getString("ContextProcessSection.ParameterNameIsNotValid")); //$NON-NLS-1$ //$NON-NLS-2$
             return false;
         }
+        // fix 0017942: It is unlimited for total characters of context variable name
+        if (null != newParamName && !"".equals(newParamName)) { //$NON-NLS-1$
+            if (newParamName.length() > 255) {
+                MessageDialog
+                        .openError(
+                                this.getShell(),
+                                Messages.getString("ContextProcessSection.errorTitle"), Messages.getString("ContextTemplateComposite.ParamterLengthInvilid")); //$NON-NLS-1$ //$NON-NLS-2$
+                return false;
+            }
+        }
 
-        if (!getContextManager().checkValidParameterName(newParamName)) {
+        onContextRenameParameter(getContextManager(), sourceId, oldParamName, newParamName);
+        return true;
+    }
+
+    public boolean renameParameter(final String oldParamName, final String newParamName, boolean reposFlag) {
+        // IContextParameter param = getContextManager().getDefaultContext().getContextParameter(oldParamName);
+        // if (param != null && !param.isBuiltIn() && !reposFlag) {
+        // // not built-in, not update
+        // return false;
+        // }
+
+        if (!getContextManager().checkValidParameterName(oldParamName, newParamName)) {
             MessageDialog
                     .openError(
                             this.getShell(),
@@ -519,6 +541,40 @@ public class ContextTemplateComposite extends AbstractContextTabEditComposite {
         return contextParam;
     }
 
+    private void removeChildModelInGroupBySource(ContextVariableTabChildModel child) {
+        IContextParameter contextPara = child.getContextParameter();
+        String sourceId = contextPara.getSource();
+        String contextName = contextPara.getName();
+        modelManager.onContextRemoveParameter(getContextManager(), contextName, sourceId);
+    }
+
+    private void removeParentModelInGroupBySource(ContextVariableTabParentModel parentModel) {
+        Set<String> paraNames = new HashSet<String>();
+        String sourceId = parentModel.getSourceId();
+        if (IContextParameter.BUILT_IN.equals(sourceId)) {
+            String paraName = parentModel.getContextParameter().getName();
+            paraNames.add(paraName);
+        } else {
+            List<ContextTabChildModel> children = parentModel.getChildren();
+            if (children != null && children.size() > 0) {
+                for (ContextTabChildModel child : children) {
+                    IContextParameter contextPara = child.getContextParameter();
+                    String paraName = contextPara.getName();
+                    paraNames.add(paraName);
+                }
+            }
+        }
+        modelManager.onContextRemoveParameter(getContextManager(), paraNames, sourceId);
+    }
+
+    private void removeParentModelNonGroupBySource(ContextVariableTabParentModel parentModel) {
+        IContextParameter contextPara = parentModel.getContextParameter();
+        String sourceId = contextPara.getSource();
+        String paraName = contextPara.getName();
+
+        modelManager.onContextRemoveParameter(getContextManager(), paraName, sourceId);
+    }
+
     private Button createRemovePushButton(final Composite parent) {
         Button removePushButton = new Button(parent, SWT.PUSH);
         removePushButton.addSelectionListener(new SelectionAdapter() {
@@ -526,7 +582,7 @@ public class ContextTemplateComposite extends AbstractContextTabEditComposite {
             @Override
             public void widgetSelected(SelectionEvent e) {
 
-                IContextParameter parameter = null;
+                // IContextParameter parameter = null;
                 TreeItem[] items = viewer.getTree().getSelection();
 
                 Object[] obj = new Object[items.length];
@@ -541,39 +597,19 @@ public class ContextTemplateComposite extends AbstractContextTabEditComposite {
                         if (object == null) {
                             return;
                         }
-
-                        if (object instanceof ContextParameterSortedParent) {
-                            if (IContextParameter.BUILT_IN.equals(((ContextParameterSortedParent) object).getSourceId())) {
-                                /*
-                                 * make the view just refresh one time when delete more than one context in designer
-                                 * added by hyWang
-                                 */
-                                Set<String> paramNamesFromBuiltIn = new HashSet<String>();
-                                for (Object o : obj) {
-                                    if (o instanceof ContextParameterSortedParent) {
-                                        parameter = ((ContextParameterSortedParent) o).getParameter();
-                                    } else if (o instanceof ContextParameterSortedSon) {
-                                        parameter = ((ContextParameterSortedSon) o).getParameter();
-                                    }
-                                    if (parameter != null) {
-                                        paramNamesFromBuiltIn.add(parameter.getName());
-                                    }
-                                }
-                                modelManager.onContextRemoveParameter(getContextManager(), paramNamesFromBuiltIn);
-                            } else {
-                                Set<String> paramNamesFromRepository = new HashSet<String>();
-                                for (ContextParameterSon son : ((ContextParameterSortedParent) object).getSon()) {
-                                    parameter = ((ContextParameterSortedSon) son).getParameter();
-                                    paramNamesFromRepository.add(parameter.getName());
-                                }
-                                modelManager.onContextRemoveParameter(getContextManager(), paramNamesFromRepository);
+                        if (isGroupBySource()) {
+                            if (object instanceof ContextVariableTabParentModel) {
+                                ContextVariableTabParentModel variableParentModel = (ContextVariableTabParentModel) object;
+                                removeParentModelInGroupBySource(variableParentModel);
+                            } else if (object instanceof ContextVariableTabChildModel) {
+                                ContextVariableTabChildModel childModel = (ContextVariableTabChildModel) object;
+                                removeChildModelInGroupBySource(childModel);
                             }
-                        } else if (object instanceof ContextParameterSortedSon) {
-                            parameter = ((ContextParameterSortedSon) object).getParameter();
-                            modelManager.onContextRemoveParameter(getContextManager(), parameter.getName());
-                        } else if (object instanceof ContextParameterParent) {
-                            parameter = ((ContextParameterParent) object).getParameter();
-                            modelManager.onContextRemoveParameter(getContextManager(), parameter.getName());
+                        } else {
+                            if (object instanceof ContextVariableTabParentModel) {
+                                ContextVariableTabParentModel variableParentModel = (ContextVariableTabParentModel) object;
+                                removeParentModelNonGroupBySource(variableParentModel);
+                            }
                         }
                         modelManager.refreshTemplateTab();
                         ContextManagerHelper.revertTreeSelection(getViewer(), beforeParam);
@@ -708,6 +744,10 @@ public class ContextTemplateComposite extends AbstractContextTabEditComposite {
         modelManager.onContextRenameParameter(contextManager, oldName, newName);
     }
 
+    protected void onContextRenameParameter(IContextManager contextManager, String sourceId, String oldName, String newName) {
+        modelManager.onContextRenameParameter(contextManager, sourceId, oldName, newName);
+    }
+
     protected void onContextModify(IContextManager contextManager, IContextParameter parameter) {
         modelManager.onContextModify(contextManager, parameter);
     }
@@ -734,5 +774,4 @@ public class ContextTemplateComposite extends AbstractContextTabEditComposite {
     public TreeViewer getViewer() {
         return this.viewer;
     }
-
 }

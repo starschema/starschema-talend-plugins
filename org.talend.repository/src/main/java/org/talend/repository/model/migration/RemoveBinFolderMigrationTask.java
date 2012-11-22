@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -23,6 +23,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.talend.commons.emf.EmfHelper;
 import org.talend.commons.exception.PersistenceException;
@@ -146,7 +147,14 @@ public class RemoveBinFolderMigrationTask extends AbstractProjectMigrationTask {
                                                     IPath originalPath = filesToMove.getFullPath();
                                                     IPath finalPath = typeRootFolder.getFullPath().append(path)
                                                             .append(originalPath.lastSegment());
-                                                    ResourceUtils.moveResource(filesToMove, finalPath);
+
+                                                    if (fsProject.getWorkspace().getRoot().getFile(finalPath).exists()) {
+                                                        // if the file exists in both bin and target directory, delete
+                                                        // the one from bin.
+                                                        filesToMove.delete(true, new NullProgressMonitor());
+                                                    } else {
+                                                        ResourceUtils.moveResource(filesToMove, finalPath);
+                                                    }
                                                 }
                                             }
                                         }
@@ -165,6 +173,9 @@ public class RemoveBinFolderMigrationTask extends AbstractProjectMigrationTask {
                         }
                     }
                 } catch (PersistenceException e) {
+                    ExceptionHandler.process(e);
+                    return ExecutionResult.FAILURE;
+                } catch (CoreException e) {
                     ExceptionHandler.process(e);
                     return ExecutionResult.FAILURE;
                 }

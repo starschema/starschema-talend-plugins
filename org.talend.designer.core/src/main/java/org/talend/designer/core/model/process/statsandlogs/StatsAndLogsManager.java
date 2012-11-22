@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -402,8 +402,13 @@ public class StatsAndLogsManager {
                                         TalendTextUtils.addQuotes(sharedConnName));
                             } else {
                                 String url = getUrl(process);
-                                connectionNode.getElementParameter(EParameterName.SHARED_CONNECTION_NAME.getName()).setValue(
-                                        url + "+" + TalendTextUtils.addQuotes("_" + sharedConnName)); //$NON-NLS-1$ //$NON-NLS-2$
+                                if (url == null || url.equals("")) { // fix bug of stats/logs found for sybase
+                                    connectionNode.getElementParameter(EParameterName.SHARED_CONNECTION_NAME.getName()).setValue(
+                                            TalendTextUtils.addQuotes(sharedConnName));
+                                } else {
+                                    connectionNode.getElementParameter(EParameterName.SHARED_CONNECTION_NAME.getName()).setValue(
+                                            url + "+" + TalendTextUtils.addQuotes("_" + sharedConnName)); //$NON-NLS-1$ //$NON-NLS-2$
+                                }
                             }
                         }
                         setConnectionParameter(connectionNode, process, connectionUID, dataNode, nodeList);
@@ -457,7 +462,7 @@ public class StatsAndLogsManager {
         String[] listItemsDisplayName = process.getElementParameter(EParameterName.DB_TYPE.getName()).getListItemsDisplayName();
         processDBType = listItemsDisplayName[indexOfItemFromList];
 
-        IElementParameter param = process.getElementParameter(EParameterName.FILENAME.getName());
+        IElementParameter param = process.getElementParameter(EParameterName.DBFILE.getName());
         final String empty = ""; //$NON-NLS-1$
         String processDBFileName = empty;
         if (param != null) {
@@ -717,19 +722,21 @@ public class StatsAndLogsManager {
         return statsNode;
     }
 
-    public static void createStatsAndLogsParameters(IProcess process) {
-        statsAndLogsParametersTitlePart(process);
-        statsAndLogsParametersFilePart(process);
-        statsAndLogsParametersDBPart(process);
-        statsAndLogsParametersFinalPart(process);
+    public static List<IElementParameter> getStatsAndLogsParameters(IProcess process) {
+        List<IElementParameter> paramList = new ArrayList<IElementParameter>();
+        paramList.addAll(statsAndLogsParametersTitlePart(process));
+        paramList.addAll(statsAndLogsParametersFilePart(process));
+        paramList.addAll(statsAndLogsParametersDBPart(process));
+        paramList.addAll(statsAndLogsParametersFinalPart(process));
 
+        return paramList;
     }
 
-    private static void statsAndLogsParametersTitlePart(IProcess process) {
+    private static List<IElementParameter> statsAndLogsParametersTitlePart(IProcess process) {
         ElementParameter param;
         IPreferenceStore preferenceStore = DesignerPlugin.getDefault().getPreferenceStore();
 
-        List<IElementParameter> paramList = (List<IElementParameter>) process.getElementParameters();
+        List<IElementParameter> paramList = new ArrayList<IElementParameter>();
 
         String languagePrefix = LanguageManager.getCurrentLanguage().toString() + "_"; //$NON-NLS-1$
 
@@ -782,13 +789,15 @@ public class StatsAndLogsManager {
         param.setNumRow(2);
         param.setShowIf("((ON_CONSOLE_FLAG == 'true' or ON_CONSOLE_FLAG == 'false') and (ON_STATCATCHER_FLAG == 'true' or ON_LOGCATCHER_FLAG == 'true' or ON_METERCATCHER_FLAG == 'true'))"); //$NON-NLS-1$
         paramList.add(param);
+
+        return paramList;
     }
 
-    private static void statsAndLogsParametersFilePart(IProcess process) {
+    private static List<IElementParameter> statsAndLogsParametersFilePart(IProcess process) {
         ElementParameter param;
         IPreferenceStore preferenceStore = DesignerPlugin.getDefault().getPreferenceStore();
 
-        List<IElementParameter> paramList = (List<IElementParameter>) process.getElementParameters();
+        List<IElementParameter> paramList = new ArrayList<IElementParameter>();
 
         String languagePrefix = LanguageManager.getCurrentLanguage().toString() + "_"; //$NON-NLS-1$
         // on files
@@ -874,13 +883,15 @@ public class StatsAndLogsManager {
         childPram
                 .setShowIf("(ON_FILES_FLAG == 'true') and (ON_STATCATCHER_FLAG == 'true' or ON_LOGCATCHER_FLAG == 'true' or ON_METERCATCHER_FLAG == 'true')"); //$NON-NLS-1$
         childPram.setParentParameter(encodingParam);
+
+        return paramList;
     }
 
-    private static void statsAndLogsParametersDBPart(IProcess process) {
+    private static List<IElementParameter> statsAndLogsParametersDBPart(IProcess process) {
         ElementParameter param;
         IPreferenceStore preferenceStore = DesignerPlugin.getDefault().getPreferenceStore();
 
-        List<IElementParameter> paramList = (List<IElementParameter>) process.getElementParameters();
+        List<IElementParameter> paramList = new ArrayList<IElementParameter>();
 
         // checks current language, if it is perl, set languageType to 0(default value), otherwise to 1.
         int languageType = 0;
@@ -1123,7 +1134,7 @@ public class StatsAndLogsManager {
         param.setCategory(EComponentCategory.STATSANDLOGS);
         param.setNumRow(54);
         param.setRepositoryValue("SCHEMA"); //$NON-NLS-1$
-        param.setShowIf("(DB_TYPE=='OCLE' or DB_TYPE=='POSTGRESQL' or DB_TYPE=='POSTGRESPLUS' or DB_TYPE=='OCLE_OCI' or DB_TYPE=='MSSQL' or DB_TYPE=='INFORMIX' or DB_TYPE=='IBM_DB2') and (ON_DATABASE_FLAG == 'true') and (ON_STATCATCHER_FLAG == 'true' or ON_LOGCATCHER_FLAG == 'true' or ON_METERCATCHER_FLAG == 'true')"); //$NON-NLS-1$
+        param.setShowIf("(DB_TYPE=='OCLE' or DB_TYPE=='POSTGRESQL' or DB_TYPE=='POSTGRESPLUS' or DB_TYPE=='OCLE_OCI' or DB_TYPE=='MSSQL' or DB_TYPE=='INFORMIX' or DB_TYPE=='IBM_DB2' ) and (ON_DATABASE_FLAG == 'true') and (ON_STATCATCHER_FLAG == 'true' or ON_LOGCATCHER_FLAG == 'true' or ON_METERCATCHER_FLAG == 'true')"); //$NON-NLS-1$
         paramList.add(param);
 
         // username
@@ -1194,6 +1205,8 @@ public class StatsAndLogsManager {
         param.setNumRow(59);
         param.setShowIf("(ON_DATABASE_FLAG == 'true' and ON_METERCATCHER_FLAG == 'true')"); //$NON-NLS-1$
         paramList.add(param);
+
+        return paramList;
     }
 
     /**
@@ -1206,11 +1219,11 @@ public class StatsAndLogsManager {
         }
     }
 
-    private static void statsAndLogsParametersFinalPart(IProcess process) {
+    private static List<IElementParameter> statsAndLogsParametersFinalPart(IProcess process) {
         ElementParameter param;
         IPreferenceStore preferenceStore = DesignerPlugin.getDefault().getPreferenceStore();
 
-        List<IElementParameter> paramList = (List<IElementParameter>) process.getElementParameters();
+        List<IElementParameter> paramList = new ArrayList<IElementParameter>();
 
         String languagePrefix = LanguageManager.getCurrentLanguage().toString() + "_"; //$NON-NLS-1$
 
@@ -1259,6 +1272,7 @@ public class StatsAndLogsManager {
         param.setShowIf("((CATCH_REALTIME_STATS == 'true' or CATCH_REALTIME_STATS == 'false') and (ON_STATCATCHER_FLAG == 'true'))"); //$NON-NLS-1$
         paramList.add(param);
 
+        return paramList;
     }
 
     /**

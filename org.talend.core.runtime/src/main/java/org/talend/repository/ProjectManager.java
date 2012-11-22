@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -15,6 +15,7 @@ package org.talend.repository;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +25,6 @@ import org.eclipse.emf.ecore.EObject;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.utils.workbench.resources.ResourceUtils;
 import org.talend.core.GlobalServiceRegister;
-import org.talend.core.ICoreService;
 import org.talend.core.PluginChecker;
 import org.talend.core.context.Context;
 import org.talend.core.context.RepositoryContext;
@@ -35,12 +35,14 @@ import org.talend.core.model.properties.ProjectReference;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.runtime.CoreRuntimePlugin;
 import org.talend.core.ui.IReferencedProjectService;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IProxyRepositoryService;
 import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.nodes.IProjectRepositoryNode;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * ggu class global comment. Detailled comment
@@ -53,11 +55,11 @@ public final class ProjectManager {
 
     private List<Project> referencedprojects = new ArrayList<Project>();
 
+    private List<IProjectRepositoryNode> viewProjectNodes = new ArrayList<IProjectRepositoryNode>();
+
     private List<Project> allReferencedprojects = new ArrayList<Project>();
 
     private Map<String, String> mapProjectUrlToBranchUrl = new HashMap<String, String>();
-
-    private static ICoreService coreSerivce = (ICoreService) GlobalServiceRegister.getDefault().getService(ICoreService.class);
 
     private static Map<String, List<FolderItem>> foldersMap = new HashMap<String, List<FolderItem>>();
 
@@ -156,7 +158,8 @@ public final class ProjectManager {
      * return the referenced projects of current project.
      */
     public List<Project> getReferencedProjects() {
-        // if (this.referencedprojects.isEmpty() || CommonsPlugin.isHeadless()) {
+        // if (this.referencedprojects.isEmpty() || CommonsPlugin.isHeadless())
+        // {
         retrieveReferencedProjects();
         // }
         return this.referencedprojects;
@@ -326,8 +329,17 @@ public final class ProjectManager {
     }
 
     public static IProjectRepositoryNode researchProjectNode(Project project) {
-        IProjectRepositoryNode root = (IProjectRepositoryNode) coreSerivce.getRoot();
-        if (project == null || root.getProject().equals(project)) {
+        final IRepositoryView repositoryView = RepositoryManager.getRepositoryView();
+        if (repositoryView != null && project != null) {
+            IProjectRepositoryNode root = (IProjectRepositoryNode) repositoryView.getRoot();
+            return researchProjectNode(root, project);
+        }
+        return null;
+    }
+
+    private static IProjectRepositoryNode researchProjectNode(IProjectRepositoryNode root, Project project) {
+        final String technicalLabel = project.getTechnicalLabel();
+        if (project == null || root.getProject().getTechnicalLabel().equals(technicalLabel)) {
             return root;
         }
         IRepositoryNode refRoot = root.getRootRepositoryNode(ERepositoryObjectType.REFERENCED_PROJECTS);
@@ -335,8 +347,9 @@ public final class ProjectManager {
             for (IRepositoryNode node : refRoot.getChildren()) {
                 if (node instanceof IProjectRepositoryNode) {
                     IProjectRepositoryNode pNode = (IProjectRepositoryNode) node;
-                    if (pNode.getProject().getTechnicalLabel().equals(project.getTechnicalLabel())) {
-                        return pNode;
+                    final IProjectRepositoryNode foundProjectNode = researchProjectNode(pNode, project);
+                    if (foundProjectNode != null) {
+                        return foundProjectNode;
                     }
                 }
             }
@@ -364,5 +377,38 @@ public final class ProjectManager {
             foldersMap.put(project.getTechnicalLabel(), new ArrayList<FolderItem>());
         }
         return foldersMap.get(project.getTechnicalLabel());
+    }
+
+    public synchronized void updateViewProjectNode(IProjectRepositoryNode projectRepNode) {
+        if (projectRepNode != null) {
+            final Iterator<IProjectRepositoryNode> iterator = viewProjectNodes.iterator();
+            while (iterator.hasNext()) {
+                IProjectRepositoryNode tmpProjectNode = iterator.next();
+                // remove the old one.
+                if (tmpProjectNode.getProject().getTechnicalLabel().equals(projectRepNode.getProject().getTechnicalLabel())) {
+                    iterator.remove();
+                    // FIXME, later will check this to make sure work well. just now, disable on trunk only.
+                    // if (tmpProjectNode instanceof RepositoryNode) {
+                    // ((RepositoryNode) tmpProjectNode).setEnableDisposed(true);
+                    // }
+                    //
+                    // tmpProjectNode.dispose();
+                }
+            }
+            viewProjectNodes.add(projectRepNode);
+        }
+    }
+
+    public synchronized IProjectRepositoryNode getProjectNode(String projectName) {
+        if (projectName != null) {
+            final Iterator<IProjectRepositoryNode> iterator = viewProjectNodes.iterator();
+            while (iterator.hasNext()) {
+                final IProjectRepositoryNode tmpProjectNode = iterator.next();
+                if (tmpProjectNode.getProject().getTechnicalLabel().equals(projectName)) {
+                    return tmpProjectNode;
+                }
+            }
+        }
+        return null;
     }
 }

@@ -72,7 +72,7 @@ public class CreateSAPConnectionAction extends AbstractCreateAction {
 	 */
 	public CreateSAPConnectionAction(boolean isToolbar) {
 		super();
-		setToolbar(isToolbar);
+		this.setToolbar(isToolbar);
 		this.setText(CREATE_LABEL);
 		this.setToolTipText(CREATE_LABEL);
 		this.setImageDescriptor(defaultImage);

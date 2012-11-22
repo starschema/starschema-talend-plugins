@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,10 +13,6 @@
 package org.talend.designer.core.ui.editor.properties.notes;
 
 import org.eclipse.gef.commands.Command;
-import org.eclipse.gmf.runtime.diagram.ui.internal.util.FontHelper;
-import org.eclipse.gmf.runtime.diagram.ui.l10n.DiagramUIMessages;
-import org.eclipse.gmf.runtime.diagram.ui.properties.internal.l10n.DiagramUIPropertiesImages;
-import org.eclipse.gmf.runtime.diagram.ui.properties.sections.appearance.ColorPalettePopup;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.resource.CompositeImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -48,6 +44,10 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
+import org.talend.commons.ui.gmf.util.ColorPalettePopup;
+import org.talend.commons.ui.gmf.util.FontHelper;
+import org.talend.commons.ui.runtime.image.EImage;
+import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.properties.tab.HorizontalTabFactory;
@@ -294,20 +294,20 @@ public class BasicNotePropertyComposite extends AbstractNotePropertyComposite {
         toolBar.setBackground(parent.getBackground());
 
         fontBoldButton = new Button(toolBar, SWT.TOGGLE);
-        fontBoldButton.setImage(DiagramUIPropertiesImages.get(DiagramUIPropertiesImages.IMG_BOLD));
+        fontBoldButton.setImage(ImageProvider.getImage(EImage.BOLD_ICON));
         fontBoldButton.getAccessible().addAccessibleListener(new AccessibleAdapter() {
 
             public void getName(AccessibleEvent e) {
-                e.result = DiagramUIMessages.PropertyDescriptorFactory_FontStyle_Bold;
+                e.result = "Bold";
             }
         });
 
         fontItalicButton = new Button(toolBar, SWT.TOGGLE);
-        fontItalicButton.setImage(DiagramUIPropertiesImages.get(DiagramUIPropertiesImages.IMG_ITALIC));
+        fontItalicButton.setImage(ImageProvider.getImage(EImage.ITALIC_ICON));
         fontItalicButton.getAccessible().addAccessibleListener(new AccessibleAdapter() {
 
             public void getName(AccessibleEvent e) {
-                e.result = DiagramUIMessages.PropertyDescriptorFactory_FontStyle_Italic;
+                e.result = "Italic";
             }
         });
 
@@ -328,14 +328,14 @@ public class BasicNotePropertyComposite extends AbstractNotePropertyComposite {
         new Label(toolBar, SWT.LEFT);
 
         fontColorButton = new Button(toolBar, SWT.PUSH);
-        Image overlyedImage = new ColorOverlayImageDescriptor(DiagramUIPropertiesImages.DESC_FONT_COLOR.getImageData(),
+        Image overlyedImage = new ColorOverlayImageDescriptor(ImageProvider.getImageDesc(EImage.FONT_COLOR_ICON).getImageData(),
                 TalendTextUtils.stringToRGB((String) note.getPropertyValue(EParameterName.NOTETXT_COLOR.getName())))
                 .createImage();
         fontColorButton.setImage(overlyedImage);
         fontColorButton.getAccessible().addAccessibleListener(new AccessibleAdapter() {
 
             public void getName(AccessibleEvent e) {
-                e.result = DiagramUIMessages.PropertyDescriptorFactory_FontColor;
+                e.result = "Font Color";
             }
         });
         fontColorButton.addSelectionListener(new SelectionAdapter() {
@@ -360,8 +360,7 @@ public class BasicNotePropertyComposite extends AbstractNotePropertyComposite {
                     Command cmd = new PropertyChangeCommand(note, EParameterName.NOTETXT_COLOR.getName(), value);
                     getCommandStack().execute(cmd);
                     note.refresh();
-                    Image overlyedImage = new ColorOverlayImageDescriptor(DiagramUIPropertiesImages.DESC_FONT_COLOR
-                            .getImageData(), selectedColor).createImage();
+                    Image overlyedImage = new ColorOverlayImageDescriptor(ImageProvider.getImageDesc(EImage.FONT_COLOR_ICON).getImageData(), selectedColor).createImage();
                     fontColorButton.setImage(overlyedImage);
                     text.setForeground(new Color(null, TalendTextUtils.stringToRGB((String) note
                             .getPropertyValue(EParameterName.NOTETXT_COLOR.getName()))));
@@ -371,13 +370,13 @@ public class BasicNotePropertyComposite extends AbstractNotePropertyComposite {
         new Label(toolBar, SWT.LEFT);
 
         lineColorButton = new Button(toolBar, SWT.PUSH);
-        overlyedImage = new ColorOverlayImageDescriptor(DiagramUIPropertiesImages.DESC_LINE_COLOR.getImageData(), TalendTextUtils
+        overlyedImage = new ColorOverlayImageDescriptor(ImageProvider.getImageDesc(EImage.LINE_COLOR_ICON).getImageData(), TalendTextUtils
                 .stringToRGB((String) note.getPropertyValue(EParameterName.NOTE_LINECOLOR.getName()))).createImage();
         lineColorButton.setImage(overlyedImage);
         lineColorButton.getAccessible().addAccessibleListener(new AccessibleAdapter() {
 
             public void getName(AccessibleEvent e) {
-                e.result = DiagramUIMessages.PropertyDescriptorFactory_LineColor;
+                e.result = "Line Color";
             }
         });
         lineColorButton.addSelectionListener(new SelectionAdapter() {
@@ -402,21 +401,20 @@ public class BasicNotePropertyComposite extends AbstractNotePropertyComposite {
                     Command cmd = new PropertyChangeCommand(note, EParameterName.NOTE_LINECOLOR.getName(), value);
                     getCommandStack().execute(cmd);
                     note.refresh();
-                    Image overlyedImage = new ColorOverlayImageDescriptor(DiagramUIPropertiesImages.DESC_LINE_COLOR
-                            .getImageData(), selectedColor).createImage();
+                    Image overlyedImage = new ColorOverlayImageDescriptor(ImageProvider.getImageDesc(EImage.LINE_COLOR_ICON).getImageData(), selectedColor).createImage();
                     lineColorButton.setImage(overlyedImage);
                 }
             }
         });
 
         fillColorButton = new Button(toolBar, SWT.PUSH);
-        overlyedImage = new ColorOverlayImageDescriptor(DiagramUIPropertiesImages.DESC_FILL_COLOR.getImageData(), TalendTextUtils
+        overlyedImage = new ColorOverlayImageDescriptor(ImageProvider.getImageDesc(EImage.FILL_COLOR_ICON).getImageData(), TalendTextUtils
                 .stringToRGB((String) note.getPropertyValue(EParameterName.NOTE_COLOR.getName()))).createImage();
         fillColorButton.setImage(overlyedImage);
         fillColorButton.getAccessible().addAccessibleListener(new AccessibleAdapter() {
 
             public void getName(AccessibleEvent e) {
-                e.result = DiagramUIMessages.PropertyDescriptorFactory_FillColor;
+                e.result = "Fill Color";
             }
         });
         fillColorButton.addSelectionListener(new SelectionAdapter() {
@@ -441,8 +439,7 @@ public class BasicNotePropertyComposite extends AbstractNotePropertyComposite {
                     Command cmd = new PropertyChangeCommand(note, EParameterName.NOTE_COLOR.getName(), value);
                     getCommandStack().execute(cmd);
                     note.refresh();
-                    Image overlyedImage = new ColorOverlayImageDescriptor(DiagramUIPropertiesImages.DESC_FILL_COLOR
-                            .getImageData(), selectedColor).createImage();
+                    Image overlyedImage = new ColorOverlayImageDescriptor(ImageProvider.getImageDesc(EImage.FILL_COLOR_ICON).getImageData(), selectedColor).createImage();
                     fillColorButton.setImage(overlyedImage);
                 }
             }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -24,7 +24,7 @@ import org.talend.repository.ui.views.IRepositoryView;
 /**
  * Action used to refresh a repository view.<br/>
  * 
- * $Id: RefreshAction.java 61957 2011-06-09 03:45:51Z ycbai $
+ * $Id: RefreshAction.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class RefreshAction extends Action {

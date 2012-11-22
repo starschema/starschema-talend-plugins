@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -48,7 +49,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.exception.SystemException;
@@ -73,6 +73,7 @@ import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.routines.RoutinesUtil;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.properties.tab.IDynamicProperty;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.designer.codegen.ITalendSynchronizer;
@@ -413,35 +414,25 @@ public class WSDL2JAVAController extends AbstractElementPropertySectionControlle
     // gcui:see bug 9733.
     private void addWsdlNeedLib(RoutineItem routineItem) {
         List<IMPORTType> wsdlNeedImport = new ArrayList<IMPORTType>();
-        String javaLabPath = CorePlugin.getDefault().getLibrariesService().getJavaLibrariesPath() + "/";
         IMPORTType type1 = ComponentFactory.eINSTANCE.createIMPORTType();
         type1.setMODULE("axis.jar");
-        type1.setUrlPath(javaLabPath + "axis.jar");
         type1.setREQUIRED(true);
         type1.setNAME(routineItem.getProperty().getLabel());
         wsdlNeedImport.add(type1);
         IMPORTType type2 = ComponentFactory.eINSTANCE.createIMPORTType();
         type2.setMODULE("jaxrpc.jar");
-        type2.setUrlPath(javaLabPath + "jaxrpc.jar");
         type2.setREQUIRED(true);
         type2.setNAME(routineItem.getProperty().getLabel());
         wsdlNeedImport.add(type2);
         routineItem.getImports().addAll(wsdlNeedImport);
 
         try {
-            File url1 = new File(javaLabPath + "axis.jar");
-            File url2 = new File(javaLabPath + "jaxrpc.jar");
-            CorePlugin.getDefault().getLibrariesService().deployLibrary(url1.toURL());
-            CorePlugin.getDefault().getLibrariesService().deployLibrary(url2.toURL());
-        } catch (Exception e) {
-            ExceptionHandler.process(e);
-        }
-        try {
             CorePlugin.getDefault().getProxyRepositoryFactory().save(routineItem);
         } catch (Exception e) {
             ExceptionHandler.process(e);
         }
         CorePlugin.getDefault().getLibrariesService().resetModulesNeeded();
+        CorePlugin.getDefault().getRunProcessService().updateLibraries(new HashSet<String>(), null);
     }
 
     private String chanageRoutinesPackage(String routineContent, String name) {
@@ -575,9 +566,10 @@ public class WSDL2JAVAController extends AbstractElementPropertySectionControlle
      * DOC xtan Comment method "refreshRepositoryView".
      */
     private static void refreshRepositoryView() {
-        IRepositoryView viewPart = (IRepositoryView) PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
-                .findView(IRepositoryView.VIEW_ID);
-        viewPart.refreshView();
+        IRepositoryView viewPart = RepositoryManagerHelper.findRepositoryView();
+        if (viewPart != null) {
+            viewPart.refreshView();
+        }
     }
 
     protected String getTmpFolder() {

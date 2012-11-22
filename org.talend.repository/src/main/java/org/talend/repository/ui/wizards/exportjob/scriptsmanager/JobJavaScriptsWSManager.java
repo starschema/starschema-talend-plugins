@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -64,6 +64,14 @@ import org.talend.repository.documentation.ExportFileResource;
  */
 public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
 
+    private String outputSuffix;
+
+    public JobJavaScriptsWSManager(Map<ExportChoice, Object> exportChoiceMap, String contextName, String launcher,
+            int statisticPort, int tracePort, String suffix) {
+        super(exportChoiceMap, contextName, launcher, statisticPort, tracePort);
+        this.outputSuffix = suffix;
+    }
+
     private static Logger log = Logger.getLogger(ExceptionHandler.class);
 
     public static final String EXPORT_METHOD = "runJob"; //$NON-NLS-1$
@@ -73,7 +81,7 @@ public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
         axisLib.add("axis.jar"); //$NON-NLS-1$
         axisLib.add("jaxrpc.jar"); //$NON-NLS-1$
         axisLib.add("saaj.jar"); //$NON-NLS-1$
-        axisLib.add("wsdl4j-1.5.1.jar"); //$NON-NLS-1$
+        axisLib.add("wsdl4j-1.6.2.jar"); //$NON-NLS-1$
         axisLib.add("commons-discovery-0.2.jar"); //$NON-NLS-1$
         axisLib.add("commons-logging-1.1.jar"); //$NON-NLS-1$
         axisLib.add("mail.jar"); //$NON-NLS-1$
@@ -88,15 +96,14 @@ public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
      * java.lang.String, int, int, java.lang.String[])
      */
     @Override
-    public List<ExportFileResource> getExportResources(ExportFileResource[] process, Map<ExportChoice, Object> exportChoice,
-            String contextName, String launcher, int statisticPort, int tracePort, String... codeOptions)
+    public List<ExportFileResource> getExportResources(ExportFileResource[] process, String... codeOptions)
             throws ProcessorException {
 
         List<ExportFileResource> list = new ArrayList<ExportFileResource>();
 
         boolean needJob = true;
-        boolean needSource = isOptionChoosed(exportChoice, ExportChoice.needSourceCode);
-        boolean needContext = isOptionChoosed(exportChoice, ExportChoice.needContext);
+        boolean needSource = isOptionChoosed(ExportChoice.needSourceCode);
+        boolean needContext = isOptionChoosed(ExportChoice.needContext);
         ExportFileResource libResource = new ExportFileResource(null, "WEB-INF/lib"); //$NON-NLS-1$
         ExportFileResource contextResource = new ExportFileResource(null, "WEB-INF/classes"); //$NON-NLS-1$
         ExportFileResource srcResource = new ExportFileResource(null, "WEB-INF"); //$NON-NLS-1$
@@ -135,14 +142,12 @@ public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
                     + libPath + PATH_SEPARATOR + USERROUTINE_JAR + ProcessorUtilities.TEMP_JAVA_CLASSPATH_SEPARATOR + "."; //$NON-NLS-1$
             ProcessorUtilities.setExportConfig("java", standardJars, libPath); //$NON-NLS-1$
 
-            if (!isOptionChoosed(exportChoice, ExportChoice.doNotCompileCode)) {
+            if (!isOptionChoosed(ExportChoice.doNotCompileCode)) {
                 generateJobFiles(processItem, contextName, selectedJobVersion, statisticPort != IProcessor.NO_STATISTICS,
-                        tracePort != IProcessor.NO_TRACES, isOptionChoosed(exportChoice, ExportChoice.applyToChildren),
-                        progressMonitor);
+                        tracePort != IProcessor.NO_TRACES, isOptionChoosed(ExportChoice.applyToChildren), progressMonitor);
             }
             // generate the WSDL file
-            ExportFileResource wsdlFile = getWSDLFile(processItem, isOptionChoosed(exportChoice, ExportChoice.needWSDL),
-                    talendLibraries);
+            ExportFileResource wsdlFile = getWSDLFile(processItem, isOptionChoosed(ExportChoice.needWSDL), talendLibraries);
             list.add(wsdlFile);
 
             // edit the WSDD file
@@ -160,24 +165,24 @@ public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
             libResource.addResources(getJobScripts(processItem, selectedJobVersion, needJob));
 
             // dynamic db xml mapping
-            addXmlMapping(process[i], isOptionChoosed(exportChoice, ExportChoice.needSourceCode));
+            addXmlMapping(process[i], isOptionChoosed(ExportChoice.needSourceCode));
 
         }
 
         // generate Server Config file
-        ExportFileResource serverConfigFile = getServerConfigFile(isOptionChoosed(exportChoice, ExportChoice.needCONFIGFILE));
+        ExportFileResource serverConfigFile = getServerConfigFile(isOptionChoosed(ExportChoice.needCONFIGFILE));
         list.add(serverConfigFile);
 
         // generate the WSDD file
-        ExportFileResource wsddFile = getWSDDFile(isOptionChoosed(exportChoice, ExportChoice.needWSDD));
+        ExportFileResource wsddFile = getWSDDFile(isOptionChoosed(ExportChoice.needWSDD));
         list.add(wsddFile);
 
         // generate the WEB-INFO folder
-        ExportFileResource webInfoFolder = getWebXMLFile(isOptionChoosed(exportChoice, ExportChoice.needWEBXML));
+        ExportFileResource webInfoFolder = getWebXMLFile(isOptionChoosed(ExportChoice.needWEBXML));
         list.add(webInfoFolder);
 
         // generate the META-INFO folder
-        ExportFileResource metaInfoFolder = genMetaInfoFolder(isOptionChoosed(exportChoice, ExportChoice.needMetaInfo));
+        ExportFileResource metaInfoFolder = genMetaInfoFolder(isOptionChoosed(ExportChoice.needMetaInfo));
         list.add(metaInfoFolder);
 
         // Gets system routines
@@ -188,7 +193,13 @@ public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
         libResource.addResources(userRoutineList);
 
         // Gets axis libraries
-        List<URL> axisLibList = getLib(axisLib, isOptionChoosed(exportChoice, ExportChoice.needAXISLIB));
+        List<String> newAxisLib = new ArrayList<String>(axisLib);
+        for (URL libUrl : talendLibraries) {
+            if (libUrl.getFile() != null) {
+                newAxisLib.remove(new File(libUrl.getFile()).getName());
+            }
+        }
+        List<URL> axisLibList = getLib(newAxisLib, isOptionChoosed(ExportChoice.needAXISLIB));
         libResource.addResources(axisLibList);
 
         // check the list avoid duplication
@@ -216,9 +227,9 @@ public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
         for (Iterator<JobInfo> iter = list.iterator(); iter.hasNext();) {
             JobInfo jobInfo = iter.next();
             libResource.addResources(getJobScripts(projectName, jobInfo.getJobName(), jobInfo.getJobVersion(),
-                    isOptionChoosed(exportChoice, ExportChoice.needJobScript)));
+                    isOptionChoosed(ExportChoice.needJobScript)));
             addContextScripts(jobInfo.getProcessItem(), jobInfo.getJobName(), jobInfo.getJobVersion(), contextResource,
-                    isOptionChoosed(exportChoice, ExportChoice.needContext));
+                    isOptionChoosed(ExportChoice.needContext));
         }
 
     }
@@ -629,6 +640,16 @@ public class JobJavaScriptsWSManager extends JobJavaScriptsManager {
             w2j.run(wsdlFile.toURI().toString());
         }
 
+    }
+
+    @Override
+    public void setTopFolder(List<ExportFileResource> resourcesToExport) {
+        return;
+    }
+
+    @Override
+    public String getOutputSuffix() {
+        return outputSuffix;
     }
 
 }

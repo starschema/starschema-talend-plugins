@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,18 +19,17 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.model.IRepositoryNode;
-import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.IRepositoryNode.EProperties;
+import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * Action use to expand a folder in repository. Many objects can be expand in the same time. System folder can also be
  * expand. All children are expand<br/>
  * 
- * $Id: ExpandAllAction.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ExpandAllAction.java 81310 2012-04-10 07:03:44Z cli $
  * 
  */
 public class ExpandAllAction extends AContextualAction {
@@ -52,23 +51,25 @@ public class ExpandAllAction extends AContextualAction {
             return;
         }
         Object objNode = ((IStructuredSelection) selection).getFirstElement();
-        if (objNode != null) {
-            RepositoryNode node = (RepositoryNode) objNode;
-            if ((node.getProperties(EProperties.CONTENT_TYPE) != null)
-                    && (node.getProperties(EProperties.CONTENT_TYPE) == ERepositoryObjectType.SVN_ROOT)) {
-                view.expand(node);
-                view.getViewer().refresh();
-                return;
+        if (view != null) {
+            if (objNode != null) {
+                RepositoryNode node = (RepositoryNode) objNode;
+                if ((node.getProperties(EProperties.CONTENT_TYPE) != null)
+                        && (node.getProperties(EProperties.CONTENT_TYPE) == ERepositoryObjectType.SVN_ROOT)) {
+                    view.expand(node);
+                    view.getViewer().refresh();
+                    return;
+                }
             }
-        }
 
-        Set<ERepositoryObjectType> types = new HashSet<ERepositoryObjectType>();
-        for (Object obj : ((IStructuredSelection) selection).toArray()) {
-            expand(view, (RepositoryNode) obj, !view.getExpandedState(obj));
-            types.add(((RepositoryNode) obj).getContentType());
-        }
-        for (ERepositoryObjectType type : types) {
-            RepositoryManager.getRepositoryView().refresh(type);
+            Set<ERepositoryObjectType> types = new HashSet<ERepositoryObjectType>();
+            for (Object obj : ((IStructuredSelection) selection).toArray()) {
+                expand(view, (RepositoryNode) obj, !view.getExpandedState(obj));
+                types.add(((RepositoryNode) obj).getContentType());
+            }
+            for (ERepositoryObjectType type : types) {
+                view.refresh(type);
+            }
         }
     }
 

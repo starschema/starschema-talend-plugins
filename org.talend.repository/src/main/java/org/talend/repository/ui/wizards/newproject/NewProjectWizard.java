@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -30,7 +30,7 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 /**
  * Wizard for the creation of a new project. <br/>
  * 
- * $Id: NewProjectWizard.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: NewProjectWizard.java 78660 2012-02-22 06:33:45Z plv $
  * 
  */
 public class NewProjectWizard extends Wizard {
@@ -41,6 +41,8 @@ public class NewProjectWizard extends Wizard {
     private Project project;
 
     private Project[] projects;
+
+    private String defaultProjectName;
 
     /**
      * Constructs a new NewProjectWizard.
@@ -76,8 +78,8 @@ public class NewProjectWizard extends Wizard {
         Context ctx = CorePlugin.getContext();
         RepositoryContext repositoryContext = (RepositoryContext) ctx.getProperty(Context.REPOSITORY_CONTEXT_KEY);
         try {
-            Project projectInfor = ProjectHelper.createProject(mainPage.getName(), mainPage.getDescription(), mainPage
-                    .getLanguage(), repositoryContext.getUser());
+            Project projectInfor = ProjectHelper.createProject(mainPage.getName().trim().replace(' ', '_'),
+                    mainPage.getDescription(), mainPage.getLanguage(), repositoryContext.getUser());
             project = repositoryFactory.createProject(projectInfor);
             return true;
         } catch (PersistenceException e) {
@@ -95,6 +97,14 @@ public class NewProjectWizard extends Wizard {
      */
     public Project getProject() {
         return this.project;
+    }
+
+    public String getDefaultProjectName() {
+        return this.defaultProjectName;
+    }
+
+    public void setDefaultProjectName(String defaultProjectName) {
+        this.defaultProjectName = defaultProjectName;
     }
 
 }

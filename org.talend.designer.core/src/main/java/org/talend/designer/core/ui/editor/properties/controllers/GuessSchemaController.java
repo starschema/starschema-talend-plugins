@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -49,6 +49,7 @@ import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.swt.dialogs.ErrorDialogWithDetailAreaAndContinueButton;
 import org.talend.commons.utils.data.list.UniqueStringGenerator;
 import org.talend.core.GlobalServiceRegister;
+import org.talend.core.ITDQRuleService;
 import org.talend.core.database.EDatabaseTypeName;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.language.LanguageManager;
@@ -58,10 +59,9 @@ import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataColumn;
 import org.talend.core.model.metadata.MetadataTable;
 import org.talend.core.model.metadata.MetadataTalendType;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.builder.ConvertionHelper;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
-import org.talend.core.model.metadata.builder.database.ConnectionStatus;
 import org.talend.core.model.metadata.builder.database.ExtractMetaDataFromDataBase;
 import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
 import org.talend.core.model.metadata.types.JavaDataTypeHelper;
@@ -75,6 +75,7 @@ import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.properties.tab.IDynamicProperty;
+import org.talend.core.repository.ConnectionStatus;
 import org.talend.core.ui.ISQLBuilderService;
 import org.talend.core.ui.metadata.dialog.MetadataDialog;
 import org.talend.core.utils.CsvArray;
@@ -82,6 +83,7 @@ import org.talend.core.utils.KeywordsValidator;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.ui.editor.cmd.ChangeMetadataCommand;
+import org.talend.designer.core.ui.editor.connections.TracesConnectionUtils;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.properties.ConfigureConnParamDialog;
 import org.talend.designer.core.ui.editor.properties.controllers.uidialog.OpenContextChooseComboDialog;
@@ -322,10 +324,8 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
 
     private void runShadowProcess(final Property property, final Node inputNode, final IContext selectContext,
             final IElementParameter switchParam) {
-        ISQLBuilderService service = (ISQLBuilderService) GlobalServiceRegister.getDefault().getService(ISQLBuilderService.class);
-        DatabaseConnection connt = service.createConnection(connParameters);
+        DatabaseConnection connt = TracesConnectionUtils.createConnection(connParameters);
         String dbmsId = connt.getDbmsId();
-
         if (dbmsId == null) {
             Shell shell = Display.getCurrent().getActiveShell();
             MessageDialog.openError(shell, "No info about DB found !",
@@ -385,14 +385,14 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
                         String talendType = null;
                         // to see if the language is java or perl
                         if (LanguageManager.getCurrentLanguage() == ECodeLanguage.JAVA) {
-                            if (schemaContent.size() > 5) {
+                            if (schemaContent.size() >= 5) {
                                 talendType = MetadataTalendType.getMappingTypeRetriever(dbmsId).getDefaultSelectedTalendType(
                                         schemaContent.get(4)[i - 1]);
                             } else {
                                 talendType = JavaTypesManager.STRING.getId();
                             }
                         } else {
-                            if (schemaContent.size() > 5) {
+                            if (schemaContent.size() >= 5) {
                                 talendType = PerlDataTypeHelper.getNewTalendTypeOfValue(schemaContent.get(4)[i - 1]);
                             } else {
                                 talendType = PerlTypesManager.STRING;
@@ -411,6 +411,23 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
                     oneColum.setNullable((schemaContent.get(1))[i - 1].equals(Boolean.TRUE.toString()) ? true : false);
                     columns.add(oneColum);
                 }
+
+                if (columns.size() > 0) {
+                    IElementParameter dqRule = elem.getElementParameter("DQRULES_LIST");
+                    if (dqRule != null) {
+                        ITDQRuleService ruleService = null;
+                        try {
+                            ruleService = (ITDQRuleService) GlobalServiceRegister.getDefault().getService(ITDQRuleService.class);
+                        } catch (RuntimeException e) {
+                            // nothing to do
+                        }
+                        IElementParameter queryParam = elem.getElementParameter("QUERY");
+                        if (ruleService != null && queryParam != null) {
+                            ruleService.updateOriginalColumnNames(columns, queryParam);
+                        }
+                    }
+                }
+
                 IMetadataTable tempMetatable = new MetadataTable();
                 /* for bug 20973 */
                 if (tempMetatable.getTableName() == null) {
@@ -455,9 +472,10 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
             }
         } catch (ProcessorException e) {
             ExtractMetaDataUtils.closeConnection();
-            final String strExcepton = Messages.getString("GuessSchemaController.0", System.getProperty("line.separator")); //$NON-NLS-1$ //$NON-NLS-2$
+            final String strExcepton = e.getMessage();
             Display.getDefault().asyncExec(new Runnable() {
 
+                @Override
                 public void run() {
                     MessageDialog.openWarning(composite.getShell(),
                             Messages.getString("GuessSchemaController.connectionError"), strExcepton); //$NON-NLS-1$
@@ -488,11 +506,11 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
                 }
             }
             if (exsitingOneColumn.getLabel() != null && exsitingOneColumn.getLabel().split("_").length > 1 && hasIndex) {
-                if (name.equals(MetadataTool.validateColumnName(labelName, i))) {
+                if (name.equals(MetadataToolHelper.validateColumnName(labelName, i))) {
                     findSameNameColumn = true;
                     indexsForSameNamedColumn.add(Integer.parseInt(priorIndex));
                 }
-            } else if (exsitingOneColumn.getLabel().equals(MetadataTool.validateColumnName(labelName, i))) {
+            } else if (exsitingOneColumn.getLabel().equals(MetadataToolHelper.validateColumnName(labelName, i))) {
                 findSameNameColumn = true;
             }
         }
@@ -503,11 +521,11 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
         }
         if (findSameNameColumn && hasMax) {
             int nextIndex = ++indexsarray[indexsarray.length - 1];
-            oneColum.setLabel(MetadataTool.validateColumnName(labelName + "_" + Integer.toString(nextIndex), i));
+            oneColum.setLabel(MetadataToolHelper.validateColumnName(labelName + "_" + Integer.toString(nextIndex), i));
         } else if (findSameNameColumn) {
-            oneColum.setLabel(MetadataTool.validateColumnName(labelName + "_" + Integer.toString(1), i));
+            oneColum.setLabel(MetadataToolHelper.validateColumnName(labelName + "_" + Integer.toString(1), i));
         } else {
-            oneColum.setLabel(MetadataTool.validateColumnName(labelName, i));
+            oneColum.setLabel(MetadataToolHelper.validateColumnName(labelName, i));
         }
     }
 
@@ -706,9 +724,7 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
             initConnectionParameters();
         }
         final String tmpMemoSql = this.memoSQL;
-        ISQLBuilderService service = (ISQLBuilderService) GlobalServiceRegister.getDefault().getService(ISQLBuilderService.class);
-        final DatabaseConnection connt = service.createConnection(connParameters);
-
+        final DatabaseConnection connt = TracesConnectionUtils.createConnection(connParameters);
         IMetadataConnection iMetadataConnection = null;
         boolean isStatus = false;
         try {
@@ -729,7 +745,7 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
                             iMetadataConnection.getUrl(), iMetadataConnection.getDriverJarPath());
                 }
 
-                final Property property = (Property) GuessSchemaProcess.getNewmockProperty();
+                final Property property = GuessSchemaProcess.getNewmockProperty();
                 List<IContext> allcontexts = inputNode.getProcess().getContextManager().getListContext();
 
                 OpenContextChooseComboDialog dialog = new OpenContextChooseComboDialog(parentShell, allcontexts);
@@ -749,9 +765,11 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
 
                     pmd.run(true, true, new IRunnableWithProgress() {
 
+                        @Override
                         public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
                             Display.getDefault().asyncExec(new Runnable() {
 
+                                @Override
                                 public void run() {
                                     runShadowProcess(property, inputNode, context, switchParam);
                                 }
@@ -763,6 +781,7 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
             } else {
                 Display.getDefault().asyncExec(new Runnable() {
 
+                    @Override
                     public void run() {
                         String pid = "org.talend.sqlbuilder"; //$NON-NLS-1$
                         String mainMsg = Messages.getString("GuessSchemaController.connectionFailed"); //$NON-NLS-1$
@@ -869,6 +888,7 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
      * 
      * @see java.beans.PropertyChangeListener#propertyChange(java.beans.PropertyChangeEvent)
      */
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // TODO Auto-generated method stub
 
@@ -880,6 +900,7 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
         try {
             pmd.run(true, true, new IRunnableWithProgress() {
 
+                @Override
                 public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
 
                     if (columns != null) {
@@ -935,6 +956,7 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
                             } else {
                                 Display.getDefault().asyncExec(new Runnable() {
 
+                                    @Override
                                     public void run() {
                                         String pid = "org.talend.sqlbuilder"; //$NON-NLS-1$
                                         String mainMsg = "Database connection is failed. "; //$NON-NLS-1$
@@ -953,6 +975,7 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
                                     + System.getProperty("line.separator");
                             Display.getDefault().asyncExec(new Runnable() {
 
+                                @Override
                                 public void run() {
                                     MessageDialog.openWarning(composite.getShell(),
                                             Messages.getString("GuessSchemaController.connError"), strExcepton); //$NON-NLS-1$
@@ -970,10 +993,11 @@ public class GuessSchemaController extends AbstractElementPropertySectionControl
     }
 
     public static boolean isNumeric(String s) {
-        if ((s != null) && (s != ""))
+        if ((s != null) && (s != "")) {
             return s.matches("^[0-9]*$");
-        else
+        } else {
             return false;
+        }
     }
 
 }

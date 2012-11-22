@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Repository Plug-in
 Bundle-SymbolicName: org.talend.repository;singleton:=true
-Bundle-Version: 2.2.0.qualifier
+Bundle-Version: 5.2.0.M1_r86684
 Bundle-Localization: plugin
 Eclipse-LazyStart: true
 Bundle-Vendor: .Talend SA.
@@ -15,6 +15,7 @@ Require-Bundle: javax.xml.rpc,
  org.eclipse.core.runtime,
  org.eclipse.ui.views.properties.tabbed,
  org.eclipse.ui.ide,
+ org.eclipse.ui.navigator,
  org.eclipse.datatools.enablement.oda.xml;resolution:=optional,
  org.talend.resources,
  org.eclipse.jdt.core,
@@ -35,9 +36,9 @@ Require-Bundle: javax.xml.rpc,
  org.talend.metadata.managment.ui,
  org.apache.log4j,
  org.eclipse.gef,
- org.talend.libraries.jexcel;resolution:=optional,
  org.talend.model.migration,
- org.talend.libraries.salesforce;resolution:=optional
+ org.talend.libraries.salesforce;resolution:=optional,
+ org.talend.repository.view;visibility:=reexport
 Export-Package: org.talend.repository,
  org.talend.repository.constants,
  org.talend.repository.i18n,
@@ -52,7 +53,6 @@ Export-Package: org.talend.repository,
  org.talend.repository.ui,
  org.talend.repository.ui.actions,
  org.talend.repository.ui.actions.context,
- org.talend.repository.ui.actions.documentation,
  org.talend.repository.ui.actions.folder,
  org.talend.repository.ui.actions.importexport,
  org.talend.repository.ui.actions.importproject,
@@ -69,13 +69,12 @@ Export-Package: org.talend.repository,
  org.talend.repository.ui.views,
  org.talend.repository.ui.wizards,
  org.talend.repository.ui.wizards.ConfigExternalLib,
- org.talend.repository.ui.wizards.documentation,
  org.talend.repository.ui.wizards.exportjob,
+ org.talend.repository.ui.wizards.exportjob.action,
  org.talend.repository.ui.wizards.exportjob.scriptsmanager,
  org.talend.repository.ui.wizards.exportjob.scriptsmanager.esb,
  org.talend.repository.ui.wizards.exportjob.scriptsmanager.petals,
  org.talend.repository.ui.wizards.folder,
- org.talend.repository.ui.wizards.htmlgeneration,
  org.talend.repository.ui.wizards.newproject,
  org.talend.repository.ui.wizards.newproject.copyfromeclipse,
  org.talend.repository.ui.wizards.routines,

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -11,6 +11,8 @@
 //
 // ============================================================================
 package org.talend.core.model.metadata;
+
+import java.util.Map;
 
 /**
  * DOC nrousseau class global comment. Detailled comment <br/>
@@ -50,6 +52,8 @@ public interface IMetadataColumn {
 
     public static final int OPTIONS_IGNORE_RELATIONSHIPTYPE = 1 << 13;
 
+    public static final int OPTIONS_IGNORE_ORIGINALLENGTH = 1 << 14;
+
     public static final int OPTIONS_IGNORE_ALL = OPTIONS_IGNORE_LABEL | OPTIONS_IGNORE_TALENDTYPE | OPTIONS_IGNORE_DEFAULT
             | OPTIONS_IGNORE_PRECISION | OPTIONS_IGNORE_LENGTH | OPTIONS_IGNORE_DBTYPE | OPTIONS_IGNORE_PATTERN
             | OPTIONS_IGNORE_COMMENT | OPTIONS_IGNORE_NULLABLE | OPTIONS_IGNORE_KEY | OPTIONS_IGNORE_DBCOLUMNNAME
@@ -82,6 +86,10 @@ public interface IMetadataColumn {
     public Integer getLength();
 
     public void setLength(Integer length);
+
+    public Integer getOriginalLength();
+
+    public void setOriginalLength(Integer originalLength);
 
     public boolean isNullable();
 
@@ -134,4 +142,7 @@ public interface IMetadataColumn {
     public String getExpression();
 
     public void setExpression(String expression);
+
+    public Map<String, String> getAdditionalField();
+
 }

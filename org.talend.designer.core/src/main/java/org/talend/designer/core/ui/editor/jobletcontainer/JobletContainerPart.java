@@ -42,6 +42,9 @@ public class JobletContainerPart extends NodeContainerPart {
         // JobletContainerFigure.updateStatus(node.getStatus(), showInfoFlag);
         // JobletContainerFigure.setInfoHint(node.getShowHintText());
         // }
+        Node node = ((NodeContainer) getModel()).getNode();
+        JobletContainerFigure.updateStatus(node.getStatus());
+
         return JobletContainerFigure;
     }
 
@@ -245,6 +248,10 @@ public class JobletContainerPart extends NodeContainerPart {
                     editPart.refresh();
                 }
             }
+        }
+        if (changeEvent.getPropertyName().equals(Node.UPDATE_STATUS)) {
+            Node node = ((NodeContainer) getModel()).getNode();
+            ((JobletContainerFigure) getFigure()).updateStatus(node.getStatus());
         }
     }
 

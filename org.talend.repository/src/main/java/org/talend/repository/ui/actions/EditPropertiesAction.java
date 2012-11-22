@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -41,6 +41,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusEntry;
 import org.eclipse.ltk.core.refactoring.participants.RenameRefactoring;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
@@ -53,16 +54,21 @@ import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.commons.utils.generation.JavaUtils;
 import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.IESBService;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.language.LanguageManager;
 import org.talend.core.model.general.Project;
 import org.talend.core.model.properties.ByteArray;
+import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.Item;
+import org.talend.core.model.properties.JobScriptItem;
 import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.properties.SQLPatternItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.repository.RepositoryManager;
+import org.talend.core.model.update.RepositoryUpdateManager;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.ui.IUIRefresher;
 import org.talend.designer.core.IDesignerCoreService;
@@ -76,6 +82,7 @@ import org.talend.repository.model.IRepositoryService;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
 import org.talend.repository.ui.views.IJobSettingsView;
+import org.talend.repository.ui.views.IRepositoryView;
 import org.talend.repository.ui.wizards.PropertiesWizard;
 
 /**
@@ -88,9 +95,9 @@ public class EditPropertiesAction extends AContextualAction {
 
     public EditPropertiesAction() {
         super();
-        this.setText(Messages.getString("EditPropertiesAction.action.title")); //$NON-NLS-1$
-        this.setToolTipText(Messages.getString("EditPropertiesAction.action.toolTipText")); //$NON-NLS-1$
-        this.setImageDescriptor(ImageProvider.getImageDesc(EImage.EDIT_ICON));
+        setText(Messages.getString("EditPropertiesAction.action.title")); //$NON-NLS-1$
+        setToolTipText(Messages.getString("EditPropertiesAction.action.toolTipText")); //$NON-NLS-1$
+        setImageDescriptor(ImageProvider.getImageDesc(EImage.EDIT_ICON));
     }
 
     protected void doRun() {
@@ -140,6 +147,16 @@ public class EditPropertiesAction extends AContextualAction {
 
             if (node.getObjectType() == ERepositoryObjectType.ROUTINES) {
                 RepositoryManager.syncRoutineAndJoblet(ERepositoryObjectType.ROUTINES);
+            }
+            if (node.getObjectType().getType().equals("SERVICES")) {
+                ConnectionItem connectionItem = (ConnectionItem) node.getObject().getProperty().getItem();
+                RepositoryUpdateManager.updateServices(connectionItem);
+                if (GlobalServiceRegister.getDefault().isServiceRegistered(IESBService.class)) {
+                    IESBService service = (IESBService) GlobalServiceRegister.getDefault().getService(IESBService.class);
+                    if (service != null) {
+                        service.refreshComponentView(connectionItem);
+                    }
+                }
             }
         }
     }
@@ -213,8 +230,14 @@ public class EditPropertiesAction extends AContextualAction {
                     RefactoringStatusEntry entry = entries[i];
                     errorMessage += "\n>>>" + entry.getMessage(); //$NON-NLS-1$
                 }
-                MessageDialog.openError(this.getViewPart().getViewSite().getShell(),
-                        Messages.getString("EditPropertiesAction.warning"), errorMessage); //$NON-NLS-1$
+                Shell shell = null;
+                IRepositoryView viewPart = getViewPart();
+                if (viewPart != null) {
+                    shell = viewPart.getViewSite().getShell();
+                } else {
+                    shell = Display.getCurrent().getActiveShell();
+                }
+                MessageDialog.openError(shell, Messages.getString("EditPropertiesAction.warning"), errorMessage); //$NON-NLS-1$
                 return;
             }
 
@@ -293,6 +316,13 @@ public class EditPropertiesAction extends AContextualAction {
                         Item item = node.getObject().getProperty().getItem();
                         if (item instanceof SQLPatternItem) {
                             canWork = !((SQLPatternItem) item).isSystem();
+                        } else {
+                            canWork = false;
+                        }
+                    } else if (node.getObjectType() == ERepositoryObjectType.JOB_SCRIPT) {
+                        Item item = node.getObject().getProperty().getItem();
+                        if (item instanceof JobScriptItem) {
+                            canWork = true;
                         } else {
                             canWork = false;
                         }

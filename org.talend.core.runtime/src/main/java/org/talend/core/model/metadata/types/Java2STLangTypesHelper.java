@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -91,6 +91,43 @@ public class Java2STLangTypesHelper {
 
             // others treat as string
             return "chararray"; //$NON-NLS-1$
+	
+       }
+	   
+	   	/**
+     * DOC return as: int, long, double, float, string.
+     * 
+     * @author rdubois
+     * @param metadataTable
+     * @param columnLabel
+     * @return
+     */
+	
+	public static String getHCatType(IMetadataTable metadataTable, String columnLabel) { // This method returns the Pig type according to the talendType
+            IMetadataColumn column = metadataTable.getColumn(columnLabel);
+            String talendType = column.getTalendType();
+
+            String typeToGenerate = JavaTypesManager.getTypeToGenerate(talendType, false);
+            // Integers: int(Integer), long(Long), short(Short), byte(Byte), BigDecimal, double(Double).
+            if (typeToGenerate.equals("int") || typeToGenerate.equals("byte")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                return "int"; //$NON-NLS-1$
+            } else if (typeToGenerate.equals("long")) { //$NON-NLS-1$
+                return "bigint"; //$NON-NLS-1$
+			} else if (typeToGenerate.equals("short")) { //$NON-NLS-1$
+				return "smallint";
+			} else if (typeToGenerate.equals("boolean")) { //$NON-NLS-1$
+				return "boolean";
+            } else if (typeToGenerate.equals("BigDecimal") || typeToGenerate.equals("double")) { //$NON-NLS-1$
+                return "double"; //$NON-NLS-1$
+            }
+
+            // Floats: float(Float)
+            if (typeToGenerate.equals("float")) { //$NON-NLS-1$ //$NON-NLS-2$
+                return "float"; //$NON-NLS-1$
+            }
+
+            // others treat as string
+            return "string"; //$NON-NLS-1$
 	
        }
 

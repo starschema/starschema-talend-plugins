@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -32,7 +32,7 @@ import org.talend.designer.core.ui.preferences.TalendDesignerPrefConstants;
 /**
  * Each parameter of the components are read and written in this class. <br/>
  * 
- * $Id: ElementParameter.java 56913 2011-03-18 07:22:17Z hwang $
+ * $Id: ElementParameter.java 78755 2012-02-23 08:31:15Z hqzhang $
  * 
  */
 public class ElementParameter implements IElementParameter {
@@ -136,6 +136,8 @@ public class ElementParameter implements IElementParameter {
     private String jar; // for JAVA_COMMAND
 
     private String[] args;
+
+    private int maxlength;
 
     public ElementParameter(final IElement element) {
         this.element = element;
@@ -912,10 +914,11 @@ public class ElementParameter implements IElementParameter {
         clone.setNotReadOnlyIf(getNotReadOnlyIf());
         clone.setNotShowIf(getNotShowIf());
         clone.setNumRow(getNumRow());
-        final IElementParameter pParameter = getParentParameter();
-        if (pParameter != null) {
-            clone.setParentParameter(pParameter.getClone());
-        }
+       //changed by hqzhang for TDI 19754 start
+//        final IElementParameter pParameter = getParentParameter();
+//        if (pParameter != null) {
+//            clone.setParentParameter(pParameter.getClone());
+//        }
         clone.setReadOnly(isReadOnly());
         clone.setReadOnlyIf(getReadOnlyIf());
         clone.setRepositoryValue(getRepositoryValue());
@@ -926,7 +929,13 @@ public class ElementParameter implements IElementParameter {
         clone.setValue(getValue()); // ?
         // clone.setValueToDefault(null)
         clone.setNoContextAssist(isNoContextAssist());
-
+        if(this.getChildParameters().size()>0){
+            for(String name : this.getChildParameters().keySet()){
+                IElementParameter childParamClone = this.getChildParameters().get(name).getClone();
+                clone.getChildParameters().put(name, childParamClone);
+                childParamClone.setParentParameter(clone);
+            }
+        }//TDI 19754 end
         return clone;
     }
 
@@ -1000,5 +1009,23 @@ public class ElementParameter implements IElementParameter {
      */
     public void setJavaFunction(String javaFunction) {
         this.javaFunction = javaFunction;
+    }
+
+    /**
+     * DOC Administrator Comment method "setMaxLength".
+     * 
+     * @param maxlength
+     */
+    public void setMaxLength(int maxlength) {
+        this.maxlength = maxlength;
+    }
+
+    /**
+     * Getter for maxlength.
+     * 
+     * @return the maxlength
+     */
+    public int getMaxlength() {
+        return this.maxlength;
     }
 }

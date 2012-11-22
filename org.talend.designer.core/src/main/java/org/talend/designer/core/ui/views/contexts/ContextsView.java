@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -34,6 +34,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.part.ViewPart;
+import org.talend.core.model.process.IContext;
 import org.talend.core.model.process.IContextManager;
 import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.properties.ContextItem;
@@ -130,11 +131,21 @@ public class ContextsView extends ViewPart {
                                         JobEditorInput jobInput = (JobEditorInput) editorInput;
                                         IProcess2 process = jobInput.getLoadedProcess();
                                         IContextManager contextManager = process.getContextManager();
-                                        Set<String> addedContext = ConnectionContextHelper.checkAndAddContextVariables(
-                                                contextItem, contextSet, contextManager, false);
-                                        if (addedContext != null && addedContext.size() > 0) {
-                                            ConnectionContextHelper.addContextVarForJob(process, contextItem, contextSet);
+                                        List<IContext> listContext = contextManager.getListContext();
+                                        // context group will reflect absolutely if no context variable in contextViewer
+                                        if (!ConnectionContextHelper.containsVariable(contextManager)) {
+                                            // for bug 15608
+                                            ConnectionContextHelper.addContextVarForJob(process, contextItem, contextManager);
+                                            // ConnectionContextHelper.checkAndAddContextsVarDND(contextItem,
+                                            // contextManager);
                                             created = true;
+                                        } else {
+                                            Set<String> addedContext = ConnectionContextHelper.checkAndAddContextVariables(
+                                                    contextItem, contextSet, contextManager, false);
+                                            if (addedContext != null && addedContext.size() > 0) {
+                                                ConnectionContextHelper.addContextVarForJob(process, contextItem, contextSet);
+                                                created = true;
+                                            }
                                         }
                                     }
                                 }
@@ -292,6 +303,14 @@ public class ContextsView extends ViewPart {
             if (modified) {
                 part.getTalendEditor().setDirty(true);
             }
+            IEditorInput editorInput = part.getEditorInput();
+            if (editorInput != null && editorInput instanceof JobEditorInput) {
+                JobEditorInput jobInput = (JobEditorInput) editorInput;
+                IProcess2 process = jobInput.getLoadedProcess();
+                if (process != null) {
+                    contextComposite.setReadOnly(process.isReadOnly());
+                }
+            }
         }
         contextComposite.setPart(part);
     }
@@ -326,5 +345,9 @@ public class ContextsView extends ViewPart {
     public void reset() {
         part = null;
         contextComposite.setPart(null);
+    }
+
+    public ContextViewComposite getContextViewComposite() {
+        return this.contextComposite;
     }
 }

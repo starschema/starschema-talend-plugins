@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,8 +12,8 @@
 // ============================================================================
 package org.talend.designer.core.ui.preferences;
 
-import org.eclipse.gmf.runtime.common.ui.preferences.AbstractPreferencePage;
-import org.eclipse.gmf.runtime.common.ui.preferences.FontFieldEditor;
+import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.jface.preference.FontFieldEditor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -29,7 +29,7 @@ import org.talend.designer.core.i18n.Messages;
  * 
  * @deprecated moved to AppearancePreferencePage
  */
-public class PropertiesPreferencePage extends AbstractPreferencePage {
+public class PropertiesPreferencePage extends FieldEditorPreferencePage {
 
     private final String groupName = "Memo Text Font"; //$NON-NLS-1$
 
@@ -40,18 +40,6 @@ public class PropertiesPreferencePage extends AbstractPreferencePage {
      */
     public PropertiesPreferencePage() {
         setPreferenceStore(DesignerPlugin.getDefault().getPreferenceStore());
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.eclipse.gmf.runtime.common.ui.preferences.AbstractPreferencePage#addFields(org.eclipse.swt.widgets.Composite)
-     */
-    @Override
-    protected void addFields(Composite parent) {
-        Composite main = createPageLayout(parent);
-        createFontAndColorGroup(main);
     }
 
     /**
@@ -105,14 +93,11 @@ public class PropertiesPreferencePage extends AbstractPreferencePage {
         addField(memoFontEditor);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.eclipse.gmf.runtime.common.ui.preferences.AbstractPreferencePage#initHelp()
-     */
     @Override
-    protected void initHelp() {
-        // do nothing.
+    protected void createFieldEditors() {
+        Composite parent = getFieldEditorParent();
+        Composite main = createPageLayout(parent);
+        createFontAndColorGroup(main);
     }
 
 }

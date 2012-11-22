@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -114,6 +114,39 @@ public class ShowSelectedContextDialog extends Dialog {
         }
 
         public void onContextRemoveParameter(IContextManager contextManager, Set<String> paramNames) {
+
+        }
+
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.talend.core.ui.context.IContextModelManager#onContextRemoveParameter(org.talend.core.model.process.
+         * IContextManager, java.lang.String, java.lang.String)
+         */
+        public void onContextRemoveParameter(IContextManager contextManager, String paramName, String sourceId) {
+            // TODO Auto-generated method stub
+
+        }
+
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.talend.core.ui.context.IContextModelManager#onContextRemoveParameter(org.talend.core.model.process.
+         * IContextManager, java.util.Set, java.lang.String)
+         */
+        public void onContextRemoveParameter(IContextManager contextManager, Set<String> paramNames, String sourceId) {
+            // TODO Auto-generated method stub
+
+        }
+
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.talend.core.ui.context.IContextModelManager#onContextRenameParameter(org.talend.core.model.process.
+         * IContextManager, java.lang.String, java.lang.String, java.lang.String)
+         */
+        public void onContextRenameParameter(IContextManager contextManager, String sourceId, String oldName, String newName) {
+            // TODO Auto-generated method stub
 
         }
 

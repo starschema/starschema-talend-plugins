@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,7 +38,7 @@ import org.talend.designer.core.ui.editor.subjobcontainer.SubjobContainerPart;
 /**
  * Edit policy of the Diagram that will allow to move the objects on it and create nodes. <br/>
  * 
- * $Id: ProcessLayoutEditPolicy.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ProcessLayoutEditPolicy.java 79831 2012-03-15 05:18:56Z fwang $
  * 
  */
 public class ProcessLayoutEditPolicy extends XYLayoutEditPolicy {
@@ -72,6 +72,14 @@ public class ProcessLayoutEditPolicy extends XYLayoutEditPolicy {
                 return null;
             }
             MoveNodeCommand locationCommand = new MoveNodeCommand((Node) child.getModel(), ((Rectangle) constraint).getLocation());
+            return locationCommand;
+        }
+        // add for bug TDI-7706,when moving Node,the note can't move
+        if (child instanceof NoteEditPart) {
+            if (((Note) child.getModel()).isReadOnly()) {
+                return null;
+            }
+            MoveNoteCommand locationCommand = new MoveNoteCommand((Note) child.getModel(), ((Rectangle) constraint).getLocation());
             return locationCommand;
         }
 

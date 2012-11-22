@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -40,7 +40,7 @@ public interface IContextManager {
 
     public void fireContextsChangedEvent();
 
-    public boolean checkValidParameterName(String parameterName);
+    public boolean checkValidParameterName(String oldParameterName, String newParameterName);
 
     public void saveToEmf(EList contextTypeList);
 

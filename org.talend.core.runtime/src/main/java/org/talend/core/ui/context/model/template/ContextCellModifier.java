@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,6 +12,9 @@
 // ============================================================================
 package org.talend.core.ui.context.model.template;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.swt.widgets.TreeItem;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.language.LanguageManager;
@@ -20,6 +23,7 @@ import org.talend.core.model.metadata.types.JavaType;
 import org.talend.core.model.metadata.types.JavaTypesManager;
 import org.talend.core.model.process.IContext;
 import org.talend.core.model.process.IContextParameter;
+import org.talend.core.model.utils.ContextParameterUtils;
 import org.talend.core.ui.context.ContextManagerHelper;
 import org.talend.core.ui.context.ContextTemplateComposite;
 import org.talend.core.ui.context.model.AbstractContextCellModifier;
@@ -29,16 +33,30 @@ import org.talend.core.ui.context.model.AbstractContextCellModifier;
  */
 public class ContextCellModifier extends AbstractContextCellModifier {
 
+    private ContextTemplateComposite variableTabComposite;
+
     public ContextCellModifier(ContextTemplateComposite parentComposite) {
         this(parentComposite, false);
+        this.variableTabComposite = parentComposite;
     }
 
     public ContextCellModifier(ContextTemplateComposite parentComposite, boolean reposFlag) {
         super(parentComposite, reposFlag);
+        this.variableTabComposite = parentComposite;
     }
 
     protected ContextTemplateComposite getParentMode() {
         return (ContextTemplateComposite) super.getParentMode();
+    }
+
+    private String getParentModelSourceId(ContextVariableTabParentModel parent) {
+        boolean isGroupBySource = variableTabComposite.isGroupBySource();
+        String sourceId = null;
+        if (isGroupBySource)
+            sourceId = parent.getSourceId();
+        else
+            sourceId = parent.getContextParameter().getSource();
+        return sourceId;
     }
 
     /*
@@ -50,6 +68,18 @@ public class ContextCellModifier extends AbstractContextCellModifier {
         if (getModelManager().isReadOnly()) {
             return false;
         }
+
+        if (element instanceof ContextVariableTabParentModel) {
+            ContextVariableTabParentModel parent = (ContextVariableTabParentModel) element;
+            String sourceId = getParentModelSourceId(parent);
+            if (IContextParameter.BUILT_IN.equals(sourceId)) {
+                if (ContextConstant.NAME_COLUMN_NAME.equals(property) || ContextConstant.COMMENT_COLUMN_NAME.equals(property)
+                        || ContextConstant.TYPE_COLUMN_NAME.equals(property))
+                    return true;
+            } else
+                return false;
+        }
+
         IContextParameter para = getRealParameter(element);
         if (para == null) {
             return false;
@@ -74,13 +104,16 @@ public class ContextCellModifier extends AbstractContextCellModifier {
      * @see org.eclipse.jface.viewers.ICellModifier#getValue(java.lang.Object, java.lang.String)
      */
     public Object getValue(Object element, String property) {
-        IContextParameter para = getRealParameter(element);
+        IContextParameter contextPara = null;
+        if (element instanceof ContextVariableTabParentModel) {
+            ContextVariableTabParentModel parent = (ContextVariableTabParentModel) element;
+            contextPara = parent.getContextParameter();
+            if (ContextConstant.NAME_COLUMN_NAME.equals(property)) {
+                return contextPara.getName();
+            } else if (ContextConstant.SOURCE_COLUMN_NAME.equals(property)) {
 
-        if (para != null) {
-            if (property.equals(ContextConstant.NAME_COLUMN_NAME)) {
-                return para.getName();
-            } else if (property.equals(ContextConstant.TYPE_COLUMN_NAME)) {
-                String s = ContextManagerHelper.convertFormat(para.getType());
+            } else if (ContextConstant.TYPE_COLUMN_NAME.equals(property)) {
+                String s = ContextManagerHelper.convertFormat(contextPara.getType());
                 final ECodeLanguage codeLanguage = LanguageManager.getCurrentLanguage();
                 if (codeLanguage == ECodeLanguage.JAVA) {
                     for (int i = 0; i < ContextParameterJavaTypeManager.getJavaTypesLabels().length; i++) {
@@ -97,12 +130,17 @@ public class ContextCellModifier extends AbstractContextCellModifier {
                     }
                     return -1;
                 }
-
-            } else if (property.equals(ContextConstant.COMMENT_COLUMN_NAME)) {
-                return para.getComment();
+            } else if (ContextConstant.SCRIPTCODE_COLUMN_NAME.equals(property)) {
+                final ECodeLanguage codeLanguage = LanguageManager.getCurrentLanguage();
+                if (codeLanguage == ECodeLanguage.JAVA)
+                    return ContextParameterUtils.getNewScriptCode(contextPara.getName(), codeLanguage);
+                else
+                    return contextPara.getScriptCode();
+            } else if (ContextConstant.COMMENT_COLUMN_NAME.equals(property)) {
+                return contextPara.getComment();
             }
         }
-        return ""; //$NON-NLS-1$
+        return null; //$NON-NLS-1$
     }
 
     /**
@@ -117,16 +155,20 @@ public class ContextCellModifier extends AbstractContextCellModifier {
         IContext context = getContextManager().getDefaultContext();
 
         if (getParentMode().isGroupBySource()) {
-            if (element instanceof ContextParameterSortedParent) {
-                if (IContextParameter.BUILT_IN.equals(((ContextParameterSortedParent) element).getSourceId())) {
-                    para = context.getContextParameter(((ContextParameterSortedParent) element).getParameter().getName());
+            if (element instanceof ContextVariableTabParentModel) {
+                String sourceId = ((ContextVariableTabParentModel) element).getSourceId();
+                if (IContextParameter.BUILT_IN.equals(sourceId)) {
+                    para = context.getContextParameter(sourceId, ((ContextVariableTabParentModel) element).getContextParameter()
+                            .getName());
                 }
-            } else if (element instanceof ContextParameterSortedSon) {
-                para = context.getContextParameter((((ContextParameterSortedSon) element).getParameter()).getName());
+            } else if (element instanceof ContextVariableTabChildModel) {
+                String sourceId = ((ContextVariableTabChildModel) element).getContextParameter().getSource();
+                para = context.getContextParameter(sourceId,
+                        (((ContextVariableTabChildModel) element).getContextParameter()).getName());
             }
         } else {
-            if (element instanceof ContextParameterParent) {
-                para = context.getContextParameter(((ContextParameterParent) element).getParameter().getName());
+            if (element instanceof ContextVariableTabParentModel) {
+                para = context.getContextParameter(((ContextVariableTabParentModel) element).getContextParameter().getName());
             }
         }
         return para;
@@ -140,75 +182,90 @@ public class ContextCellModifier extends AbstractContextCellModifier {
     public void modify(Object element, final String property, final Object value) {
         TreeItem item = (TreeItem) element;
         final Object object = item.getData();
-
-        final IContextParameter para = getRealParameter(object);
-        if (para == null) {
-            return;
-        }
-
-        if (property.equals(ContextConstant.NAME_COLUMN_NAME)) {
-            if (para.getName().equals(value)) {
-                return;
-            }
-            String name = para.getName();
-            getParentMode().renameParameter(name, (String) value, isRepositoryMode());
-        } else if (property.equals(ContextConstant.TYPE_COLUMN_NAME)) {
-            int index = -1;
-            String s = ContextManagerHelper.convertFormat(para.getType());
-            final ECodeLanguage codeLanguage = LanguageManager.getCurrentLanguage();
-            if (codeLanguage == ECodeLanguage.JAVA) {
-                for (int i = 0; i < ContextParameterJavaTypeManager.getJavaTypesLabels().length; i++) {
-                    if (s.equals(ContextParameterJavaTypeManager.getJavaTypesLabels()[i])) {
-                        index = i;
+        if (object instanceof ContextVariableTabParentModel) {
+            ContextVariableTabParentModel parent = (ContextVariableTabParentModel) object;
+            IContextParameter contextPara = parent.getContextParameter();
+            String originalName = contextPara.getName();
+            String sourceId = contextPara.getSource();
+            if (ContextConstant.NAME_COLUMN_NAME.equals(property)) {
+                // contextPara.setName((String) value);
+                getParentMode().renameParameter(originalName, sourceId, (String) value, isRepositoryMode());
+            } else if (ContextConstant.TYPE_COLUMN_NAME.equals(property)) {
+                // TODO get the right type.
+                int index = -1;
+                String s = ContextManagerHelper.convertFormat(contextPara.getType());
+                final ECodeLanguage codeLanguage = LanguageManager.getCurrentLanguage();
+                if (codeLanguage == ECodeLanguage.JAVA) {
+                    for (int i = 0; i < ContextParameterJavaTypeManager.getJavaTypesLabels().length; i++) {
+                        if (s.equals(ContextParameterJavaTypeManager.getJavaTypesLabels()[i])) {
+                            index = i;
+                        }
                     }
-                }
-                if (index == ((Integer) value)) {
-                    return;
-                }
-                String newType = getRealType(ContextParameterJavaTypeManager.getJavaTypesLabels()[(Integer) value]);
-                String name = para.getName();
-                for (IContext context : getContextManager().getListContext()) {
-                    for (IContextParameter contextParameter : context.getContextParameterList()) {
-                        if (name.equals(contextParameter.getName())) {
-                            contextParameter.setType(newType);
+                    if (index == ((Integer) value)) {
+                        return;
+                    }
+                    String newType = getRealType(ContextParameterJavaTypeManager.getJavaTypesLabels()[(Integer) value]);
+                    String name = contextPara.getName();
+                    for (IContext context : getContextManager().getListContext()) {
+                        for (IContextParameter contextParameter : context.getContextParameterList()) {
+                            if (name.equals(contextParameter.getName())) {
+                                contextParameter.setType(newType);
+                            }
                         }
                     }
                 }
-            } else {
-                for (int i = 0; i < ContextParameterJavaTypeManager.getPerlTypesLabels().length; i++) {
-                    if (s.equals(ContextParameterJavaTypeManager.getPerlTypesLabels()[i])) {
-                        index = i;
-                    }
-                }
-                if (index == ((Integer) value)) {
-                    return;
-                }
-                String newType = getRealType(ContextParameterJavaTypeManager.getPerlTypesLabels()[(Integer) value]);
-                String name = para.getName();
-                for (IContext context : getContextManager().getListContext()) {
-                    for (IContextParameter contextParameter : context.getContextParameterList()) {
-                        if (name.equals(contextParameter.getName())) {
-                            contextParameter.setType(newType);
-                            ContextManagerHelper.checkAndSetDefaultValue(contextParameter);
-                        }
-                    }
-                }
+                // String newType = getRealType(ContextParameterJavaTypeManager.getJavaTypesLabels()[(Integer) value]);
+                // contextPara.setType((String) newType);
+            } else if (ContextConstant.COMMENT_COLUMN_NAME.equals(property)) {
+                contextPara.setComment((String) value);
             }
-        } else if (property.equals(ContextConstant.COMMENT_COLUMN_NAME)) {
-            if (para.getComment().equals(value)) {
-                return;
-            }
-            String name = para.getName();
-            for (IContext context : getContextManager().getListContext()) {
-                for (IContextParameter contextParameter : context.getContextParameterList()) {
-                    if (name.equals(contextParameter.getName())) {
-                        contextParameter.setComment((String) value);
-                    }
+            List<Object> updateObjs = new ArrayList<Object>();
+            updateObjs.add(object);
+            lookupSameNameNode(contextPara.getSource(), originalName, item, updateObjs);
+            updateRelatedNode(updateObjs.toArray(), contextPara);
+        }
+    }
+
+    private void lookupSameNameFromChilren(String sourceId, String nodeName, TreeItem item, List<Object> updateObjs) {
+        TreeItem[] items = item.getItems();
+        if (items != null && items.length > 0) {
+            for (TreeItem tempItem : items) {
+                Object obj = tempItem.getData();
+                if (obj instanceof ContextVariableTabChildModel) {
+                    ContextVariableTabChildModel son = (ContextVariableTabChildModel) obj;
+                    String paraName = son.getContextParameter().getName();
+                    if (nodeName.equals(paraName))
+                        updateObjs.add(obj);
                 }
             }
         }
-        // set updated flag.
-        setAndRefreshFlags(object, para);
+    }
+
+    /**
+     * To look up all nodes that have the same variable name from input model.
+     * 
+     * @param nodeName
+     * @return
+     */
+    private Object[] lookupSameNameNode(String sourceId, String nodeName, TreeItem item, List<Object> updateObjs) {
+        TreeItem[] items = item.getParent().getItems();
+        if (items != null && items.length > 0) {
+            for (TreeItem tempItem : items) {
+                Object obj = tempItem.getData();
+                if (obj instanceof ContextVariableTabParentModel) {
+                    ContextVariableTabParentModel parent = (ContextVariableTabParentModel) obj;
+                    String tempSourceId = parent.getSourceId();
+                    if (!IContextParameter.BUILT_IN.equals(tempSourceId))
+                        lookupSameNameFromChilren(sourceId, nodeName, tempItem, updateObjs);
+                } else if (obj instanceof ContextVariableTabChildModel) {
+                    ContextVariableTabChildModel son = (ContextVariableTabChildModel) obj;
+                    String paraName = son.getContextParameter().getName();
+                    if (nodeName.equals(paraName))
+                        updateObjs.add(obj);
+                }
+            }
+        }
+        return updateObjs.toArray();
     }
 
     private String getRealType(String type) {

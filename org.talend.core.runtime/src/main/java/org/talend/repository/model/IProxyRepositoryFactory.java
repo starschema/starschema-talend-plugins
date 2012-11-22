@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -325,8 +325,6 @@ public interface IProxyRepositoryFactory {
     // public abstract String isServerValid();
     public abstract void create(Item item, IPath path, boolean... isImportItem) throws PersistenceException;
 
-    public abstract void createCamel(Item item, IPath path, boolean... isImportItem) throws PersistenceException;
-
     public abstract void create(Project project, Item item, IPath path, boolean... isImportItem) throws PersistenceException;
 
     public abstract void save(Item item, boolean... isMigrationTask) throws PersistenceException;
@@ -473,4 +471,13 @@ public interface IProxyRepositoryFactory {
     public List<IRepositoryViewObject> getMetadataByFolder(ERepositoryObjectType itemType, IPath path);
 
     public LockInfo getLockInfo(Item item);
+
+    /**
+     * DOC ycbai Comment method "getNavigatorViewDescription".
+     * 
+     * @return
+     */
+    public String getNavigatorViewDescription();
+
+    public void updateLockStatus() throws PersistenceException;
 }

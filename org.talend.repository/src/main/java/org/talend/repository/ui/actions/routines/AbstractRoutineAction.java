@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,6 +29,7 @@ import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.designer.codegen.ICodeGeneratorService;
 import org.talend.designer.codegen.ITalendSynchronizer;
+import org.talend.repository.ProjectManager;
 import org.talend.repository.editor.RepositoryEditorInput;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.model.RepositoryNode;
@@ -94,16 +95,21 @@ public abstract class AbstractRoutineAction extends AContextualAction {
         }
 
         if (!found) {
-            routineSynchronizer.syncRoutine(routineItem, true);
-            // need open from item file with multiple version
             IFile file = null;
-            ProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
-            String lastVersion = factory.getLastVersion(routineItem.getProperty().getId()).getVersion();
-            String curVersion = routineItem.getProperty().getVersion();
-            if (curVersion != null && curVersion.equals(lastVersion)) {
-                file = routineSynchronizer.getFile(routineItem);
-            } else {
+            ProjectManager projectManager = ProjectManager.getInstance();
+            boolean flag = projectManager.isInCurrentMainProject(routineItem);
+            if (!flag) { // is ref project
                 file = routineSynchronizer.getRoutinesFile(routineItem);
+            } else {// need open from item file with multiple version
+                routineSynchronizer.syncRoutine(routineItem, true);
+                ProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
+                String lastVersion = factory.getLastVersion(routineItem.getProperty().getId()).getVersion();
+                String curVersion = routineItem.getProperty().getVersion();
+                if (curVersion != null && curVersion.equals(lastVersion)) {
+                    file = routineSynchronizer.getFile(routineItem);
+                } else {
+                    file = routineSynchronizer.getRoutinesFile(routineItem);
+                }
             }
             RepositoryEditorInput input = new RoutineEditorInput(file, routineItem);
             input.setReadOnly(readOnly);

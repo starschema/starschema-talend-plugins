@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -44,7 +44,7 @@ import org.talend.designer.core.ui.editor.subjobcontainer.SubjobContainer;
 /**
  * This element will contain all elements that will be linked to a node.
  * 
- * $Id: NodeContainer.java 60172 2011-05-10 09:58:38Z hwang $
+ * $Id: NodeContainer.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class NodeContainer extends Element {

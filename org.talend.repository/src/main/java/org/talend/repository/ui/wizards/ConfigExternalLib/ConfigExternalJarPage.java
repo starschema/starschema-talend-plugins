@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,8 @@ import org.eclipse.swt.widgets.Text;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.utils.io.FilesUtils;
 import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.ILibraryManagerService;
 import org.talend.core.model.properties.RoutineItem;
 import org.talend.designer.core.model.utils.emf.component.ComponentFactory;
 import org.talend.designer.core.model.utils.emf.component.IMPORTType;
@@ -156,7 +159,8 @@ public class ConfigExternalJarPage extends ConfigExternalLibPage {
                     ExceptionHandler.process(e);
                 }
                 CorePlugin.getDefault().getLibrariesService().resetModulesNeeded();
-
+                // TDI-18870
+                CorePlugin.getDefault().getRunProcessService().updateLibraries(new HashSet<String>(), null);
             }
         });
 
@@ -209,6 +213,7 @@ public class ConfigExternalJarPage extends ConfigExternalLibPage {
         protected List<IMPORTType> getNewInputObject() {
             List<IMPORTType> importTypes = new ArrayList<IMPORTType>();
             ModulePropertyDialog dialog = new ModulePropertyDialog(this.getShell());
+            ConfigExternalJarPage.this.setPageComplete(false);
             if (dialog.open() == IDialogConstants.OK_ID) {
                 IMPORTType type = dialog.getImportType();
                 RoutineItem routine = getSelectedRoutine();
@@ -220,6 +225,7 @@ public class ConfigExternalJarPage extends ConfigExternalLibPage {
                 }
                 importTypes.add(type);
             }
+            ConfigExternalJarPage.this.setPageComplete(true);
             return importTypes;
         }
     }
@@ -239,7 +245,7 @@ public class ConfigExternalJarPage extends ConfigExternalLibPage {
          */
         public ModulePropertyDialog(Shell parentShell) {
             super(parentShell);
-            setShellStyle(SWT.CLOSE | SWT.MIN | SWT.MAX | SWT.RESIZE);
+            setShellStyle(SWT.CLOSE | SWT.MIN | SWT.MAX | SWT.RESIZE | SWT.APPLICATION_MODAL);
         }
 
         private IMPORTType importType = null;
@@ -278,19 +284,20 @@ public class ConfigExternalJarPage extends ConfigExternalLibPage {
             type.setMESSAGE(desText.getText());
             String modelName = "modelName"; //$NON-NLS-1$
             boolean libExists = true; // hywang add
+            ILibraryManagerService libManager = (ILibraryManagerService) GlobalServiceRegister.getDefault().getService(
+                    ILibraryManagerService.class);
+
             if (typeNameRadioButton.getSelection()) {
                 modelName = nameText.getText();
-                String path = CorePlugin.getDefault().getLibrariesService().getJavaLibrariesPath() + "/" + modelName; //$NON-NLS-N$ //$NON-NLS-1$ //$NON-NLS-1$
-                File f = new File(path);
-                if (!f.exists()) {
+                if (libManager.contains(modelName)) {
                     final String name = modelName;
                     libExists = false;
                     Display.getDefault().asyncExec(new Runnable() {
 
                         public void run() {
-                            MessageDialog.openError(getParentShell(), Messages.getString("ConfigExternalJarPage.error"), Messages.getString( //$NON-NLS-1$
-                                    "ConfigExternalJarPage.fileNotFound", name, CorePlugin.getDefault().getLibrariesService() //$NON-NLS-1$
-                                            .getJavaLibrariesPath()));
+                            MessageDialog.openError(getParentShell(),
+                                    Messages.getString("ConfigExternalJarPage.error"), Messages.getString( //$NON-NLS-1$
+                                            "ConfigExternalJarPage.fileNotFound", name));
 
                         }
                     });

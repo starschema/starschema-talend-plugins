@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -18,6 +18,7 @@ import java.util.Map;
 
 import org.eclipse.swt.graphics.RGB;
 import org.talend.core.model.process.EConnectionType;
+import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IConnectionProperty;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
@@ -27,7 +28,7 @@ import org.talend.core.model.utils.DesignerColorUtils;
 /**
  * Defines connector type and name for each component. <br/>
  * 
- * $Id: NodeConnector.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: NodeConnector.java 81089 2012-04-06 06:35:31Z ldong $
  * 
  */
 public class NodeConnector implements INodeConnector {
@@ -342,6 +343,12 @@ public class NodeConnector implements INodeConnector {
      * @see org.talend.core.model.process.INodeConnector#isMultiSchema()
      */
     public boolean isMultiSchema() {
+        IElementParameter schemaParam = parentNode.getElementParameterFromField(EParameterFieldType.SCHEMA_TYPE);
+        if (schemaParam != null && schemaParam.getContext().equals("FLOW")) {
+            if (schemaParam.isShow(parentNode.getElementParameters())) {
+                return false;
+            }
+        }
         return this.multiSchema;
     }
 

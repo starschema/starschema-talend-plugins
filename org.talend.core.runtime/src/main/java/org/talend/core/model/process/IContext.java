@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -37,6 +37,27 @@ public interface IContext {
     public void setContextParameterList(List<IContextParameter> contextParameterList);
 
     public IContextParameter getContextParameter(String parameterName);
+
+    /**
+     * Added by Marvin Wang on Mar.8, 2012, using {@link IContextParameter#getSource()} +
+     * {@link IContextParameter#getName()} can only identify an unique {@link IContextParameter}. That indicates one
+     * source can has many varibles, but the variable name must be unique. For different source, the variable names can
+     * be same.
+     * 
+     * @param sourceId
+     * @param paraName
+     * @return
+     */
+    public IContextParameter getContextParameter(String sourceId, String paraName);
+
+    /**
+     * Gets the <code>IContextParameter</code>s by given <code>parameterName</code>, caz name is not the unique
+     * attribute for the object which implements <code>IContextParameter</code>.
+     * 
+     * @param parameterName
+     * @return
+     */
+    // public List<IContextParameter> getContextParameters(String parameterName);
 
     public IContext clone();
 

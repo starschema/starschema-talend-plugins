@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -28,8 +28,6 @@ import org.talend.core.GlobalServiceRegister;
 import org.talend.core.language.LanguageManager;
 import org.talend.core.model.properties.ByteArray;
 import org.talend.core.model.properties.RoutineItem;
-import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.service.IDesignerPerlService;
 import org.talend.designer.codegen.ICodeGeneratorService;
 import org.talend.designer.codegen.ITalendSynchronizer;
@@ -40,14 +38,13 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
 import org.talend.repository.ui.actions.routines.RoutineEditorInput;
-import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC xtan class global comment. <br/>
  */
 public class SaveAsRoutineAction extends Action {
 
-    private EditorPart editorPart;
+    private final EditorPart editorPart;
 
     public SaveAsRoutineAction(EditorPart editorPart) {
         this.editorPart = editorPart;
@@ -61,8 +58,6 @@ public class SaveAsRoutineAction extends Action {
         if (dlg.open() == Window.OK) {
 
             try {
-
-                RepositoryManager.refreshCreatedNode(ERepositoryObjectType.ROUTINES);
 
                 RoutineItem routineItem = processWizard.getRoutineItem();
 
@@ -86,7 +81,6 @@ public class SaveAsRoutineAction extends Action {
 
                 IWorkbenchPage page = getActivePage();
 
-                routineEditorInput.setView((IRepositoryView) page.findView(IRepositoryView.VIEW_ID));
                 IRepositoryNode repositoryNode = RepositoryNodeUtilities.getRepositoryNode(routineEditorInput.getItem()
                         .getProperty().getId(), false);
                 routineEditorInput.setRepositoryNode(repositoryNode);

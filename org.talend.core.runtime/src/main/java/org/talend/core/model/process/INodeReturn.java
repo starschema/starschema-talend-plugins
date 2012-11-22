@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -11,6 +11,8 @@
 //
 // ============================================================================
 package org.talend.core.model.process;
+
+import java.util.List;
 
 /**
  * DOC nrousseau class global comment. Detailled comment <br/>
@@ -41,4 +43,8 @@ public interface INodeReturn {
     public abstract void setType(final String type);
 
     public abstract String getDisplayType();
+
+    public abstract void setShowIf(final String showIf);
+
+    public abstract boolean isShow(List<? extends IElementParameter> listParam);
 }

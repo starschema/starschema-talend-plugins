@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -47,6 +47,7 @@ import org.talend.designer.runprocess.IProcessMessageManager;
 import org.talend.designer.runprocess.IProcessor;
 import org.talend.designer.runprocess.ProcessorException;
 import org.talend.designer.runprocess.ProcessorUtilities;
+import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager;
 
 /**
  * DOC nrousseau class global comment. Detailled comment <br/>
@@ -249,9 +250,10 @@ public abstract class Processor implements IProcessor, IEclipseProcessor {
 
         // (feature 4258)
         if (Platform.OS_LINUX.equals(getTargetPlatform())) {
-            cmd = (String[]) ArrayUtils.add(cmd, "$*"); //$NON-NLS-1$
+            // original is $*
+            cmd = (String[]) ArrayUtils.add(cmd, JobScriptsManager.CMDFORUNIX); //$NON-NLS-1$
         } else if (Platform.OS_WIN32.equals(getTargetPlatform())) {
-            cmd = (String[]) ArrayUtils.add(cmd, "%*"); //$NON-NLS-1$
+            cmd = (String[]) ArrayUtils.add(cmd, JobScriptsManager.CMDFORWIN); //$NON-NLS-1$
         }
         return cmd;
     }
@@ -363,15 +365,6 @@ public abstract class Processor implements IProcessor, IEclipseProcessor {
     /*
      * (non-Javadoc)
      * 
-     * @see org.talend.designer.runprocess.IProcessor#getLibraryPath()
-     */
-    public String getLibraryPath() throws ProcessorException {
-        return libraryPath;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
      * @see org.talend.designer.runprocess.IProcessor#getInterpreter()
      */
     public String getInterpreter() throws ProcessorException {
@@ -440,14 +433,15 @@ public abstract class Processor implements IProcessor, IEclipseProcessor {
         codeGenerated = true; // set the flag to true to tell the code has been
         // generated at least once.
     }
-    
+
     /*
      * (non-Javadoc)
      * 
      * @see org.talend.designer.runprocess.IProcessor#generateCode(org.talend.core .model.process.IContext, boolean,
      * boolean, boolean)
      */
-    public void generateCode(boolean statistics, boolean trace, boolean javaProperties, boolean exportAsOSGI) throws ProcessorException {
+    public void generateCode(boolean statistics, boolean trace, boolean javaProperties, boolean exportAsOSGI)
+            throws ProcessorException {
         if (context == null) {
             throw new IllegalStateException("Context is empty, context must be set before call"); //$NON-NLS-1$
         }

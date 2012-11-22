@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,11 +19,12 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.BooleanUtils;
 import org.eclipse.core.resources.IFile;
@@ -92,13 +93,35 @@ public abstract class JobScriptsManager {
 
     public static final String CMDFORWIN = "%*"; //$NON-NLS-1$
 
-    public static final String CMDFORUNIX = "$*"; //$NON-NLS-1$
+    public static final String CMDFORUNIX = "\"$@\""; //$NON-NLS-1$
 
     private String selectedJobVersion; //$NON-NLS-1$
 
-    protected IProgressMonitor progressMonitor; // achen added to fix bug 0006222
+    private String bundleVersion; //$NON-NLS-1$
+
+    protected IProgressMonitor progressMonitor; // achen added to fix bug
+                                                // 0006222
 
     protected List<ContextParameterType> contextEditableResultValuesList;
+
+    protected Map<ExportChoice, Object> exportChoice;
+
+    protected String contextName;
+
+    protected String launcher;
+
+    protected int statisticPort;
+
+    protected int tracePort;
+
+    public JobScriptsManager(Map<ExportChoice, Object> exportChoiceMap, String contextName, String launcher, int statisticPort,
+            int tracePort) {
+        this.exportChoice = exportChoiceMap;
+        this.contextName = contextName;
+        this.launcher = launcher;
+        this.statisticPort = statisticPort;
+        this.tracePort = tracePort;
+    }
 
     public List<ContextParameterType> getContextEditableResultValuesList() {
         return this.contextEditableResultValuesList;
@@ -108,27 +131,12 @@ public abstract class JobScriptsManager {
         this.contextEditableResultValuesList = contextEditableResultValuesList;
     }
 
-    public Map<ExportChoice, Object> getDefaultExportChoiseMap() {
-        Map<ExportChoice, Object> exportChoiceMap = new EnumMap<ExportChoice, Object>(ExportChoice.class);
-        exportChoiceMap.put(ExportChoice.needLauncher, true);
-        exportChoiceMap.put(ExportChoice.needSystemRoutine, true);
-        exportChoiceMap.put(ExportChoice.needUserRoutine, true);
-        exportChoiceMap.put(ExportChoice.needTalendLibraries, true);
-        exportChoiceMap.put(ExportChoice.needJobItem, true);
-        exportChoiceMap.put(ExportChoice.needJobScript, true);
-        exportChoiceMap.put(ExportChoice.needContext, true);
-        exportChoiceMap.put(ExportChoice.needSourceCode, true);
-        exportChoiceMap.put(ExportChoice.applyToChildren, false);
-        exportChoiceMap.put(ExportChoice.doNotCompileCode, false);
-        return exportChoiceMap;
-    }
-
     public void setProgressMonitor(IProgressMonitor progressMonitor) {
         this.progressMonitor = progressMonitor;
     }
 
     // bug 8720
-    protected boolean isOptionChoosed(Map<ExportChoice, Object> exportChoice, Object key) {
+    protected boolean isOptionChoosed(Object key) {
         if (key != null) {
             final Object object = exportChoice.get(key);
             if (object instanceof Boolean) {
@@ -159,7 +167,22 @@ public abstract class JobScriptsManager {
         needTalendLibraries,
         needJobItem,
         needJobScript,
-        needSourceCode, // only usefull for Java, as source code is job script in Perl. Activated when needJobItem is
+        needSourceCode, // only
+                        // usefull
+                        // for
+                        // Java,
+                        // as
+                        // source
+                        // code
+                        // is
+                        // job
+                        // script
+                        // in
+                        // Perl.
+                        // Activated
+                        // when
+                        // needJobItem
+                        // is
         // selected
         needContext,
         applyToChildren,
@@ -186,13 +209,11 @@ public abstract class JobScriptsManager {
      * @return
      */
 
-    public abstract List<ExportFileResource> getExportResources(ExportFileResource[] process,
-            Map<ExportChoice, Object> exportChoiceMap, IContext context, String launcher, int statisticPort, int tracePort,
+    public abstract List<ExportFileResource> getExportResources(ExportFileResource[] process, IContext context,
             String... codeOptions) throws ProcessorException;
 
-    public abstract List<ExportFileResource> getExportResources(ExportFileResource[] process,
-            Map<ExportChoice, Object> exportChoiceMap, String contextName, String launcher, int statisticPort, int tracePort,
-            String... codeOptions) throws ProcessorException;
+    public abstract List<ExportFileResource> getExportResources(ExportFileResource[] process, String... codeOptions)
+            throws ProcessorException;
 
     protected String getTmpFolder() {
         String tmpFold = getTmpFolderPath();
@@ -222,7 +243,7 @@ public abstract class JobScriptsManager {
      * 
      * @return
      */
-    public String[] getLauncher() {
+    public static String[] getLauncher() {
         String[] launchers = { ALL_ENVIRONMENTS, UNIX_ENVIRONMENT, WINDOWS_ENVIRONMENT };
         return launchers;
     }
@@ -477,15 +498,6 @@ public abstract class JobScriptsManager {
     }
 
     /**
-     * 
-     * Gets the set of current job's context.
-     * 
-     * @return a List of context names.
-     * 
-     */
-    public abstract List<String> getJobContexts(ProcessItem processItem);
-
-    /**
      * ftang Comment method "escapeFileNameSpace".
      * 
      * @param processItem
@@ -559,6 +571,8 @@ public abstract class JobScriptsManager {
     protected IResource[] sourceResouces = null;
 
     private boolean isMultiNodes;
+
+    private String destinationPath;
 
     protected void addNodeToResource(IResource[] resources, List<IResource> sourceFile) throws CoreException {
 
@@ -644,6 +658,24 @@ public abstract class JobScriptsManager {
     }
 
     /**
+     * ftang Comment method "setJobVersion".
+     * 
+     * @param selectedJobVersion
+     */
+    public void setBundleVersion(String bundleVersion) {
+        this.bundleVersion = bundleVersion;
+    }
+
+    /**
+     * ftang Comment method "getSelectedJobVersion".
+     * 
+     * @return
+     */
+    public String getBundleVersion() {
+        return this.bundleVersion == null ? getSelectedJobVersion() : bundleVersion;
+    }
+
+    /**
      * ftang Comment method "setMultiNodes".
      * 
      * @param b
@@ -726,8 +758,15 @@ public abstract class JobScriptsManager {
                 checkAndAddProjectResource(allResources, resource, JOB_ITEMS_FOLDER_NAME + PATH_SEPARATOR + projectName,
                         FileLocator.toFileURL(projectFilePath.toFile().toURL()));
 
-                IPath itemFilePath = projectRootPath.append(typeFolderPath).append(itemPath)
-                        .append(itemName + "_" + itemVersion + "." + FileConstants.ITEM_EXTENSION); //$NON-NLS-1$ //$NON-NLS-2$
+                IPath itemFilePath;
+                if (item.getFileExtension() == null || "".equals(item.getFileExtension())) {
+                    itemFilePath = projectRootPath.append(typeFolderPath).append(itemPath)
+                            .append(itemName + "_" + itemVersion + "." + FileConstants.ITEM_EXTENSION); //$NON-NLS-1$ //$NON-NLS-2$
+                } else {
+                    itemFilePath = projectRootPath.append(typeFolderPath).append(itemPath)
+                            .append(itemName + "_" + itemVersion + "." + item.getFileExtension()); //$NON-NLS-1$ //$NON-NLS-2$
+                }
+
                 IPath propertiesFilePath = projectRootPath.append(typeFolderPath).append(itemPath)
                         .append(itemName + "_" + itemVersion + "." //$NON-NLS-1$ //$NON-NLS-2$
                                 + FileConstants.PROPERTIES_EXTENSION);
@@ -778,5 +817,40 @@ public abstract class JobScriptsManager {
     public List<String> getJobContextsComboValue(ProcessItem item) {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    public String getDestinationPath() {
+        return destinationPath;
+    }
+
+    /**
+     * @param destinationPath the destinationPath to set
+     */
+    public void setDestinationPath(String destinationPath) {
+        this.destinationPath = destinationPath;
+    }
+
+    /**
+     * Returns the root folder name.
+     * 
+     * @return
+     */
+    public String getRootFolderName(String path) {
+        String subjectString = new Path(path).lastSegment();
+        Pattern regex = Pattern.compile("(.*)(?=(\\.(tar|zip))\\b)", Pattern.CANON_EQ | Pattern.CASE_INSENSITIVE //$NON-NLS-1$
+                | Pattern.UNICODE_CASE);
+        Matcher regexMatcher = regex.matcher(subjectString);
+        if (regexMatcher.find()) {
+            subjectString = regexMatcher.group(0);
+        }
+        return subjectString.trim();
+    }
+
+    public void setTopFolder(List<ExportFileResource> resourcesToExport) {
+        return;
+    }
+
+    public String getOutputSuffix() {
+        return ".zip";
     }
 }

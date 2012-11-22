@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,13 +12,12 @@
 // ============================================================================
 package org.talend.core.runtime;
 
-import org.eclipse.core.runtime.Plugin;
 import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 import org.talend.core.AbstractDQModelService;
 import org.talend.core.GlobalServiceRegister;
-import org.talend.core.ICamelItemService;
 import org.talend.core.ICoreService;
 import org.talend.core.IManagementService;
 import org.talend.core.IService;
@@ -28,6 +27,7 @@ import org.talend.core.model.general.ILibrariesService;
 import org.talend.core.service.IWebService;
 import org.talend.core.service.IWebServiceTos;
 import org.talend.designer.core.IDesignerCoreService;
+import org.talend.repository.model.IMetadataService;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IProxyRepositoryService;
 import org.talend.repository.model.IRepositoryService;
@@ -35,7 +35,7 @@ import org.talend.repository.model.IRepositoryService;
 /**
  * DOC nrousseau class global comment. Detailled comment
  */
-public class CoreRuntimePlugin extends Plugin {
+public class CoreRuntimePlugin extends AbstractUIPlugin {
 
     public static final String PLUGIN_ID = "org.talend.core.runtime"; //$NON-NLS-1$
 
@@ -92,6 +92,14 @@ public class CoreRuntimePlugin extends Plugin {
         return null;
     }
 
+    public IMetadataService getMetadataService() {
+        if (GlobalServiceRegister.getDefault().isServiceRegistered(IMetadataService.class)) {
+            IService service = GlobalServiceRegister.getDefault().getService(IMetadataService.class);
+            return (IMetadataService) service;
+        }
+        return null;
+    }
+
     public AbstractDQModelService getDQModelService() {
         if (GlobalServiceRegister.getDefault().isDQModelServiceRegistered(AbstractDQModelService.class)) {
             IService service = GlobalServiceRegister.getDefault().getDQModelService(AbstractDQModelService.class);
@@ -112,14 +120,6 @@ public class CoreRuntimePlugin extends Plugin {
         if (GlobalServiceRegister.getDefault().isServiceRegistered(ICoreService.class)) {
             IService service = GlobalServiceRegister.getDefault().getService(ICoreService.class);
             return (ICoreService) service;
-        }
-        return null;
-    }
-
-    public ICamelItemService getCamelService() {
-        if (GlobalServiceRegister.getDefault().isServiceRegistered(ICamelItemService.class)) {
-            IService service = GlobalServiceRegister.getDefault().getService(ICamelItemService.class);
-            return (ICamelItemService) service;
         }
         return null;
     }

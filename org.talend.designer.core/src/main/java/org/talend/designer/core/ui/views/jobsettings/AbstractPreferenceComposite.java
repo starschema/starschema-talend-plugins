@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -221,6 +221,14 @@ public abstract class AbstractPreferenceComposite extends MultipleThreadDynamicC
             } else {
                 t.removeMouseListener(listenerSelection);
             }
+        } else if (control instanceof Button) {
+            Object p = control.getData(TypedTextCommandExecutor.PARAMETER_NAME);
+            Object n = control.getData("NAME");
+            if (p != null && n != null && p instanceof String && n instanceof String) {
+                if (((String) p).equals("SQLEDITOR") && ((String) n).equals("TABLE_STATS")) {
+                    return;
+                }
+            }
         } else {
             control.setEnabled(flag);
         }
@@ -241,8 +249,8 @@ public abstract class AbstractPreferenceComposite extends MultipleThreadDynamicC
         if (!update) {
             return;
         }
-        IElementParameter proElement = elem.getElementParameter(EParameterName.PROPERTY_TYPE.getName()).getChildParameters().get(
-                EParameterName.PROPERTY_TYPE.getName());
+        IElementParameter proElement = elem.getElementParameter(EParameterName.PROPERTY_TYPE.getName()).getChildParameters()
+                .get(EParameterName.PROPERTY_TYPE.getName());
         Object value = proElement.getValue();
         if (value instanceof String && ((String) value).equalsIgnoreCase(EmfComponent.REPOSITORY)) {
             String id = (String) elem.getElementParameter(
@@ -383,8 +391,9 @@ public abstract class AbstractPreferenceComposite extends MultipleThreadDynamicC
                                 String version = (String) runjobNode.getElementParameter(
                                         EParameterName.PROCESS_TYPE_VERSION.getName()).getValue();
                                 if ("".equals(id) || id == null) { //$NON-NLS-1$
-                                    MessageDialog.openWarning(getShell(), Messages.getString(
-                                            "AbstractPreferenceComposite.warning", runjobNode.getUniqueName()), //$NON-NLS-1$
+                                    MessageDialog.openWarning(
+                                            getShell(),
+                                            Messages.getString("AbstractPreferenceComposite.warning", runjobNode.getUniqueName()), //$NON-NLS-1$
                                             Messages.getString(
                                                     "AbstractPreferenceComposite.jobAssigned", runjobNode.getUniqueName())); //$NON-NLS-1$
                                     return;

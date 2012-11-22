@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -24,6 +24,8 @@ import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.image.ECoreImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.CorePlugin;
+import org.talend.core.model.properties.Item;
+import org.talend.core.model.properties.JobletProcessItem;
 import org.talend.core.model.properties.ProcessItem;
 import org.talend.core.model.relationship.RelationshipItemBuilder;
 import org.talend.core.model.repository.ERepositoryObjectType;
@@ -67,7 +69,7 @@ public class SetupProcessDependenciesRoutinesAction extends AContextualAction {
             RepositoryNode node = (RepositoryNode) o;
             switch (node.getType()) {
             case REPOSITORY_ELEMENT:
-                if (node.getObjectType() != ERepositoryObjectType.PROCESS) {
+                if (node.getObjectType() != ERepositoryObjectType.PROCESS && node.getObjectType() != ERepositoryObjectType.JOBLET) {
                     canWork = false;
                 } else {
                     // canWork = false;
@@ -114,32 +116,42 @@ public class SetupProcessDependenciesRoutinesAction extends AContextualAction {
                 || status == ERepositoryStatus.LOCK_BY_USER) {
             readonly = true;
         }
-        ProcessItem processItem = (ProcessItem) node.getObject().getProperty().getItem();
-        // try {
-        // IRepositoryViewObject lastVersion =
-        // repFactory.getLastVersion(ProjectManager.getInstance().getCurrentProject(),
-        // processItem.getProperty().getId());
-        // if (lastVersion != null) {
-        // processItem = (ProcessItem) lastVersion.getProperty().getItem();
-        // }
-        // } catch (PersistenceException e1) {
-        // ExceptionHandler.process(e1);
-        // }
+        Item item = node.getObject().getProperty().getItem();
+        if (item instanceof ProcessItem) {
+            ProcessItem processItem = (ProcessItem) item;
+            ProcessType process = processItem.getProcess();
 
-        ProcessType process = processItem.getProcess();
+            SetupProcessDependenciesRoutinesDialog dialog = new SetupProcessDependenciesRoutinesDialog(PlatformUI.getWorkbench()
+                    .getDisplay().getActiveShell(), process, readonly);
+            if (dialog.open() == Window.OK && !readonly) {
+                process.getParameters().getRoutinesParameter().clear();
 
-        SetupProcessDependenciesRoutinesDialog dialog = new SetupProcessDependenciesRoutinesDialog(PlatformUI.getWorkbench()
-                .getDisplay().getActiveShell(), process, readonly);
-        if (dialog.open() == Window.OK && !readonly) {
-            process.getParameters().getRoutinesParameter().clear();
+                createRoutinesDependencies(process, dialog.getSystemRoutines());
+                createRoutinesDependencies(process, dialog.getUserRoutines());
+                try {
+                    CorePlugin.getDefault().getRepositoryService().getProxyRepositoryFactory().save(processItem);
+                    RelationshipItemBuilder.getInstance().addOrUpdateItem(processItem);
+                } catch (PersistenceException e) {
+                    ExceptionHandler.process(e);
+                }
+            }
+        } else if (item instanceof JobletProcessItem) {
+            JobletProcessItem jobProcessItem = (JobletProcessItem) item;
+            ProcessType process = jobProcessItem.getJobletProcess();
 
-            createRoutinesDependencies(process, dialog.getSystemRoutines());
-            createRoutinesDependencies(process, dialog.getUserRoutines());
-            try {
-                CorePlugin.getDefault().getRepositoryService().getProxyRepositoryFactory().save(processItem);
-                RelationshipItemBuilder.getInstance().addOrUpdateItem(processItem);
-            } catch (PersistenceException e) {
-                ExceptionHandler.process(e);
+            SetupProcessDependenciesRoutinesDialog dialog = new SetupProcessDependenciesRoutinesDialog(PlatformUI.getWorkbench()
+                    .getDisplay().getActiveShell(), process, readonly);
+            if (dialog.open() == Window.OK && !readonly) {
+                process.getParameters().getRoutinesParameter().clear();
+
+                createRoutinesDependencies(process, dialog.getSystemRoutines());
+                createRoutinesDependencies(process, dialog.getUserRoutines());
+                try {
+                    CorePlugin.getDefault().getRepositoryService().getProxyRepositoryFactory().save(jobProcessItem);
+                    RelationshipItemBuilder.getInstance().addOrUpdateItem(jobProcessItem);
+                } catch (PersistenceException e) {
+                    ExceptionHandler.process(e);
+                }
             }
         }
     }

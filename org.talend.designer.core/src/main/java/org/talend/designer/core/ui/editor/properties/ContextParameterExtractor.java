@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -43,7 +43,7 @@ import org.talend.designer.core.ui.wizards.ContextParameterWizard;
 /**
  * Extract context parameter from the GUI. <br/>
  * 
- * $Id: ContextParameterExtractor.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ContextParameterExtractor.java 80832 2012-04-01 07:15:25Z fwang $
  * 
  */
 public final class ContextParameterExtractor {
@@ -76,6 +76,10 @@ public final class ContextParameterExtractor {
                     // // repository context.");
                     // return;
                     // }
+                    // add for bug TDI-20336
+                    if (process == null) {
+                        return;
+                    }
                     IContextParameter parameter = buildParameterFrom(text, process.getContextManager(), parameterName);
                     if (parameter == null) { // some context have existed
                         return;
@@ -171,9 +175,9 @@ public final class ContextParameterExtractor {
         nameProposal = nameProposal.replace(" ", "_"); //$NON-NLS-1$ //$NON-NLS-2$
 
         IContextParameter parameter = new JobContextParameter();
-        if (manager.checkValidParameterName(parameterName)) {
+        if (manager.checkValidParameterName(null, parameterName)) {
             parameter.setName(parameterName);
-        } else if (manager.checkValidParameterName(nameProposal)) {
+        } else if (manager.checkValidParameterName(null, nameProposal)) {
             parameter.setName(nameProposal);
         } else {
             parameter.setName(""); //$NON-NLS-1$

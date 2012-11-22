@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -22,6 +22,7 @@ import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.ui.PlatformUI;
 import org.talend.designer.core.ui.AbstractMultiPageTalendEditor;
+import org.talend.designer.core.ui.editor.nodecontainer.NodeContainerPart;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.nodes.NodePart;
 import org.talend.designer.core.ui.editor.notes.Note;
@@ -91,6 +92,17 @@ public class MultiplePasteCommand extends CompoundCommand {
                     Note currentNode = (Note) editPart.getModel();
                     if (noteCmd.getNoteList().contains(currentNode)) {
                         sel.add(editPart);
+                    }
+                } else if (editPart instanceof SubjobContainerPart) {// add for the bug TDI-7706
+                    for (EditPart subjobChildsPart : (List<EditPart>) editPart.getChildren()) {
+                        if (subjobChildsPart instanceof NodeContainerPart) {
+                            if (nodeCmd.getNodeContainerList().contains(((NodeContainerPart) subjobChildsPart).getModel())) {
+                                NodePart nodePart = ((NodeContainerPart) subjobChildsPart).getNodePart();
+                                if (nodePart != null) {
+                                    sel.add(nodePart);
+                                }
+                            }
+                        }
                     }
                 }
             }

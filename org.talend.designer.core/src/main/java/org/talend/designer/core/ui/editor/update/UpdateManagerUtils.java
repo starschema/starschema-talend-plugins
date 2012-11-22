@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -22,7 +22,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.PlatformUI;
 import org.talend.commons.exception.LoginException;
@@ -213,8 +212,9 @@ public final class UpdateManagerUtils {
             return false;
         }
         try {
-            UpdateDetectionDialog checkDialog = new UpdateDetectionDialog(Display.getCurrent().getActiveShell(), results,
-                    onlySimpleShow);
+            // changed by hqzhang, Display.getCurrent().getActiveShell() may cause studio freeze
+            UpdateDetectionDialog checkDialog = new UpdateDetectionDialog(PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell(), results, onlySimpleShow);
 
             if (checkDialog.open() == IDialogConstants.OK_ID) {
                 // final List<Object> selectResult = Arrays.asList(checkDialog.getResult());
@@ -542,6 +542,7 @@ public final class UpdateManagerUtils {
         case NODE_QUERY:
         case NODE_SAP_IDOC:
         case NODE_SAP_FUNCTION:
+        case NODE_VALIDATION_RULE:
             command = new UpdateNodeParameterCommand(result);
             break;
         case JOB_PROPERTY_EXTRA:
@@ -575,17 +576,21 @@ public final class UpdateManagerUtils {
             //
             Object job = result.getJob();
             boolean executed = false;
+            boolean isSaveModifiedItem = false;
             if (job != null) {
                 if (job instanceof IProcess2) {
                     IProcess2 process = (IProcess2) job;
                     process.getCommandStack().execute(command);
+                    if (process.getEditor() != null) {
+                        isSaveModifiedItem = true;
+                    }
                     executed = true;
                 }
             }
             if (!executed) {
                 command.execute();
             }
-            if (result.isFromItem()) {
+            if (result.isFromItem() || !isSaveModifiedItem) {
                 // save updated process
                 saveModifiedItem(result);
             }

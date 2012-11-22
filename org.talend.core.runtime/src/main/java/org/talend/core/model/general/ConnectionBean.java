@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -61,6 +61,15 @@ public class ConnectionBean implements Cloneable {
         newConnection.setRepositoryId(RepositoryConstants.REPOSITORY_LOCAL_ID);
         newConnection.setPassword(""); //$NON-NLS-1$
         // newConnection.setUser("your@userName.here"); //$NON-NLS-1$
+        return newConnection;
+    }
+
+    public static ConnectionBean getDefaultRemoteConnectionBean() {
+        ConnectionBean newConnection = new ConnectionBean();
+        newConnection.setName(Messages.getString("ConnectionBean.Remote")); //$NON-NLS-1$
+        newConnection.setDescription(Messages.getString("ConnectionBean.DefaultConnection")); //$NON-NLS-1$
+        newConnection.setRepositoryId(RepositoryConstants.REPOSITORY_REMOTE_ID);
+        newConnection.setPassword(""); //$NON-NLS-1$
         return newConnection;
     }
 

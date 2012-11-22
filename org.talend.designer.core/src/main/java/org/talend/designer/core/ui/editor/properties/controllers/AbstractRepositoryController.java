@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -40,10 +40,13 @@ import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.IESBService;
 import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.metadata.builder.connection.QueriesConnection;
 import org.talend.core.model.metadata.builder.connection.Query;
+import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
 import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.properties.ConnectionItem;
@@ -52,6 +55,7 @@ import org.talend.core.model.properties.FileItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.LinkRulesItem;
 import org.talend.core.model.properties.RulesItem;
+import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.properties.tab.IDynamicProperty;
 import org.talend.designer.core.DesignerPlugin;
@@ -115,6 +119,10 @@ public abstract class AbstractRepositoryController extends AbstractElementProper
         combo.setEnabled(!propertyTypeParameter.isReadOnly());
         if (elem instanceof Node) {
             combo.setToolTipText(VARIABLE_TOOLTIP + propertyTypeParameter.getVariableName());
+        }
+        if (param.getFieldType() == EParameterFieldType.PROPERTY_TYPE || param.getFieldType() == EParameterFieldType.SCHEMA_TYPE
+                || param.getFieldType() == EParameterFieldType.QUERYSTORE_TYPE) {
+            combo.setEnabled(ExtractMetaDataUtils.haveLoadMetadataNode());
         }
 
         CLabel labelLabel = getWidgetFactory().createCLabel(subComposite, propertyTypeParameter.getDisplayName());
@@ -259,13 +267,17 @@ public abstract class AbstractRepositoryController extends AbstractElementProper
             return null;
         }
         if (elem instanceof Node) {
-            String propertyValue = (String) (((Node) elem).getPropertyValue(EParameterName.REPOSITORY_PROPERTY_TYPE.getName()));
-            IRepositoryViewObject lastVersion = UpdateRepositoryUtils.getRepositoryObjectById(propertyValue);
-            if (lastVersion != null) {
-                final Item item = lastVersion.getProperty().getItem();
-                if (item != null && item instanceof ConnectionItem) {
-                    Connection repositoryConn = ((ConnectionItem) item).getConnection();
-                    return repositoryConn;
+            IElementParameter elementParameter = ((Node) elem).getElementParameter(EParameterName.PROPERTY_TYPE.getName());
+            if (elementParameter != null && !EmfComponent.BUILTIN.equals(elementParameter.getValue())) {
+                String propertyValue = (String) (((Node) elem)
+                        .getPropertyValue(EParameterName.REPOSITORY_PROPERTY_TYPE.getName()));
+                IRepositoryViewObject lastVersion = UpdateRepositoryUtils.getRepositoryObjectById(propertyValue);
+                if (lastVersion != null) {
+                    final Item item = lastVersion.getProperty().getItem();
+                    if (item != null && item instanceof ConnectionItem) {
+                        Connection repositoryConn = ((ConnectionItem) item).getConnection();
+                        return repositoryConn;
+                    }
                 }
             }
         }
@@ -326,13 +338,20 @@ public abstract class AbstractRepositoryController extends AbstractElementProper
             Item item;
             String displayName = "";
             try {
-                IRepositoryViewObject object = factory.getLastVersion(linkedRepository);
+                IRepositoryViewObject object = factory.getLastVersion(linkedRepository.split(" - ")[0]);
                 if (object == null) {
                     return;
                 }
                 item = object.getProperty().getItem();
                 // Assert.isTrue(item instanceof ConnectionItem);
-                if (item instanceof ConnectionItem) {
+                IESBService service = null;
+                if (GlobalServiceRegister.getDefault().isServiceRegistered(IESBService.class)) {
+                    service = (IESBService) GlobalServiceRegister.getDefault().getService(IESBService.class);
+                }
+                if (service != null && ERepositoryObjectType.getItemType(item) == service.getServicesType()) {
+                    lastItemUsed = (ConnectionItem) item;
+                    displayName = "Service:" + service.getServiceLabel(item, linkedRepository);
+                } else if (item instanceof ConnectionItem) {
                     lastItemUsed = (ConnectionItem) item;
                     displayName = dynamicProperty.getRepositoryAliasName(lastItemUsed) + ":" //$NON-NLS-1$
                             + lastItemUsed.getProperty().getLabel();

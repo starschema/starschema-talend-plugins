@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -120,7 +120,7 @@ public abstract class AbstractStatsLogsComponent implements IComponent {
     }
 
     // no use for virtual component
-    public String getPluginFullName() {
+    public String getPluginExtension() {
         return null;
     }
 
@@ -178,20 +178,16 @@ public abstract class AbstractStatsLogsComponent implements IComponent {
     }
 
     // no use for virtual component
-    public void setIcon16(ImageDescriptor icon16) {
-    }
-
-    // no use for virtual component
-    public void setIcon24(ImageDescriptor icon24) {
-    }
-
-    // no use for virtual component
-    public void setIcon32(ImageDescriptor icon32) {
-    }
+    public void setImageRegistry(java.util.Map<String, ImageDescriptor> imageRegistry) {
+    };
 
     // no use for virtual component
     public boolean useMerge() {
         return false;
+    }
+
+    public String getRepositoryType() {
+        return null;
     }
 
     public List<? extends IElementParameter> createElementParameters(INode node) {

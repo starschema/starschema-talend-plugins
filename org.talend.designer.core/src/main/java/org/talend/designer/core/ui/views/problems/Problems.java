@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -50,6 +50,7 @@ import org.talend.core.model.properties.ProcessItem;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.properties.RoutineItem;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.designer.core.DesignerPlugin;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.ui.editor.nodes.Node;
@@ -61,7 +62,7 @@ import com.ibm.icu.text.MessageFormat;
 /**
  * DOC nrousseau class global comment. Detailled comment <br/>
  * 
- * $Id: Problems.java 62588 2011-06-16 08:24:28Z hywang $
+ * $Id: Problems.java 81205 2012-04-09 07:43:59Z cli $
  * 
  */
 public class Problems {
@@ -211,7 +212,11 @@ public class Problems {
         List<String> statusList = new ArrayList<String>();
 
         for (Problem problem : problemList.getProblemList()) {
-            if (problem.getNodeName() != null && problem.getNodeName().equals(element.getLabel())
+            String elementUniqueName = element.getLabel();
+            if (element.isJoblet()) {
+                elementUniqueName = element.getUniqueName();
+            }
+            if (problem.getNodeName() != null && problem.getNodeName().equals(elementUniqueName)
                     && problem.getStatus().equals(status)) {
                 statusList.add(problem.getDescription());
             }
@@ -323,9 +328,10 @@ public class Problems {
              * @see java.lang.Runnable#run()
              */
             public void run() {
-                IRepositoryView viewPart = (IRepositoryView) PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
-                        .findView(IRepositoryView.VIEW_ID);
-                viewPart.refresh();
+                IRepositoryView viewPart = RepositoryManagerHelper.findRepositoryView();
+                if (viewPart != null) {
+                    viewPart.refresh();
+                }
             }
         });
     }
@@ -347,8 +353,9 @@ public class Problems {
         }
         for (Problem problem : problemList) {
             /* use id and version to filter the problems,see bug 20560 */
+            // if problem not instanceof TalendProblem ,node don't operate it.for bug 23088
             if (problem.getJobInfo() != null && problem.getJobInfo().getJobId() != null
-                    && problem.getJobInfo().getJobId().equals(process.getId())) {
+                    && problem.getJobInfo().getJobId().equals(process.getId()) && !(problem instanceof TalendProblem)) {
                 if (problem.getJobInfo().getJobVersion() != null
                         && problem.getJobInfo().getJobVersion().equals(process.getVersion())) {
                     if (problem.getNodeName() == null) {
@@ -396,7 +403,7 @@ public class Problems {
             if (problem == null || problem instanceof TalendProblem)
                 continue;
             if (problem.getJobInfo() != null
-                    && (problem.getJobInfo().getJobName().equals(process.getName()) && problem.getJobInfo().getJobVersion()
+                    && (problem.getJobInfo().getJobId().equals(process.getId()) && problem.getJobInfo().getJobVersion()
                             .equals(process.getVersion()))) {
                 iter.remove();
             }
@@ -411,12 +418,17 @@ public class Problems {
     }
 
     public static void removeProblemsByElement(Node element) {
-
+        IProcess process = element.getProcess();
         for (Iterator<Problem> iter = problemList.getProblemList().iterator(); iter.hasNext();) {
             Problem problem = iter.next();
-            if (problem.getNodeName() != null && (problem.getNodeName().equals(element.getLabel()))) {
-                iter.remove();
+            if (problem.getJobInfo() != null
+                    && (problem.getJobInfo().getJobId().equals(process.getId()) && problem.getJobInfo().getJobVersion()
+                            .equals(process.getVersion()))) {
+                if (problem.getNodeName() != null && (problem.getNodeName().equals(element.getUniqueName()))) {
+                    iter.remove();
+                }
             }
+
         }
         refreshProblemTreeView();
     }

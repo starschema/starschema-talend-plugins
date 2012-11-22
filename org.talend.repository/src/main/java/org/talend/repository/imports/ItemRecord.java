@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,11 +20,17 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.swt.graphics.Image;
+import org.talend.commons.ui.runtime.image.IImage;
+import org.talend.commons.ui.runtime.image.ImageProvider;
+import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.Project;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.repository.IRepositoryContentHandler;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.repository.RepositoryContentManager;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.core.ui.images.CoreImageProvider;
 
 /**
@@ -87,8 +93,15 @@ public class ItemRecord {
 
     public String getItemName() {
         if (itemName == null) {
-            itemName = ERepositoryObjectType.getItemType(property.getItem()).toString() + " " + property.getLabel() //$NON-NLS-1$
-                    + " " + property.getVersion(); //$NON-NLS-1$
+            IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                    IBrandingService.class);
+            boolean allowVerchange = brandingService.getBrandingConfiguration().isAllowChengeVersion();
+            if (allowVerchange) {
+                itemName = ERepositoryObjectType.getItemType(property.getItem()).toString() + " " + property.getLabel() //$NON-NLS-1$
+                        + " " + property.getVersion(); //$NON-NLS-1$
+            } else {
+                itemName = ERepositoryObjectType.getItemType(property.getItem()).toString() + " " + property.getLabel(); //$NON-NLS-1$
+            }
         }
         return itemName;
     }
@@ -141,7 +154,24 @@ public class ItemRecord {
     }
 
     public Image getImage() {
-        return CoreImageProvider.getImage(getType());
+        // MOD sizhaoliu 2011-12-05
+        // In ImportItemWizard, enable custom icons depending on file extension.
+        Image img = null;
+        boolean isExtensionPoint = false;
+        for (IRepositoryContentHandler handler : RepositoryContentManager.getHandlers()) {
+            isExtensionPoint = handler.isRepObjType(getType());
+            if (isExtensionPoint == true) {
+                IImage icon = handler.getIcon(getItem());
+                if (icon != null) {
+                    img = ImageProvider.getImage(icon);
+                    break;
+                }
+            }
+        }
+        if (isExtensionPoint == false || img == null) {
+            img = CoreImageProvider.getImage(getType());
+        }
+        return img;
     }
 
     /**
@@ -181,7 +211,15 @@ public class ItemRecord {
 
     public String getLabel() {
         if (label == null) {
-            label = property.getLabel() + " " + property.getVersion(); //$NON-NLS-1$
+            IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                    IBrandingService.class);
+            boolean allowVerchange = brandingService.getBrandingConfiguration().isAllowChengeVersion();
+            if (allowVerchange) {
+                label = property.getLabel() + " " + property.getVersion(); //$NON-NLS-1$
+            } else {
+                label = property.getLabel();
+            }
+
         }
         return label;
     }
@@ -208,6 +246,9 @@ public class ItemRecord {
     }
 
     public ERepositoryObjectType getRepositoryType() {
+        if (repositoryType == null) {
+            repositoryType = ERepositoryObjectType.getItemType(property.getItem());
+        }
         return repositoryType;
     }
 

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,6 +13,7 @@
 package org.talend.core.ui.context.cmd;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -58,8 +59,7 @@ public class AddRepositoryContextGroupCommand extends Command {
 
     @Override
     public void execute() {
-        if (modelManager == null || manager == null || selectedItems == null || selectedItems.isEmpty()
-                || nameSet == null) {
+        if (modelManager == null || manager == null || selectedItems == null || selectedItems.isEmpty() || nameSet == null) {
             return;
         }
         if (monitor == null) {
@@ -75,16 +75,23 @@ public class AddRepositoryContextGroupCommand extends Command {
             item = selectedItems.get(0);
             List<String> contextNames = new ArrayList<String>();
             for (ContextType context : (List<ContextType>) item.getContext()) {
-                contextNames.add(context.getName());
+                String repContextName = context.getName();
+                if (repContextName != null)
+                    contextNames.add(repContextName.toLowerCase());
             }
             Iterator<IContext> iterator = manager.getListContext().iterator();
+            // TODO Remove the contexts except "default" and matched to repository without case sensitive.
 
             while (iterator.hasNext()) {
                 String name = iterator.next().getName();
                 // if not select new default context, will not delete the default context for job.
-                if (contextNames.contains(name)
-                        || (!nameSet.contains(item.getDefaultContext()) && name.equals(defaultContext.getName()))) {
-                    continue;
+                if (name != null) {
+                    if (contextNames.contains(name.toLowerCase())
+                            || (!isJobContextExistInRepository(nameSet, item.getDefaultContext()) && name.toLowerCase().equals(
+                                    defaultContext.getName().toLowerCase()))) {
+                        continue;
+                    }
+
                 }
                 iterator.remove();
             }
@@ -122,6 +129,21 @@ public class AddRepositoryContextGroupCommand extends Command {
             }
             monitor.worked(1);
         }
+    }
+
+    /**
+     * Added by Marvin Wang on Jun.6, 2012 for judging if the default context group exist in the set.
+     */
+    private boolean isJobContextExistInRepository(Set<String> nameSet, String defaultContextName) {
+        Iterator<String> it = nameSet.iterator();
+        while (it.hasNext()) {
+            String selectedName = it.next();
+            if (selectedName != null && defaultContextName != null) {
+                if (selectedName.toLowerCase().equals(defaultContextName.toLowerCase()))
+                    return true;
+            }
+        }
+        return false;
     }
 
 }

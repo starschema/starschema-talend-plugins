@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -18,7 +18,7 @@ import java.util.List;
 import org.eclipse.gef.commands.Command;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.process.EConnectionType;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.designer.core.ui.editor.cmd.ChangeMetadataCommand;
@@ -42,13 +42,13 @@ public class SynchronizeSchemaHelper {
                 if (connec.getLineStyle().equals(EConnectionType.FLOW_MERGE)) {
                     if (connec.getInputId() == 1) {
                         // MetadataTool.copyTable(connec.getMetadataTable().clone(), metaCopy);
-                        MetadataTool.copyTable(meta.getDbms(), connec.getMetadataTable().clone(), metaCopy);
+                        MetadataToolHelper.copyTable(meta.getDbms(), connec.getMetadataTable().clone(), metaCopy);
                         inputFound = true;
                         break;
                     }
                 } else {
                     // MetadataTool.copyTable(connec.getMetadataTable().clone(), metaCopy);
-                    MetadataTool.copyTable(meta.getDbms(), connec.getMetadataTable().clone(), metaCopy);
+                    MetadataToolHelper.copyTable(meta.getDbms(), connec.getMetadataTable().clone(), metaCopy);
                     inputFound = true;
                 }
             }

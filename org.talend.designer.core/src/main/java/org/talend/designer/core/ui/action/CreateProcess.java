@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,22 +12,25 @@
 // ============================================================================
 package org.talend.designer.core.ui.action;
 
-import java.util.List;
 import java.util.Properties;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IViewPart;
+import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.WorkbenchException;
 import org.eclipse.ui.intro.IIntroSite;
 import org.eclipse.ui.intro.config.IIntroAction;
 import org.talend.commons.exception.PersistenceException;
@@ -36,7 +39,9 @@ import org.talend.commons.ui.runtime.exception.MessageBoxExceptionHandler;
 import org.talend.commons.ui.runtime.image.ECoreImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
+import org.talend.core.ui.branding.IBrandingConfiguration;
 import org.talend.core.ui.images.OverlayImageProvider;
 import org.talend.designer.core.DesignerPlugin;
 import org.talend.designer.core.i18n.Messages;
@@ -55,12 +60,11 @@ import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
 import org.talend.repository.ui.actions.AContextualAction;
 import org.talend.repository.ui.views.IRepositoryView;
-import org.talend.repository.ui.views.RepositoryView;
 
 /**
  * DOC smallet class global comment. Detailled comment <br/>
  * 
- * $Id: CreateProcess.java 56022 2011-03-02 01:55:15Z hcyi $
+ * $Id: CreateProcess.java 83949 2012-05-21 10:15:37Z wchen $
  * 
  */
 public class CreateProcess extends AContextualAction implements IIntroAction {
@@ -87,22 +91,8 @@ public class CreateProcess extends AContextualAction implements IIntroAction {
         this.setImageDescriptor(OverlayImageProvider.getImageWithNew(folderImg));
     }
 
-    public IRepositoryView getRepositoryView() {
-        IViewPart findView = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
-                .findView(IRepositoryView.VIEW_ID);
-        return (IRepositoryView) findView;
-    }
-
     public IRepositoryNode getProcessNode() {
-        List<IRepositoryNode> chindren = getRepositoryView().getRoot().getChildren();
-        for (IRepositoryNode repositoryNode : chindren) {
-            if (((RepositoryNode) repositoryNode).getContentType() == ERepositoryObjectType.PROCESS) {
-                return repositoryNode;
-            }
-
-        }
-
-        return null;
+        return ProjectRepositoryNode.getInstance().getRootRepositoryNode(ERepositoryObjectType.PROCESS);
     }
 
     /*
@@ -146,7 +136,6 @@ public class CreateProcess extends AContextualAction implements IIntroAction {
                 // Set readonly to false since created job will always be editable.
                 fileEditorInput = new ProcessEditorInput(processWizard.getProcess(), false, true, false);
 
-                fileEditorInput.setView(getViewPart());
                 IRepositoryNode repositoryNode = RepositoryNodeUtilities.getRepositoryNode(fileEditorInput.getItem()
                         .getProperty().getId(), false);
                 fileEditorInput.setRepositoryNode(repositoryNode);
@@ -205,37 +194,51 @@ public class CreateProcess extends AContextualAction implements IIntroAction {
      * only use for creating a process in the intro by url
      */
     public void run(IIntroSite site, Properties params) {
-        PlatformUI.getWorkbench().getIntroManager().closeIntro(PlatformUI.getWorkbench().getIntroManager().getIntro());
-        selectRootObject(params);
-        doRun();
+        IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
+        if (factory.isUserReadOnlyOnCurrentProject()) {
+            MessageDialog.openWarning(null, "User Authority", "Can't create Job! Current user is read-only on this project!");
+        } else {
+            PlatformUI.getWorkbench().getIntroManager().closeIntro(PlatformUI.getWorkbench().getIntroManager().getIntro());
+            selectRootObject(params);
+            doRun();
+        }
     }
 
     private void selectRootObject(Properties params) {
-        // bug 16594
-        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-        if (page != null) {
-            String perId = page.getPerspective().getId();
-            if ((!"".equals(perId) || null != perId) && perId.equalsIgnoreCase(PERSPECTIVE_DI_ID)) {
-                IViewPart view = page.findView(RepositoryView.ID);
-                if (view == null) {
-                    try {
-                        view = page.showView(RepositoryView.ID);
-                    } catch (Exception e) {
-                        ExceptionHandler.process(e);
-                    }
-                }
-                if (view instanceof RepositoryView) {
-                    RepositoryView reView = (RepositoryView) view;
+        IWorkbenchWindow workbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (null == workbenchWindow) {
+            return;
+        }
+        IWorkbenchPage workbenchPage = workbenchWindow.getActivePage();
+        if (null == workbenchPage) {
+            return;
+        }
 
-                    Object type = params.get("type");
-                    if (ERepositoryObjectType.PROCESS.name().equals(type)) {
-                        IRepositoryNode processNode = ((ProjectRepositoryNode) reView.getRoot()).getProcessNode();
-                        if (processNode != null) {
-                            setWorkbenchPart(reView);
-                            reView.getViewer().expandToLevel(processNode, 1);
-                            reView.getViewer().setSelection(new StructuredSelection(processNode));
-                        }
+        IPerspectiveDescriptor currentPerspective = workbenchPage.getPerspective();
+        if (!IBrandingConfiguration.PERSPECTIVE_DI_ID.equals(currentPerspective.getId())) {
+            // show di perspective
+            try {
+                workbenchWindow.getWorkbench().showPerspective(IBrandingConfiguration.PERSPECTIVE_DI_ID, workbenchWindow);
+                workbenchPage = workbenchWindow.getActivePage();
+            } catch (WorkbenchException e) {
+                ExceptionHandler.process(e);
+                return;
+            }
+        }
+
+        IRepositoryView view = RepositoryManagerHelper.getRepositoryView();
+        if (view != null) {
+            Object type = params.get("type");
+            if (ERepositoryObjectType.PROCESS.name().equals(type)) {
+                IRepositoryNode processNode = ((ProjectRepositoryNode) view.getRoot())
+                        .getRootRepositoryNode(ERepositoryObjectType.PROCESS);
+                if (processNode != null) {
+                    setWorkbenchPart(view);
+                    final StructuredViewer viewer = view.getViewer();
+                    if (viewer instanceof TreeViewer) {
+                        ((TreeViewer) viewer).expandToLevel(processNode, 1);
                     }
+                    viewer.setSelection(new StructuredSelection(processNode));
                 }
             }
         }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,6 +14,7 @@ package org.talend.designer.core.model.process.jobsettings;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.talend.commons.utils.VersionUtils;
@@ -32,6 +33,7 @@ import org.talend.core.model.process.IProcess;
 import org.talend.core.model.temp.ECodePart;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.ElementParameter;
+import org.talend.designer.core.model.components.EmfComponent;
 import org.talend.designer.core.model.components.MultipleComponentConnection;
 import org.talend.designer.core.model.components.MultipleComponentManager;
 import org.talend.designer.core.model.process.jobsettings.JobSettingsConstants.ContextLoadInfo;
@@ -138,7 +140,7 @@ public class JobContextLoadComponent implements IComponent {
         return null;
     }
 
-    public String getPluginFullName() {
+    public String getPluginExtension() {
         return null;
     }
 
@@ -227,7 +229,16 @@ public class JobContextLoadComponent implements IComponent {
                 multipleComponentManager.addParam(source, FILE_INPUT_DELIMITED + ".FIELDSEPARATOR"); //$NON-NLS-1$ 
 
             } else {
-                String source = self + JobSettingsConstants.getExtraParameterName(EParameterName.HOST.getName());
+                String source = self + JobSettingsConstants.getExtraParameterName(EParameterName.URL.getName());
+                multipleComponentManager.addParam(source, DB_INPUT + ".URL");
+
+                source = self + JobSettingsConstants.getExtraParameterName(EParameterName.DRIVER_JAR.getName());
+                multipleComponentManager.addParam(source, DB_INPUT + ".DRIVER_JAR");
+
+                source = self + JobSettingsConstants.getExtraParameterName(EParameterName.DRIVER_CLASS.getName());
+                multipleComponentManager.addParam(source, DB_INPUT + ".DRIVER_CLASS");
+
+                source = self + JobSettingsConstants.getExtraParameterName(EParameterName.HOST.getName());
                 multipleComponentManager.addParam(source, DB_INPUT + ".HOST"); //$NON-NLS-1$ 
                 multipleComponentManager.addParam(source, DB_INPUT + ".SERVER"); //$NON-NLS-1$
                 multipleComponentManager.addParam(source, DB_INPUT + ".DSN"); //$NON-NLS-1$ 
@@ -330,7 +341,25 @@ public class JobContextLoadComponent implements IComponent {
 
     private void addDatabaseParameter(List<IElementParameter> elemParamList, INode node) {
         //
+
         IElementParameter newParam = new ElementParameter(node);
+        newParam.setName(JobSettingsConstants.getExtraParameterName(EParameterName.DRIVER_JAR.getName()));
+        newParam.setFieldType(EParameterFieldType.TABLE);
+        newParam.setListItemsDisplayName(new String[] { EmfComponent.TEXT_BUILTIN, EmfComponent.TEXT_REPOSITORY });
+        newParam.setListItemsDisplayCodeName(new String[] { EmfComponent.BUILTIN, EmfComponent.REPOSITORY });
+        elemParamList.add(newParam);
+
+        newParam = new ElementParameter(node);
+        newParam.setName(JobSettingsConstants.getExtraParameterName(EParameterName.DRIVER_CLASS.getName()));
+        newParam.setFieldType(EParameterFieldType.TEXT);
+        elemParamList.add(newParam);
+
+        newParam = new ElementParameter(node);
+        newParam.setName(JobSettingsConstants.getExtraParameterName(EParameterName.URL.getName()));
+        newParam.setFieldType(EParameterFieldType.TEXT);
+        elemParamList.add(newParam);
+
+        newParam = new ElementParameter(node);
         newParam.setName(JobSettingsConstants.getExtraParameterName(EParameterName.HOST.getName()));
         newParam.setFieldType(EParameterFieldType.TEXT);
         elemParamList.add(newParam);
@@ -556,5 +585,14 @@ public class JobContextLoadComponent implements IComponent {
     public void setPaletteType(String paletteType) {
         // TODO Auto-generated method stub
 
+    }
+
+    public void setImageRegistry(Map<String, ImageDescriptor> imageRegistry) {
+        // TODO Auto-generated method stub
+
+    }
+
+    public String getRepositoryType() {
+        return null;
     }
 }

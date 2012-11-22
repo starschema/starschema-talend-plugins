@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -121,11 +121,11 @@ public class OpenExistVersionProcessPage extends WizardPage {
 
         versionMajorBtn = new Button(versionModifComposite, SWT.PUSH);
         versionMajorBtn.setText(Messages.getString("PropertiesWizardPage.Version.Major")); //$NON-NLS-1$
-        versionMajorBtn.setEnabled(!alreadyEditedByUser && !isContainedRefProject());
+        versionMajorBtn.setEnabled(!alreadyEditedByUser && !isContainedRefProject() && createNewVersionButton.getSelection());
 
         versionMinorBtn = new Button(versionModifComposite, SWT.PUSH);
         versionMinorBtn.setText(Messages.getString("PropertiesWizardPage.Version.Minor")); //$NON-NLS-1$
-        versionMinorBtn.setEnabled(!alreadyEditedByUser && !isContainedRefProject());
+        versionMinorBtn.setEnabled(!alreadyEditedByUser && !isContainedRefProject() && createNewVersionButton.getSelection());
 
         versionText.setText(getProperty().getVersion());
 
@@ -146,6 +146,8 @@ public class OpenExistVersionProcessPage extends WizardPage {
                 boolean create = createNewVersionButton.getSelection();
                 versionModifComposite.setEnabled(create);
                 versionListComposite.setEnabled(!create);
+                versionMajorBtn.setEnabled(create);
+                versionMinorBtn.setEnabled(create);
                 createNewVersionJob = create;
                 updatePageStatus();
             }

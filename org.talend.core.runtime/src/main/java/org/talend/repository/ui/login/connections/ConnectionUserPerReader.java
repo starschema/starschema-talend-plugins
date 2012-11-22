@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -41,7 +41,7 @@ public class ConnectionUserPerReader {
 
     private String perfileName = "connection_user.properties"; //$NON-NLS-1$
 
-    public static final String CONNECTION_REGISTFAILTIMES = "connection.registFailTimes"; //$NON-NLS-1$ 
+    public static final String CONNECTION_REGISTFAILTIMES = "connection.registFailTimes"; //$NON-NLS-1$
 
     private String path = null;
 
@@ -230,6 +230,17 @@ public class ConnectionUserPerReader {
         return perfile.exists();
     }
 
+    /**
+     * DOC ycbai Comment method "readRegistFailTimes".
+     * 
+     * @return
+     */
+    public String readRegistFailTimes() {
+        if (!isRead)
+            this.readProperties();
+        return StringUtils.trimToEmpty(proper.getProperty(CONNECTION_REGISTFAILTIMES));
+    }
+
     public String readRegistration() {
         if (!isRead)
             this.readProperties();
@@ -260,25 +271,14 @@ public class ConnectionUserPerReader {
         return tmp;
     }
 
-    /**
-     * DOC ycbai Comment method "readRegistFailTimes".
-     * 
-     * @return
-     */
-    public String readRegistFailTimes() {
-        if (!isRead)
-            this.readProperties();
-        return StringUtils.trimToEmpty(proper.getProperty(CONNECTION_REGISTFAILTIMES));
-    }
-
     public void saveRegistoryBean() {
         if (!isHaveUserPer())
             createPropertyFile();
         if (!isRead)
             this.readProperties();
         IPreferenceStore prefStore = PlatformUI.getPreferenceStore();
-        proper.setProperty("connection.readRegistration", Integer.toString(prefStore.getInt("REGISTRATION_TRIES"))); //$NON-NLS-1$ //$NON-NLS-2$
-        proper.setProperty("connection.readRegistrationDone", Integer.toString(prefStore.getInt("REGISTRATION_DONE"))); //$NON-NLS-1$ //$NON-NLS-2$
+        proper.setProperty("connection.readRegistration", Integer.toString(prefStore.getInt("REGISTRATION_TRIES")));
+        proper.setProperty("connection.readRegistrationDone", Integer.toString(prefStore.getInt("REGISTRATION_DONE")));
         try {
 
             FileOutputStream out = new FileOutputStream(perfile);

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -34,7 +34,7 @@ public class DatabaseConnConstants {
 
     public static final String PATTERN_FILEMDB = "([\\w\\.\\-_]{0,}).mdb"; //$NON-NLS-1$
 
-    public static final String PATTERN_ADDPARAM = "([\\w\\.\\-_=]{0,})"; //$NON-NLS-1$
+    public static final String PATTERN_ADDPARAM = "([\\w\\.\\-_=\\&*]{0,})"; //$NON-NLS-1$
 
     public static final String PATTERN_SCHEMA = PATTERN_SID;
 

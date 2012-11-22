@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -41,9 +41,9 @@ public class ConfigRoutineLibraryAction extends AContextualAction {
     public ConfigRoutineLibraryAction() {
         super();
         String label = org.talend.repository.i18n.Messages.getString("ConfigRoutineLibraryAction.actionLabel"); //$NON-NLS-1$
-        this.setText(label);
-        this.setDescription(label);
-        this.setImageDescriptor(ImageProvider.getImageDesc(ECoreImage.IMPORT_JAR));
+        setText(label);
+        setDescription(label);
+        setImageDescriptor(ImageProvider.getImageDesc(ECoreImage.IMPORT_JAR));
     }
 
     /*
@@ -68,11 +68,11 @@ public class ConfigRoutineLibraryAction extends AContextualAction {
                             beanType = service.getBeansType();
                         }
                         if (beanType != null && node.getObjectType() == beanType) {
-                            this.setText("Edit Bean Libraries");
+                            setText("Edit Bean Libraries");
                         } else {
                             String label = org.talend.repository.i18n.Messages
                                     .getString("ConfigRoutineLibraryAction.actionLabel"); //$NON-NLS-1$
-                            this.setText(label);
+                            setText(label);
                         }
 
                         if (node.getObjectType() == ERepositoryObjectType.ROUTINES
@@ -112,8 +112,8 @@ public class ConfigRoutineLibraryAction extends AContextualAction {
      */
     protected void doRun() {
         ConfigExternalLibWizard wizard = new ConfigExternalLibWizard();
-        IWorkbench workbench = this.getViewPart().getViewSite().getWorkbenchWindow().getWorkbench();
-        wizard.init(workbench, (IStructuredSelection) this.getSelection());
+        IWorkbench workbench = getWorkbench();
+        wizard.init(workbench, (IStructuredSelection) getSelection());
 
         Shell activeShell = Display.getCurrent().getActiveShell();
         WizardDialog dialog = new WizardDialog(activeShell, wizard);

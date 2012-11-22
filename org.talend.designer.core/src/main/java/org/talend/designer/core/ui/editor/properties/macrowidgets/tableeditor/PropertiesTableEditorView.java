@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -50,7 +50,7 @@ import org.talend.core.PluginChecker;
 import org.talend.core.model.metadata.IEbcdicConstant;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.IRuleConstant;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.process.IElement;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
@@ -249,12 +249,15 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                     });
                     cellEditor.addListener(new ICellEditorListener() {
 
+                        @Override
                         public void editorValueChanged(boolean oldValidState, boolean newValidState) {
                         }
 
+                        @Override
                         public void cancelEditor() {
                         }
 
+                        @Override
                         public void applyEditorValue() {
                             if (element instanceof Node) {
                                 IProcess process = ((Node) element).getProcess();
@@ -304,14 +307,16 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                     });
                     column.setColorProvider(new IColumnColorProvider() {
 
+                        @Override
                         public Color getBackgroundColor(Object bean) {
                             Object value = ((Map<String, Object>) bean).get(items[curCol]);
                             if (value == null || (!(value instanceof String))) {
-                                return Display.getCurrent().getSystemColor(SWT.COLOR_WHITE); //$NON-NLS-1$
+                                return Display.getCurrent().getSystemColor(SWT.COLOR_WHITE);
                             }
                             return new Color(null, TalendTextUtils.stringToRGB((String) value));
                         }
 
+                        @Override
                         public Color getForegroundColor(Object bean) {
                             return null;
                         }
@@ -343,12 +348,14 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                     // if (isEBCDICNode(node)) { // ebcdic
                     column.setLabelProvider(new IColumnLabelProvider() {
 
+                        @Override
                         public String getLabel(Object bean) {
                             if (bean instanceof Map) {
                                 Map<String, Object> valueMap = (Map<String, Object>) bean;
                                 String value = (String) valueMap.get(IEbcdicConstant.FIELD_SCHEMA);
                                 if (value != null && !"".equals(value)) { //$NON-NLS-1$
-                                    IMetadataTable metadataTable = MetadataTool.getMetadataTableFromNodeTableName(node, value);
+                                    IMetadataTable metadataTable = MetadataToolHelper.getMetadataTableFromNodeTableName(node,
+                                            value);
                                     if (metadataTable != null) {
                                         if (isEBCDICNode(node)) {
                                             if (isRepositorySchemaLine(node, valueMap)) {
@@ -383,12 +390,14 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                     final INode node1 = (INode) element;
                     column.setLabelProvider(new IColumnLabelProvider() {
 
+                        @Override
                         public String getLabel(Object bean) {
                             if (bean instanceof Map) {
                                 Map<String, Object> valueMap = (Map<String, Object>) bean;
                                 String value = (String) valueMap.get(IRuleConstant.FIELD_RULE);
                                 if (value != null && !"".equals(value)) { //$NON-NLS-1$
-                                    IMetadataTable metadataTable = MetadataTool.getMetadataTableFromNodeTableName(node1, value);
+                                    IMetadataTable metadataTable = MetadataToolHelper.getMetadataTableFromNodeTableName(node1,
+                                            value);
                                     if (metadataTable != null) {
                                         return metadataTable.getTableName();
                                     } else {
@@ -453,6 +462,7 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                 });
                 column.setColorProvider(new IColumnColorProvider<B>() {
 
+                    @Override
                     public Color getBackgroundColor(B bean) {
                         Map<String, Object> valueMap = (Map<String, Object>) bean;
                         List<Map<String, Object>> fullValues = (List<Map<String, Object>>) param.getValue();
@@ -468,6 +478,7 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                         return null;
                     }
 
+                    @Override
                     public Color getForegroundColor(B bean) {
                         return null;
                     }
@@ -475,6 +486,7 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                 });
                 column.setBeanPropertyAccessors(new IBeanPropertyAccessors<B, Object>() {
 
+                    @Override
                     public Object get(B bean) {
                         Object value = ((Map<String, Object>) bean).get(items[curCol]);
                         if (value == null) {
@@ -533,6 +545,7 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                         return value;
                     }
 
+                    @Override
                     public void set(B bean, Object value) {
                         Object finalValue = value;
                         IElementParameter tmpParam = (IElementParameter) itemsValue[curCol];
@@ -703,8 +716,8 @@ public class PropertiesTableEditorView<B> extends AbstractDataTableEditorView<B>
                 }
             }
         } else {
-            for (int i = 0; i < originalList.length; i++) {
-                stringToDisplay.add(originalList[i]);
+            for (String element2 : originalList) {
+                stringToDisplay.add(element2);
             }
         }
         String[] listToDisplay = stringToDisplay.toArray(new String[0]);

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -54,6 +54,8 @@ public class RepositoryConstants {
 
     //    public static final String REPOSITORY_SCHEMA_PATTERN = "^[a-zA-Z0-9\\_]+$"; //$NON-NLS-1$
 
+    public static final String SIMPLE_FOLDER_PATTERN = "[a-zA-Z0-9\\_-]+$"; //$NON-NLS-1$ //this added for xml metadata folder
+
     public static final String FOLDER_PATTERN = "^[a-zA-Z]+[a-zA-Z0-9\\_]*$"; //$NON-NLS-1$
 
     public static final String REPOSITORY_ITEM_PATTERN_INTERN = "a-zA-Z0-9\\.\\-\\_\\ \\(\\)\\[\\]="; //$NON-NLS-1$
@@ -76,8 +78,12 @@ public class RepositoryConstants {
 
     public static final String REPOSITORY_URL = "url"; //$NON-NLS-1$
 
-    public static final String TDQ_PAT_ITEM_PATTERN = ".*"; //$NON-NLS-1$
+    public static final String TDQ_ALL_ITEM_PATTERN = ".*"; //$NON-NLS-1$
 
+    // GLIU: add for TESB-3837
+    public static final String SERVICES_NAME_PATTERN = "[a-zA-Z_][a-zA-Z0-9\\.\\-_]*";
+
+    public static final String MDM_ITEM_PATTERN = ".*"; //$NON-NLS-1$
     public static String getPattern(ERepositoryObjectType type) {
         if (type == ERepositoryObjectType.FOLDER) {
             return FOLDER_PATTERN;
@@ -92,9 +98,17 @@ public class RepositoryConstants {
                 || type == ERepositoryObjectType.TDQ_PATTERN_REGEX || type == ERepositoryObjectType.TDQ_PATTERN_SQL
                 || type == ERepositoryObjectType.TDQ_SOURCE_FILE_ELEMENT || type == ERepositoryObjectType.TDQ_RULES
                 || type == ERepositoryObjectType.TDQ_RULES_SQL || type == ERepositoryObjectType.TDQ_INDICATOR_ELEMENT) {
-            return TDQ_PAT_ITEM_PATTERN;
+            return TDQ_ALL_ITEM_PATTERN;
+        } 
+        // GLIU: add for TESB-3837
+        else if (type != null && "SERVICES".equals(type.getType())) {
+            return SERVICES_NAME_PATTERN;
+        } else if (type != null && "ROUTES".equals(type.getType())) {
+            return CODE_ITEM_PATTERN;
+        } else if (type != null && type.getType() != null && type.getType().startsWith("MDM.")) { //$NON-NLS-1$
+            return MDM_ITEM_PATTERN;
         } else {
-            return TDQ_PAT_ITEM_PATTERN;
+            return TDQ_ALL_ITEM_PATTERN;
         }
     }
 

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -128,6 +128,21 @@ public class ContextViewComposite extends ContextComposite {
         getCommandStack().execute(new ContextChangeDefaultCommand(contextManager, newDefault));
     }
 
+    public void onContextRenameParameter(IContextManager contextManager, String sourceId, String oldName, String newName) {
+        if (contextManager instanceof JobContextManager) {
+            JobContextManager manager = (JobContextManager) contextManager;
+            manager.addNewName(newName, oldName);
+            // record the modified operation.
+            setModifiedFlag(contextManager);
+        }
+        getCommandStack().execute(new ContextRenameParameterCommand(contextManager, sourceId, oldName, newName));
+        // update variable reference for current job, for 2608
+        if (UpdateContextVariablesHelper.updateProcessForRenamed(getProcess(), oldName, newName)) {
+            JobSettings.switchToCurJobSettingsView();
+            ComponentSettings.switchToCurComponentSettingsView();
+        }
+    }
+
     public void onContextRenameParameter(IContextManager contextManager, String oldName, String newName) {
         if (contextManager instanceof JobContextManager) {
             JobContextManager manager = (JobContextManager) contextManager;
@@ -177,5 +192,29 @@ public class ContextViewComposite extends ContextComposite {
         // record the modified operation.
         setModifiedFlag(contextManager);
         getCommandStack().execute(new ContextRemoveParameterCommand(getContextManager(), paramNames));
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.ui.context.IContextModelManager#onContextRemoveParameter(org.talend.core.model.process.
+     * IContextManager, java.lang.String, java.lang.String)
+     */
+    @Override
+    public void onContextRemoveParameter(IContextManager contextManager, String paramName, String sourceId) {
+        setModifiedFlag(contextManager);
+        getCommandStack().execute(new ContextRemoveParameterCommand(getContextManager(), paramName, sourceId));
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.talend.core.ui.context.IContextModelManager#onContextRemoveParameter(org.talend.core.model.process.
+     * IContextManager, java.util.Set, java.lang.String)
+     */
+    @Override
+    public void onContextRemoveParameter(IContextManager contextManager, Set<String> paramNames, String sourceId) {
+        setModifiedFlag(contextManager);
+        getCommandStack().execute(new ContextRemoveParameterCommand(getContextManager(), paramNames, sourceId));
     }
 }

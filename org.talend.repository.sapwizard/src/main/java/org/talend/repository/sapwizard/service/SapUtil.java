@@ -126,24 +126,33 @@ public class SapUtil {
 			throw e;
 		}
 	}
+	
+	public static void updateFunctionForGivenTable(SAPFunctionUnit functionUnit, String tableName, SAPConnection connection) throws Exception {
+		registerSAPServerDetails(connection.getClient(), connection.getLanguage(), connection.getSystemNumber(), connection.getHost(),
+				connection.getUsername(), connection.getPassword());
+		JCoDestination destination = null;
+		try {
+			destination = JCoDestinationManager.getDestination(SapCustomDataProvider.SAP_SERVER);
+			JCoFunction function = destination.getRepository().getFunction("DDIF_FIELDINFO_GET");
+			if (function == null) {
+				throw new RuntimeException("DDIF_FIELDINFO_GET not found in SAP.");
+			}
+			function.getImportParameterList().setValue("TABNAME", tableName.trim());
+			function.getImportParameterList().setValue("LANGU", connection.getLanguage().trim().toUpperCase());
+			function.execute(destination);
 
-	private static SAPFunctionUnit createFunctionUnit(String tableName, SAPConnection connection, JCoFunction function) {
+			updateFunctionUnit(functionUnit, tableName, connection, function);
 
-		SAPFunctionUnit functionUnit;
+		} catch (JCoException e) {
+			throw e;
+		}
+	}
+	
+	private static void fillFunctionUnit (SAPFunctionUnit functionUnit, String tableName, JCoFunction function, ProxyRepositoryFactory proxyRepositoryFactory){
 		OutputSAPFunctionParameterTable outputParameterTable;
 		InputSAPFunctionParameterTable inputParameterTable;
 		MetadataTable metadataTable;
 		SAPTestInputParameterTable testInputParameterTable;
-
-		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
-
-		functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
-		functionUnit.setName(tableName);
-		functionUnit.setLabel(tableName);
-		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
-		functionUnit.setConnection(connection);
-		functionUnit.setId(proxyRepositoryFactory.getNextId());
-
 		// New Input parameter table
 		inputParameterTable = ConnectionFactory.eINSTANCE.createInputSAPFunctionParameterTable();
 		inputParameterTable.setFunctionUnit(functionUnit);
@@ -175,9 +184,34 @@ public class SapUtil {
 		functionUnit.setOutputParameterTable(outputParameterTable);
 		functionUnit.setMetadataTable(metadataTable);
 		functionUnit.setTestInputParameterTable(testInputParameterTable);
+	}
+
+	private static SAPFunctionUnit createFunctionUnit(String tableName, SAPConnection connection, JCoFunction function) {
+
+		SAPFunctionUnit functionUnit;
+
+		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
+
+		functionUnit = ConnectionFactory.eINSTANCE.createSAPFunctionUnit();
+		functionUnit.setName(tableName);
+		functionUnit.setLabel(tableName);
+		functionUnit.setOutputType(SapParameterTypeEnum.OUTPUT_SINGLE.getDisplayLabel());
+		functionUnit.setConnection(connection);
+		functionUnit.setId(proxyRepositoryFactory.getNextId());
+
+		fillFunctionUnit(functionUnit, tableName, function, proxyRepositoryFactory);
 		connection.getFuntions().add(functionUnit);
 		// functionUnit.getTables().add(metadataTable);
 		return functionUnit;
+	}
+	
+	private static void updateFunctionUnit(SAPFunctionUnit functionUnit, String tableName, SAPConnection connection, JCoFunction function) {
+
+		ProxyRepositoryFactory proxyRepositoryFactory = ProxyRepositoryFactory.getInstance();
+
+		functionUnit.setId(proxyRepositoryFactory.getNextId());
+
+		fillFunctionUnit(functionUnit, tableName, function, proxyRepositoryFactory);
 	}
 
 	private static List<MetadataColumn> getColumns(JCoFunction function) {

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -21,8 +21,6 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.EditorPart;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
-import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.designer.core.ui.MultiPageTalendEditor;
 import org.talend.designer.core.ui.editor.AbstractTalendEditor;
 import org.talend.designer.core.ui.editor.ProcessEditorInput;
@@ -30,14 +28,13 @@ import org.talend.designer.core.ui.wizards.SaveAsProcessWizard;
 import org.talend.repository.editor.JobEditorInput;
 import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
-import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC xtan class global comment. <br/>
  */
 public class SaveAsProcessAction extends Action {
 
-    private EditorPart editorPart;
+    private final EditorPart editorPart;
 
     public SaveAsProcessAction(EditorPart editorPart) {
         this.editorPart = editorPart;
@@ -52,14 +49,11 @@ public class SaveAsProcessAction extends Action {
 
             try {
 
-                RepositoryManager.refreshCreatedNode(ERepositoryObjectType.PROCESS);
-
                 // Set readonly to false since created job will always be editable.
                 JobEditorInput newJobEditorInput = new ProcessEditorInput(processWizard.getProcess(), true, true, false);
 
                 IWorkbenchPage page = getActivePage();
 
-                newJobEditorInput.setView((IRepositoryView) page.findView(IRepositoryView.VIEW_ID));
                 IRepositoryNode repositoryNode = RepositoryNodeUtilities.getRepositoryNode(newJobEditorInput.getItem()
                         .getProperty().getId(), false);
                 newJobEditorInput.setRepositoryNode(repositoryNode);
@@ -71,8 +65,8 @@ public class SaveAsProcessAction extends Action {
                 page.openEditor(newJobEditorInput, MultiPageTalendEditor.ID, true);
 
             } catch (Exception e) {
-                MessageDialog.openError(Display.getCurrent().getActiveShell(), "Error", "Job could not be saved" + " : "
-                        + e.getMessage());
+                MessageDialog.openError(Display.getCurrent().getActiveShell(), "Error",
+                        "Job could not be saved" + " : " + e.getMessage());
                 ExceptionHandler.process(e);
             }
         }

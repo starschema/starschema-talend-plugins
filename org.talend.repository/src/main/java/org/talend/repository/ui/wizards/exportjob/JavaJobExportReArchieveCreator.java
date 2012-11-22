@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -85,6 +85,7 @@ public class JavaJobExportReArchieveCreator {
             String newJarPath = jobFolder.getAbsolutePath() + "/" + CLASSPATH_JAR; //$NON-NLS-1$
             NewJarBuilder jarBuilder = new NewJarBuilder(tmpFoler, newJarPath);
             jarBuilder.buildJar();
+
             // delete non used jar files
             // deleteNonUsedJar();
 
@@ -312,6 +313,15 @@ public class JavaJobExportReArchieveCreator {
                         break;
                     }
                     sb.append(needjars[i] + " "); //$NON-NLS-3$
+                }
+            }
+        } else { // TDI-17346:Exported Job as Unix script can't work when you export as Unix script only
+            if (shFile != null) {
+                String[] fn = getLibJarFilenames();
+                if (fn != null) {
+                    for (int i = 0; i < fn.length; i++) {
+                        sb.append("../" + LIB + "/" + fn[i] + " "); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    }
                 }
             }
         }

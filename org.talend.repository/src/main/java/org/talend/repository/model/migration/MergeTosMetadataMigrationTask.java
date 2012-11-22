@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,6 +38,7 @@ import org.talend.core.GlobalServiceRegister;
 import org.talend.core.database.EDatabaseTypeName;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.metadata.builder.database.EDatabaseSchemaOrCatalogMapping;
+import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
 import org.talend.core.model.migration.AbstractItemMigrationTask;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.Item;
@@ -47,10 +48,12 @@ import org.talend.core.repository.utils.URIHelper;
 import org.talend.cwm.helper.CatalogHelper;
 import org.talend.cwm.helper.ConnectionHelper;
 import org.talend.cwm.helper.SwitchHelpers;
+import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
 import org.talend.model.migration.TosMetadataMigrationFrom400to410;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.constants.FileConstants;
 import org.talend.repository.model.IRepositoryService;
+import org.talend.repository.ui.utils.ConnectionContextHelper;
 import orgomg.cwm.resource.relational.Catalog;
 import orgomg.cwm.resource.relational.RelationalFactory;
 import orgomg.cwm.resource.relational.Schema;
@@ -114,6 +117,7 @@ public class MergeTosMetadataMigrationTask extends AbstractItemMigrationTask {
                                         .doSwitch(migratedResource.getContents().get(0));
                                 // do not check for null caus DB connection is already check above
                                 String databaseType = databaseConnection.getDatabaseType();
+                                databaseConnection.setDriverClass(ExtractMetaDataUtils.getDriverClassByDbType(databaseType));
                                 EDatabaseTypeName currentType = EDatabaseTypeName.getTypeFromDbType(databaseType);
                                 EDatabaseSchemaOrCatalogMapping curCatalog = currentType.getCatalogMappingField();
                                 EDatabaseSchemaOrCatalogMapping curSchema = currentType.getSchemaMappingField();
@@ -153,7 +157,14 @@ public class MergeTosMetadataMigrationTask extends AbstractItemMigrationTask {
                                         }
 
                                     }
-                                }// else no catalog so we keep the schema as is
+                                } else if (!curSchema.equals(EDatabaseSchemaOrCatalogMapping.None)) {
+                                    List<Schema> schemas = ConnectionHelper.getSchema(databaseConnection);
+                                    for (Schema schema : schemas) {
+                                        String schemaName = computeSchemaName(schema, databaseConnection, curSchema);
+                                        schema.setName(schemaName);
+                                    }
+                                }
+                                // else no catalog so we keep the schema as is
                             } catch (Exception e) {
                                 // we have an exception finalising the migration but we trap it caus we still try to
                                 // save it
@@ -198,14 +209,19 @@ public class MergeTosMetadataMigrationTask extends AbstractItemMigrationTask {
      */
     private String computeSchemaName(Schema schema, DatabaseConnection connection, EDatabaseSchemaOrCatalogMapping schemaNameType) {
         String result = ""; //$NON-NLS-1$
+        ContextType contextType = ConnectionContextHelper.getContextTypeForContextMode(null, connection, null, true);
         switch (schemaNameType) {
         case Login:
             result = connection.getUsername();
             break;
         case Schema:
-            /* if schema name is null,return a empty string is required,bug 0017244 */
-            if (schema.getName() != null) {
-                result = schema.getName();
+            if (contextType != null) {
+                result = ConnectionContextHelper.getOriginalValue(contextType, schema.getName());
+            } else {
+                /* if schema name is null,return a empty string is required,bug 0017244 */
+                if (schema.getName() != null) {
+                    result = schema.getName();
+                }
             }
             break;
         case Sid:
@@ -232,12 +248,17 @@ public class MergeTosMetadataMigrationTask extends AbstractItemMigrationTask {
      */
     private String computeCatalogName(DatabaseConnection connection, EDatabaseSchemaOrCatalogMapping catalogNameType) {
         String result = ""; //$NON-NLS-1$
+        ContextType contextType = ConnectionContextHelper.getContextTypeForContextMode(null, connection, null, true);
         switch (catalogNameType) {
         case Login:
             result = connection.getUsername();
             break;
         case Sid:
-            result = connection.getSID();
+            if (contextType != null) {
+                result = ConnectionContextHelper.getOriginalValue(contextType, connection.getSID());
+            } else {
+                result = connection.getSID();
+            }
             break;
         case Default_Name:
             result = connection.getName();

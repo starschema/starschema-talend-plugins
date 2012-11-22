@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -90,29 +90,30 @@ public class OpenedListController extends AbstractElementPropertySectionControll
                 }
                 String text = ((CCombo) ctrl).getText();
                 if (data != null && data.equals(combo.getData(PARAMETER_NAME))) {
-                     if (!text.equals(elem.getPropertyValue(name))) {
+                    if (!text.equals(elem.getPropertyValue(name))) {
 
-                    String value = new String(""); //$NON-NLS-1$
+                        String value = new String(""); //$NON-NLS-1$
 
-                    for (int i = 0; i < elem.getElementParameters().size(); i++) {
-                        IElementParameter param = elem.getElementParameters().get(i);
-                        if (param.getName().equals(name)) {
-                            for (int j = 0; j < param.getListItemsValue().length; j++) {
-                                if (j < param.getListItemsDisplayName().length && text.equals(param.getListItemsDisplayName()[j])) {
-                                    value = (String) param.getListItemsValue()[j];
-                                    break;
+                        for (int i = 0; i < elem.getElementParameters().size(); i++) {
+                            IElementParameter param = elem.getElementParameters().get(i);
+                            if (param.getName().equals(name)) {
+                                for (int j = 0; j < param.getListItemsValue().length; j++) {
+                                    if (j < param.getListItemsDisplayName().length
+                                            && text.equals(param.getListItemsDisplayName()[j])) {
+                                        value = (String) param.getListItemsValue()[j];
+                                        break;
+                                    }
                                 }
                             }
                         }
+                        if (value.equals(elem.getPropertyValue(name))) { // same value so no need to do anything
+                            return null;
+                        }
+                        return new PropertyChangeCommand(elem, name, value);
                     }
-                    if (value.equals(elem.getPropertyValue(name))) { // same value so no need to do anything
-                        return null;
-                    }
-                    return new PropertyChangeCommand(elem, name, value);
                 }
             }
         }
-         }
         return null;
     }
 
@@ -151,9 +152,9 @@ public class OpenedListController extends AbstractElementPropertySectionControll
         CCombo combo = (CCombo) dField.getControl();
         FormData data;
         combo.setItems(getListToDisplay(param));
-        combo.setEditable(true);
+        combo.setEditable(!param.isReadOnly() && !param.isRepositoryValueUsed());
+        combo.setEnabled(!param.isReadOnly() && !param.isRepositoryValueUsed());
         cLayout.setBackground(subComposite.getBackground());
-        combo.setEnabled(!param.isReadOnly());
         combo.addSelectionListener(listenerSelection);
         combo.addModifyListener(modifySelection);
         combo.setData(PARAMETER_NAME, param.getName());
@@ -358,7 +359,13 @@ public class OpenedListController extends AbstractElementPropertySectionControll
             if (!Arrays.equals(paramItems, comboItems)) {
                 combo.setItems(paramItems);
             }
-            combo.setText(strValue);
+            if (param.isRepositoryValueUsed()) {
+                combo.removeModifyListener(modifySelection);
+                combo.setText(strValue);
+                combo.addModifyListener(modifySelection);
+            } else {
+                combo.setText(strValue);
+            }
             combo.setVisible(true);
         }
 

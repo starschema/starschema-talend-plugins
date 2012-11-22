@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -30,11 +30,12 @@ import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.ISaveablePart2;
-import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.IViewReference;
+import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchPartSite;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.internal.WorkbenchMessages;
 import org.eclipse.ui.views.properties.PropertySheet;
@@ -51,6 +52,7 @@ import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.repository.RepositoryViewObject;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.runtime.CoreRuntimePlugin;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.RepositoryWorkUnit;
@@ -89,9 +91,13 @@ public abstract class AContextualAction extends Action implements ITreeContextua
 
     private boolean avoidUnloadResources;
 
+    private boolean unloadResourcesAfter;
+
     protected RepositoryNode repositoryNode;
 
     private Item oldItem;
+
+    private IRepositoryNode node;
 
     public boolean isEditAction() {
         return editAction;
@@ -184,7 +190,10 @@ public abstract class AContextualAction extends Action implements ITreeContextua
      * Convenience method user to refresh view on wich action had been called.
      */
     public void refresh() {
-        getViewPart().refresh();
+        IRepositoryView viewPart = getViewPart();
+        if (viewPart != null) {
+            viewPart.refresh();
+        }
     }
 
     /**
@@ -193,8 +202,11 @@ public abstract class AContextualAction extends Action implements ITreeContextua
      * @param obj - object to start the refresh on
      */
     public void refresh(Object obj) {
-        getViewPart().refresh(obj);
-        getViewPart().expand(obj, true);
+        IRepositoryView viewPart = getViewPart();
+        if (viewPart != null) {
+            viewPart.refresh(obj);
+            viewPart.expand(obj, true);
+        }
     }
 
     private IWorkbenchPart workbenchPart = null;
@@ -262,7 +274,9 @@ public abstract class AContextualAction extends Action implements ITreeContextua
         }
 
         IWorkbenchPartSite site = getActivePage().getActiveEditor().getSite();
-        return site.getSelectionProvider().getSelection();
+        ISelectionProvider selectionProvider = site.getSelectionProvider();
+        // if selectionProvider is null then avoid a NPE is required,see TDI-18275
+        return selectionProvider == null ? null : selectionProvider.getSelection();
     }
 
     /**
@@ -277,8 +291,27 @@ public abstract class AContextualAction extends Action implements ITreeContextua
                 return (IRepositoryView) workbenchPart;
             }
         }
-        IViewPart viewPart = getActivePage().findView(IRepositoryView.VIEW_ID);
-        return (IRepositoryView) viewPart;
+        return RepositoryManagerHelper.findRepositoryView();
+    }
+
+    protected IWorkbench getWorkbench() {
+        IWorkbenchWindow workbenchWindow = getWorkbenchWindow();
+        IWorkbench workbench = null;
+        if (workbenchWindow != null) {
+            workbench = workbenchWindow.getWorkbench();
+        }
+        return workbench;
+    }
+
+    protected IWorkbenchWindow getWorkbenchWindow() {
+        IWorkbenchWindow workbenchWindow = null;
+        IRepositoryView viewPart = this.getViewPart();
+        if (viewPart != null) {
+            workbenchWindow = viewPart.getViewSite().getWorkbenchWindow();
+        } else {
+            workbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        }
+        return workbenchWindow;
     }
 
     /**
@@ -330,10 +363,14 @@ public abstract class AContextualAction extends Action implements ITreeContextua
         if (selection == null) {
             return null;
         }
-        Object obj = ((IStructuredSelection) selection).getFirstElement();
+        Object obj = null;
+        if (selection instanceof IStructuredSelection) {
+            obj = ((IStructuredSelection) selection).getFirstElement();
+
+        }
         if (obj == null) {
             selection = getSelection();
-            if (selection != null) {
+            if (selection != null && selection instanceof IStructuredSelection) {
                 obj = ((IStructuredSelection) selection).getFirstElement();
             }
         }
@@ -402,7 +439,7 @@ public abstract class AContextualAction extends Action implements ITreeContextua
         if (repositoryView == null) {
             return null;
         }
-        return searchRepositoryNode(repositoryView.getRoot(), type);
+        return searchRepositoryNode((IRepositoryNode) repositoryView.getRoot(), type);
     }
 
     private RepositoryNode searchRepositoryNode(IRepositoryNode root, ERepositoryObjectType type) {
@@ -526,7 +563,9 @@ public abstract class AContextualAction extends Action implements ITreeContextua
         String name = "User action : " + getText(); //$NON-NLS-1$
 
         oldItem = null;
-        final IRepositoryNode node = getCurrentRepositoryNode();
+        // if (node == null) {
+        node = getCurrentRepositoryNode();
+        // }
         if (node != null) {
             IRepositoryViewObject object = node.getObject();
             if (object != null) {
@@ -557,7 +596,8 @@ public abstract class AContextualAction extends Action implements ITreeContextua
                 }
             }
         };
-        repositoryWorkUnit.setAvoidUnloadResources(avoidUnloadResources);
+        repositoryWorkUnit.setAvoidUnloadResources(isAvoidUnloadResources());
+        repositoryWorkUnit.setUnloadResourcesAfterRun(isUnloadResourcesAfter());
         CoreRuntimePlugin.getInstance().getProxyRepositoryFactory().executeRepositoryWorkUnit(repositoryWorkUnit);
         oldItem = null;
     }
@@ -639,8 +679,37 @@ public abstract class AContextualAction extends Action implements ITreeContextua
             return;
         }
         IRepositoryView viewPart = getViewPart();
-        ERepositoryObjectType itemType = ERepositoryObjectType.getItemType(item);
-        viewPart.refresh(itemType);
+        if (viewPart != null) {
+            ERepositoryObjectType itemType = ERepositoryObjectType.getItemType(item);
+            viewPart.refresh(itemType);
+        }
     }
 
+    /**
+     * Sets the node.
+     * 
+     * @param node the node to set
+     */
+    public void setNode(IRepositoryNode node) {
+        this.node = node;
+    }
+
+    /**
+     * Getter for node.
+     * 
+     * @return the node
+     */
+    public IRepositoryNode getNode() {
+        return this.node;
+    }
+
+    
+    public boolean isUnloadResourcesAfter() {
+        return unloadResourcesAfter;
+    }
+
+    
+    public void setUnloadResourcesAfter(boolean unloadResourcesAfter) {
+        this.unloadResourcesAfter = unloadResourcesAfter;
+    }
 }

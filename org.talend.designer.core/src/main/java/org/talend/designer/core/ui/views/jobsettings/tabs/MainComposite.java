@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -26,8 +26,10 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.views.properties.tabbed.AbstractPropertySection;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
 import org.eclipse.ui.views.properties.tabbed.TabbedPropertySheetWidgetFactory;
+import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.properties.User;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.repository.i18n.Messages;
 
 /**
@@ -45,6 +47,10 @@ public class MainComposite extends AbstractTabComposite {
      */
     public MainComposite(Composite parent, int style, TabbedPropertySheetWidgetFactory factory, IRepositoryViewObject obj) {
         super(parent, style, factory, obj);
+
+        IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                IBrandingService.class);
+        boolean allowVerchange = brandingService.getBrandingConfiguration().isAllowChengeVersion();
 
         FormLayout layout = new FormLayout();
         setLayout(layout);
@@ -105,37 +111,39 @@ public class MainComposite extends AbstractTabComposite {
         data.top = new FormAttachment(authorText, 0, SWT.CENTER);
         authorLabel.setLayoutData(data);
 
-        Button btnDown = widgetFactory.createButton(composite, "m", SWT.PUSH); //$NON-NLS-1$
-        data = new FormData();
-        data.right = new FormAttachment(100, 0);
-        data.top = new FormAttachment(authorText, 0, SWT.CENTER);
-        btnDown.setLayoutData(data);
-        btnDown.setEnabled(enableControl);
+        if (allowVerchange) {
+            Button btnDown = widgetFactory.createButton(composite, "m", SWT.PUSH); //$NON-NLS-1$
+            data = new FormData();
+            data.right = new FormAttachment(100, 0);
+            data.top = new FormAttachment(authorText, 0, SWT.CENTER);
+            btnDown.setLayoutData(data);
+            btnDown.setEnabled(enableControl);
 
-        Button btnUp = widgetFactory.createButton(composite, "M", SWT.PUSH); //$NON-NLS-1$
-        data = new FormData();
-        data.right = new FormAttachment(btnDown, 0);
-        data.top = new FormAttachment(authorText, 0, SWT.CENTER);
-        btnUp.setLayoutData(data);
-        btnUp.setEnabled(enableControl);
+            Button btnUp = widgetFactory.createButton(composite, "M", SWT.PUSH); //$NON-NLS-1$
+            data = new FormData();
+            data.right = new FormAttachment(btnDown, 0);
+            data.top = new FormAttachment(authorText, 0, SWT.CENTER);
+            btnUp.setLayoutData(data);
+            btnUp.setEnabled(enableControl);
 
-        Text versionText = widgetFactory.createText(composite, ""); //$NON-NLS-1$
-        versionText.setEnabled(false);
-        data = new FormData();
-        data.left = new FormAttachment(authorText, AbstractPropertySection.STANDARD_LABEL_WIDTH);
-        data.right = new FormAttachment(btnUp, -2);
-        data.top = new FormAttachment(authorText, 0, SWT.CENTER);
-        versionText.setLayoutData(data);
-        String version = repositoryObject.getVersion();
-        versionText.setText(version != null ? version : ""); //$NON-NLS-1$
-        versionText.setEnabled(enableControl);
+            Text versionText = widgetFactory.createText(composite, ""); //$NON-NLS-1$
+            versionText.setEnabled(false);
+            data = new FormData();
+            data.left = new FormAttachment(authorText, AbstractPropertySection.STANDARD_LABEL_WIDTH);
+            data.right = new FormAttachment(btnUp, -2);
+            data.top = new FormAttachment(authorText, 0, SWT.CENTER);
+            versionText.setLayoutData(data);
+            String version = repositoryObject.getVersion();
+            versionText.setText(version != null ? version : ""); //$NON-NLS-1$
+            versionText.setEnabled(enableControl);
 
-        CLabel versionLabel = widgetFactory.createCLabel(composite, Messages.getString("VersionAuthorSection.versionLabel")); //$NON-NLS-1$
-        data = new FormData();
-        data.left = new FormAttachment(authorText, ITabbedPropertyConstants.HSPACE * 3);
-        data.right = new FormAttachment(versionText, -ITabbedPropertyConstants.HSPACE);
-        data.top = new FormAttachment(versionText, 0, SWT.CENTER);
-        versionLabel.setLayoutData(data);
+            CLabel versionLabel = widgetFactory.createCLabel(composite, Messages.getString("VersionAuthorSection.versionLabel")); //$NON-NLS-1$
+            data = new FormData();
+            data.left = new FormAttachment(authorText, ITabbedPropertyConstants.HSPACE * 3);
+            data.right = new FormAttachment(versionText, -ITabbedPropertyConstants.HSPACE);
+            data.top = new FormAttachment(versionText, 0, SWT.CENTER);
+            versionLabel.setLayoutData(data);
+        }
 
         Text purposeText = widgetFactory.createText(composite, ""); //$NON-NLS-1$
         data = new FormData();

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -24,21 +24,12 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jface.wizard.IWizard;
-import org.eclipse.jface.wizard.WizardDialog;
-import org.eclipse.swt.widgets.Display;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IViewPart;
-import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.talend.commons.exception.BusinessException;
@@ -48,6 +39,7 @@ import org.talend.commons.exception.SystemException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.exception.MessageBoxExceptionHandler;
 import org.talend.commons.utils.PasswordHelper;
+import org.talend.commons.utils.system.EclipseCommandLine;
 import org.talend.core.CorePlugin;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.PluginChecker;
@@ -62,15 +54,13 @@ import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.SAPConnection;
 import org.talend.core.model.metadata.builder.connection.SAPFunctionUnit;
-import org.talend.core.model.metadata.designerproperties.ComponentToRepositoryProperty;
 import org.talend.core.model.migration.IMigrationToolService;
 import org.talend.core.model.process.IContextManager;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
-import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.Item;
-import org.talend.core.model.properties.Property;
+import org.talend.core.model.properties.RulesItem;
 import org.talend.core.model.properties.SAPConnectionItem;
 import org.talend.core.model.properties.SQLPatternItem;
 import org.talend.core.model.properties.User;
@@ -78,20 +68,16 @@ import org.talend.core.model.properties.impl.PropertiesFactoryImpl;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.repository.SVNConstant;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.prefs.PreferenceManipulator;
+import org.talend.core.repository.CoreRepositoryPlugin;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.repository.model.RepositoryFactoryProvider;
 import org.talend.core.repository.model.ResourceModelUtils;
 import org.talend.core.repository.utils.ProjectHelper;
 import org.talend.core.repository.utils.RepositoryPathProvider;
 import org.talend.core.ui.DisableLanguageActions;
-import org.talend.core.ui.IBRMSProviderService;
-import org.talend.core.ui.IEBCDICProviderService;
-import org.talend.core.ui.IFTPProviderService;
-import org.talend.core.ui.IHL7ProviderService;
-import org.talend.core.ui.IHeaderFooterProviderService;
-import org.talend.core.ui.IMDMProviderService;
-import org.talend.core.ui.ISAPProviderService;
+import org.talend.core.ui.IRulesProviderService;
 import org.talend.core.ui.branding.IBrandingService;
 import org.talend.cwm.helper.ModelElementHelper;
 import org.talend.designer.runprocess.IRunProcessService;
@@ -103,10 +89,11 @@ import org.talend.repository.model.ProjectNodeHelper;
 import org.talend.repository.model.ProjectRepositoryNode;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
+import org.talend.repository.model.SalesforceModuleRepositoryObject;
 import org.talend.repository.plugin.integration.BindingActions;
 import org.talend.repository.plugin.integration.SwitchProjectAction;
-import org.talend.repository.ui.actions.metadata.AbstractCreateTableAction;
-import org.talend.repository.ui.actions.metadata.CreateTableAction;
+import org.talend.repository.ui.actions.AContextualAction;
+import org.talend.repository.ui.actions.routines.CreateRoutineAction;
 import org.talend.repository.ui.actions.sqlpattern.CreateSqlpatternAction;
 import org.talend.repository.ui.actions.sqlpattern.EditSqlpatternAction;
 import org.talend.repository.ui.dialog.ContextRepositoryReviewDialog;
@@ -115,19 +102,6 @@ import org.talend.repository.ui.login.connections.ConnectionUserPerReader;
 import org.talend.repository.ui.utils.ColumnNameValidator;
 import org.talend.repository.ui.utils.DBConnectionContextUtils;
 import org.talend.repository.ui.views.IRepositoryView;
-import org.talend.repository.ui.views.RepositoryView;
-import org.talend.repository.ui.wizards.RepositoryWizard;
-import org.talend.repository.ui.wizards.metadata.connection.database.DatabaseWizard;
-import org.talend.repository.ui.wizards.metadata.connection.files.delimited.DelimitedFileWizard;
-import org.talend.repository.ui.wizards.metadata.connection.files.excel.ExcelFileWizard;
-import org.talend.repository.ui.wizards.metadata.connection.files.ldif.LdifFileWizard;
-import org.talend.repository.ui.wizards.metadata.connection.files.positional.FilePositionalWizard;
-import org.talend.repository.ui.wizards.metadata.connection.files.regexp.RegexpFileWizard;
-import org.talend.repository.ui.wizards.metadata.connection.files.salesforce.SalesforceSchemaWizard;
-import org.talend.repository.ui.wizards.metadata.connection.files.xml.XmlFileWizard;
-import org.talend.repository.ui.wizards.metadata.connection.genericshema.GenericSchemaWizard;
-import org.talend.repository.ui.wizards.metadata.connection.ldap.LDAPSchemaWizard;
-import org.talend.repository.ui.wizards.metadata.connection.wsdl.WSDLSchemaWizard;
 
 ;
 
@@ -139,8 +113,6 @@ import org.talend.repository.ui.wizards.metadata.connection.wsdl.WSDLSchemaWizar
  */
 
 public class RepositoryService implements IRepositoryService {
-
-    private GenericSchemaWizard genericSchemaWizard = null;
 
     private static final String PERSPECTIVE_DI_ID = "org.talend.rcp.perspective"; //$NON-NLS-1$
 
@@ -175,8 +147,6 @@ public class RepositoryService implements IRepositoryService {
         return RepositoryNodeUtilities.getPath((RepositoryNode) node);
     }
 
-    ChangeProcessor changeProcessor = new ChangeProcessor();
-
     /*
      * (non-Javadoc)
      * 
@@ -184,7 +154,7 @@ public class RepositoryService implements IRepositoryService {
      * IRepositoryChangedListener)
      */
     public void registerRepositoryChangedListener(IRepositoryChangedListener listener) {
-        changeProcessor.addRepositoryChangedListener(listener);
+        CoreRepositoryPlugin.getDefault().registerRepositoryChangedListener(listener);
     }
 
     /*
@@ -195,7 +165,7 @@ public class RepositoryService implements IRepositoryService {
      * .IRepositoryChangedListener)
      */
     public void registerRepositoryChangedListenerAsFirst(IRepositoryChangedListener listener) {
-        changeProcessor.registerRepositoryChangedListenerAsFirst(listener);
+        CoreRepositoryPlugin.getDefault().registerRepositoryChangedListenerAsFirst(listener);
     }
 
     /*
@@ -205,7 +175,7 @@ public class RepositoryService implements IRepositoryService {
      * IRepositoryChangedListener)
      */
     public void removeRepositoryChangedListener(IRepositoryChangedListener listener) {
-        changeProcessor.removeRepositoryChangedListener(listener);
+        CoreRepositoryPlugin.getDefault().removeRepositoryChangedListener(listener);
     }
 
     /*
@@ -215,13 +185,13 @@ public class RepositoryService implements IRepositoryService {
      * org.talend.repository.model.IRepositoryService#repositoryChanged(org.talend.repository.RepositoryElementDelta)
      */
     public void repositoryChanged(IRepositoryElementDelta delta) {
-        changeProcessor.repositoryChanged(delta);
+        CoreRepositoryPlugin.getDefault().repositoryChanged(delta);
     }
 
     // This method is used for the Action in RepositoryView to synchronize the sqlBuilder.
     // see DataBaseWizard, DatabaseTableWizard, AContextualAction
     public void notifySQLBuilder(List<IRepositoryViewObject> list) {
-        IRepositoryChangedListener listener = (IRepositoryChangedListener) RepositoryView.show();
+        IRepositoryChangedListener listener = (IRepositoryChangedListener) RepositoryManagerHelper.getRepositoryView();
         removeRepositoryChangedListener(listener);
         for (Iterator<IRepositoryViewObject> iter = list.iterator(); iter.hasNext();) {
             IRepositoryViewObject element = iter.next();
@@ -237,43 +207,6 @@ public class RepositoryService implements IRepositoryService {
      */
     public String validateColumnName(String columnName, int index) {
         return ColumnNameValidator.validateColumnNameFormat(columnName, index);
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.talend.repository.model.IRepositoryService#getGenericSchemaWizardDialog(org.eclipse.swt.widgets.Shell,
-     * org.eclipse.ui.IWorkbench, boolean, org.eclipse.jface.viewers.ISelection, java.lang.String[], boolean)
-     */
-    public WizardDialog getGenericSchemaWizardDialog(Shell shell, IWorkbench workbench, boolean creation, ISelection selection,
-            String[] existingNames, boolean isSinglePageOnly) {
-
-        genericSchemaWizard = new GenericSchemaWizard(workbench, creation, selection, existingNames, isSinglePageOnly);
-        return new WizardDialog(shell, genericSchemaWizard);
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.talend.repository.model.IRepositoryService#getPropertyFromWizardDialog()
-     */
-    public Property getPropertyFromWizardDialog() {
-        if (this.genericSchemaWizard != null) {
-            return this.genericSchemaWizard.getConnectionProperty();
-        }
-        return null;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.talend.repository.model.IRepositoryService#getPathForSaveAsGenericSchema()
-     */
-    public IPath getPathForSaveAsGenericSchema() {
-        if (this.genericSchemaWizard != null) {
-            return this.genericSchemaWizard.getPathForSaveAsGenericSchema();
-        }
-        return null;
     }
 
     /*
@@ -332,10 +265,10 @@ public class RepositoryService implements IRepositoryService {
     }
 
     private boolean isloginDialogDisabled() {
-        boolean startable = Boolean.parseBoolean(System.getProperty("talend.project.Startable")); //$NON-NLS-1$
+        boolean reload = Boolean.parseBoolean(System.getProperty("talend.project.reload")); //$NON-NLS-1$
         PreferenceManipulator preferenceManipulator = new PreferenceManipulator();
         ConnectionBean lastBean = null;
-        if (startable) {
+        if (reload) {
             final ConnectionUserPerReader instance = ConnectionUserPerReader.getInstance();
             instance.forceReadConnections();
             final String lastConncetion = ConnectionUserPerReader.getInstance().readLastConncetion();
@@ -347,7 +280,7 @@ public class RepositoryService implements IRepositoryService {
             }
         }
 
-        if (ArrayUtils.contains(Platform.getApplicationArgs(), "--disableLoginDialog") || startable) {
+        if (ArrayUtils.contains(Platform.getApplicationArgs(), EclipseCommandLine.TALEND_DISABLE_LOGINDIALOG_COMMAND)) {
             boolean deleteProjectIfExist = ArrayUtils.contains(Platform.getApplicationArgs(), "--deleteProjectIfExist");
             IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
                     IBrandingService.class);
@@ -388,7 +321,7 @@ public class RepositoryService implements IRepositoryService {
 
             String branch = null;
 
-            if (startable && lastBean != null) {
+            if (reload && lastBean != null) {
                 final String lastProject = preferenceManipulator.getLastProject();
                 if (lastProject != null) {
                     projectName = lastProject;
@@ -417,7 +350,7 @@ public class RepositoryService implements IRepositoryService {
 
             try {
                 ConnectionBean bean = ConnectionBean.getDefaultConnectionBean();
-                if (startable && lastBean != null) {
+                if (reload && lastBean != null) {
                     bean = lastBean;
                 }
                 Context ctx = CorePlugin.getContext();
@@ -443,7 +376,7 @@ public class RepositoryService implements IRepositoryService {
                         break;
                     }
                 }
-                if (!startable) {
+                if (!reload) {
                     if (deleteProjectIfExist && project != null) {
                         ResourceModelUtils.getProject(project).delete(true, new NullProgressMonitor());
                     }
@@ -502,15 +435,13 @@ public class RepositoryService implements IRepositoryService {
         openLoginDialog();
     }
 
-    boolean rcpMode = false;
-
     /*
      * (non-Javadoc)
      * 
      * @see org.talend.repository.model.IRepositoryService#isRCPMode()
      */
     public boolean isRCPMode() {
-        return rcpMode;
+        return CoreRepositoryPlugin.getDefault().isRCPMode();
     }
 
     /*
@@ -519,145 +450,7 @@ public class RepositoryService implements IRepositoryService {
      * @see org.talend.repository.model.IRepositoryService#setRCPMode()
      */
     public void setRCPMode() {
-        rcpMode = true;
-    }
-
-    public void openMetadataConnection(IRepositoryViewObject o, INode node) {
-        final RepositoryNode realNode = RepositoryNodeUtilities.getRepositoryNode(o);
-        openMetadataConnection(false, realNode, node);
-    }
-
-    public ConnectionItem openMetadataConnection(boolean creation, IRepositoryNode repoNode, INode node) {
-
-        RepositoryNode realNode;
-        if (repoNode instanceof RepositoryNode) {
-            realNode = (RepositoryNode) repoNode;
-            IWizard relatedWizard = null;
-            ERepositoryObjectType objectType = null;
-            if (creation) {
-                objectType = realNode.getContentType();
-            } else {
-                objectType = realNode.getObjectType();
-            }
-            if (objectType.equals(ERepositoryObjectType.METADATA_CONNECTIONS)) {
-                relatedWizard = new DatabaseWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_DELIMITED)) {
-                relatedWizard = new DelimitedFileWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_LDIF)) {
-                relatedWizard = new LdifFileWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_POSITIONAL)) {
-                relatedWizard = new FilePositionalWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_REGEXP)) {
-                relatedWizard = new RegexpFileWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_XML)) {
-                relatedWizard = new XmlFileWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_GENERIC_SCHEMA)) {
-                relatedWizard = new GenericSchemaWizard(PlatformUI.getWorkbench(), creation, realNode, null, true);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_WSDL_SCHEMA)) {
-                relatedWizard = new WSDLSchemaWizard(PlatformUI.getWorkbench(), creation, realNode, null, false);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_LDAP_SCHEMA)) {
-                relatedWizard = new LDAPSchemaWizard(PlatformUI.getWorkbench(), creation, realNode, null, false);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_EXCEL)) {
-                relatedWizard = new ExcelFileWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_SALESFORCE_SCHEMA)) {
-                relatedWizard = new SalesforceSchemaWizard(PlatformUI.getWorkbench(), creation, realNode, null, false);
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_EBCDIC)) {
-                if (PluginChecker.isEBCDICPluginLoaded()) {
-                    IEBCDICProviderService service = (IEBCDICProviderService) GlobalServiceRegister.getDefault().getService(
-                            IEBCDICProviderService.class);
-                    if (service != null) {
-                        relatedWizard = service.newEbcdicWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-                    }
-                }
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_HL7)) {
-                if (PluginChecker.isHL7PluginLoaded()) {
-                    IHL7ProviderService service = (IHL7ProviderService) GlobalServiceRegister.getDefault().getService(
-                            IHL7ProviderService.class);
-                    if (service != null) {
-                        relatedWizard = service.newHL7Wizard(PlatformUI.getWorkbench(), creation, realNode, null);
-                    }
-                }
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_MDMCONNECTION)) {
-                if (PluginChecker.isMDMPluginLoaded()) {
-                    IMDMProviderService service = (IMDMProviderService) GlobalServiceRegister.getDefault().getService(
-                            IMDMProviderService.class);
-                    if (service != null) {
-                        relatedWizard = service.newMDMWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-                    }
-                }
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_SAPCONNECTIONS)) {
-                if (PluginChecker.isSAPWizardPluginLoaded()) {
-                    ISAPProviderService service = (ISAPProviderService) GlobalServiceRegister.getDefault().getService(
-                            ISAPProviderService.class);
-                    if (service != null) {
-                        relatedWizard = service.newSAPWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-                    }
-                }
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_HEADER_FOOTER)) {
-                if (GlobalServiceRegister.getDefault().isServiceRegistered(IHeaderFooterProviderService.class)) {
-                    IHeaderFooterProviderService service = (IHeaderFooterProviderService) GlobalServiceRegister.getDefault()
-                            .getService(IHeaderFooterProviderService.class);
-                    if (service != null) {
-                        relatedWizard = service.newHeaderFooterWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-                    }
-                }
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_FTP)) {
-                if (PluginChecker.isFTPPluginLoaded()) {
-                    IFTPProviderService service = (IFTPProviderService) GlobalServiceRegister.getDefault().getService(
-                            IFTPProviderService.class);
-                    if (service != null) {
-                        relatedWizard = service.newFTPWizard(PlatformUI.getWorkbench(), creation, realNode, null);
-                    }
-                }
-            } else if (objectType.equals(ERepositoryObjectType.METADATA_FILE_BRMS)) {
-                if (PluginChecker.isBRMSPluginLoaded()) {
-                    IBRMSProviderService service = (IBRMSProviderService) GlobalServiceRegister.getDefault().getService(
-                            IBRMSProviderService.class);
-                    if (service != null) {
-                        relatedWizard = service.newBRMSWizard(PlatformUI.getWorkbench(), creation, realNode);
-                    }
-                }
-            }
-            boolean changed = false;
-            if (relatedWizard != null) {
-                ConnectionItem connItem = null;
-                if (node != null && relatedWizard instanceof RepositoryWizard) {// creation && node != null
-                    connItem = ((RepositoryWizard) relatedWizard).getConnectionItem();
-                    if (connItem != null) {
-                        changed = ComponentToRepositoryProperty.setValue(connItem.getConnection(), node);
-                    }
-                }
-                if (connItem != null && changed) {
-                    // Open the Wizard
-                    WizardDialog wizardDialog = new WizardDialog(Display.getCurrent().getActiveShell(), relatedWizard);
-                    wizardDialog.setPageSize(600, 500);
-                    wizardDialog.create();
-                    if (wizardDialog.open() == wizardDialog.OK) {
-                        return connItem;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    public void openEditSchemaWizard(String value) {
-        final RepositoryNode realNode = RepositoryNodeUtilities.getMetadataTableFromConnection(value);
-        if (realNode != null) {
-            AbstractCreateTableAction action = new CreateTableAction() {
-
-                /*
-                 * (non-Javadoc)
-                 * 
-                 * @see org.talend.repository.ui.actions.AContextualAction#getSelection()
-                 */
-                @Override
-                public ISelection getSelection() {
-                    return new StructuredSelection(realNode);
-                }
-            };
-            action.run();
-        }
+        CoreRepositoryPlugin.getDefault().setRCPMode();
     }
 
     public DatabaseConnection cloneOriginalValueConnection(DatabaseConnection dbConn) {
@@ -704,11 +497,14 @@ public class RepositoryService implements IRepositoryService {
      * @see org.talend.repository.model.IRepositoryService#addRepositoryViewListener(org.eclipse.ui.ISelectionListener)
      */
     public void addRepositoryTreeViewListener(ISelectionChangedListener listener) {
-        TreeViewer treeViewer = getRepositoryTreeView();
-        if (treeViewer != null) {
-            treeViewer.addSelectionChangedListener(listener);
-        } else {
-            RepositoryView.addPreparedListeners(listener);
+        IRepositoryView repositoryView = RepositoryManagerHelper.getRepositoryView();
+        if (repositoryView != null) {
+            StructuredViewer treeViewer = repositoryView.getViewer();
+            if (treeViewer != null) {
+                treeViewer.addSelectionChangedListener(listener);
+            } else {
+                // RepositoryView.addPreparedListeners(listener);
+            }
         }
     }
 
@@ -719,38 +515,12 @@ public class RepositoryService implements IRepositoryService {
      * ISelectionChangedListener)
      */
     public void removeRepositoryTreeViewListener(ISelectionChangedListener listener) {
-        TreeViewer treeViewer = getRepositoryTreeView();
-        if (treeViewer != null) {
-            treeViewer.removeSelectionChangedListener(listener);
-        }
-    }
-
-    /**
-     * yzhang Comment method "getRepositoryView".
-     * 
-     * @return
-     */
-    public TreeViewer getRepositoryTreeView() {
-        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-        if (page != null) {
-            // bug 16594
-            String perId = page.getPerspective().getId();
-            if ((!"".equals(perId) || null != perId) && perId.equalsIgnoreCase(PERSPECTIVE_DI_ID)) {
-                IViewPart view = page.findView(RepositoryView.ID);
-                if (view == null) {
-                    try {
-                        view = page.showView(RepositoryView.ID);
-                    } catch (Exception e) {
-                        ExceptionHandler.process(e);
-                    }
-                }
-                if (view instanceof RepositoryView) {
-                    return ((RepositoryView) view).getViewer();
-                }
+        IRepositoryView repositoryView = RepositoryManagerHelper.getRepositoryView();
+        if (repositoryView != null) {
+            StructuredViewer treeViewer = repositoryView.getViewer();
+            if (treeViewer != null) {
+                treeViewer.removeSelectionChangedListener(listener);
             }
-            return null;
-        } else {
-            return null;
         }
     }
 
@@ -781,33 +551,10 @@ public class RepositoryService implements IRepositoryService {
      * @return
      */
     public RepositoryNode getRootRepositoryNode(ERepositoryObjectType type) {
-        IRepositoryView view = RepositoryView.show();
+        IRepositoryView view = RepositoryManagerHelper.getRepositoryView();
         if (view != null) {
             ProjectRepositoryNode root = (ProjectRepositoryNode) view.getRoot();
             return root.getRootRepositoryNode(type);
-        }
-        return null;
-    }
-
-    public Action getRepositoryViewDoubleClickAction() {
-        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-        if (page != null) {
-            // bug 16594
-            String perId = page.getPerspective().getId();
-            if ((!"".equals(perId) || null != perId) && perId.equalsIgnoreCase(PERSPECTIVE_DI_ID)) {
-                IViewPart view = page.findView(RepositoryView.ID);
-                if (view == null) {
-                    try {
-                        view = page.showView(RepositoryView.ID);
-
-                    } catch (Exception e) {
-                        ExceptionHandler.process(e);
-                    }
-                }
-                RepositoryView repositoryView = (RepositoryView) view;
-
-                return repositoryView.getDoubleClickAction();
-            }
         }
         return null;
     }
@@ -867,6 +614,30 @@ public class RepositoryService implements IRepositoryService {
 
     public Set<MetadataTable> getTablesFromSpecifiedDataPackage(DatabaseConnection dbconn) {
         return ProjectNodeHelper.getTablesFromSpecifiedDataPackage(dbconn);
+    }
+
+    public Class getClassForSalesforceModule() {
+        return SalesforceModuleRepositoryObject.class;
+    }
+
+    public AContextualAction getCreateRoutineAction(IRepositoryView repositoryView) {
+        CreateRoutineAction createRoutineAction = new CreateRoutineAction(true);
+        createRoutineAction.setWorkbenchPart(repositoryView);
+        return createRoutineAction;
+    }
+
+    public String getRulesProviderPath(RulesItem currentRepositoryItem) {
+        IRulesProviderService rulesService = null;
+        if (PluginChecker.isRulesPluginLoaded()) {
+            rulesService = (IRulesProviderService) GlobalServiceRegister.getDefault().getService(IRulesProviderService.class);
+            try {
+                rulesService.syncRule(currentRepositoryItem);
+                String path = rulesService.getRuleFile(currentRepositoryItem, ".xls").getLocation().toOSString(); //$NON-NLS-N$ //$NON-NLS-1$
+                return path;
+            } catch (SystemException e) {
+            }
+        }
+        return "";
     }
 
 }

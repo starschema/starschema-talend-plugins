@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -22,7 +22,10 @@ import org.apache.commons.lang.ArrayUtils;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.PlatformUI;
+import org.talend.commons.utils.VersionUtils;
 import org.talend.core.CorePlugin;
+import org.talend.core.context.Context;
+import org.talend.core.context.RepositoryContext;
 import org.talend.core.model.metadata.IEbcdicConstant;
 import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.Element;
@@ -31,12 +34,16 @@ import org.talend.core.model.process.IProcess;
 import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.ProcessItem;
+import org.talend.core.model.properties.PropertiesFactory;
+import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.designer.core.IDesignerCoreService;
+import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
+import org.talend.designer.core.model.process.jobsettings.JobSettingsManager;
 import org.talend.designer.core.model.utils.emf.talendfile.ElementParameterType;
 import org.talend.designer.core.model.utils.emf.talendfile.ElementValueType;
 import org.talend.designer.core.model.utils.emf.talendfile.ParametersType;
@@ -193,6 +200,10 @@ public class ElementParameter2ParameterType {
                                     if (index > -1) {
                                         elemParam.setPropertyValue(pTypeName, param.getListItemsValue()[index]);
                                     }
+                                } else if (value.equals("") && name != null
+                                        && (name.equals("LOAD_NEW_VARIABLE") || name.equals("NOT_LOAD_OLD_VARIABLE"))) {
+                                    valueSet = true;
+                                    elemParam.setPropertyValue(pTypeName, param.getListItemsValue()[1]);
                                 }
                             }
                             if (!valueSet) {
@@ -219,8 +230,8 @@ public class ElementParameter2ParameterType {
                                     }
                                     lineValues.put(elementValue.getElementRef(), elementValue.getValue());
                                     if (elementValue.getType() != null) {
-                                        lineValues.put(elementValue.getElementRef() + IEbcdicConstant.REF_TYPE, elementValue
-                                                .getType());
+                                        lineValues.put(elementValue.getElementRef() + IEbcdicConstant.REF_TYPE,
+                                                elementValue.getType());
                                     }
                                 }
                             }
@@ -257,7 +268,8 @@ public class ElementParameter2ParameterType {
                             elemParam.setPropertyValue(pTypeName, value);
                             // end of fix for bug 2193
                         } else if (!param.getFieldType().equals(EParameterFieldType.SCHEMA_TYPE)) {
-                            if (param.getRepositoryValue() != null && !param.getFieldType().equals(EParameterFieldType.PROPERTY_TYPE)) {
+                            if (param.getRepositoryValue() != null
+                                    && !param.getFieldType().equals(EParameterFieldType.PROPERTY_TYPE)) {
                                 if (repositoryParam != null && EmfComponent.REPOSITORY.equals(repositoryParam.getValue())) {
                                     param.setRepositoryValueUsed(true);
                                 } else {
@@ -292,7 +304,8 @@ public class ElementParameter2ParameterType {
             ElementParameterType processParam = null;
             for (int i = 0; i < processParameters.size(); i++) {
                 ElementParameterType paramType = (ElementParameterType) processParameters.get(i);
-                if (paramType.getName().equals(pType.getName()) && paramType.getField().equals(pType.getField())) {
+                if (paramType.getName().equals(pType.getName()) && paramType.getField() != null
+                        && paramType.getField().equals(pType.getField())) {
                     processParam = paramType;
                 } else if (pType.getName().contains(":")) {
                     StringTokenizer token = new StringTokenizer(pType.getName(), ":"); //$NON-NLS-1$
@@ -314,6 +327,34 @@ public class ElementParameter2ParameterType {
             }
             if (processParam != null) {
                 processParam.setValue(pType.getValue());
+            } else {
+                TalendFileFactory fileFact = TalendFileFactory.eINSTANCE;
+                ElementParameterType processTypes = fileFact.createElementParameterType();
+                processTypes.setName(pType.getName());
+                processTypes.setField(pType.getField());
+                processTypes.setValue(pType.getValue());
+
+                boolean needAdd = true;
+                Property property = PropertiesFactory.eINSTANCE.createProperty();
+                property.setAuthor(((RepositoryContext) CorePlugin.getContext().getProperty(Context.REPOSITORY_CONTEXT_KEY))
+                        .getUser());
+                property.setVersion(VersionUtils.DEFAULT_VERSION);
+                property.setStatusCode(""); //$NON-NLS-1$
+                property.setId("ID"); //$NON-NLS-1$
+                property.setLabel(Messages.getString("JobTemplateViewsAndProcessUtil.jobName"));
+                for (IElementParameter currentParam : JobSettingsManager
+                        .getJobSettingsParameters(new org.talend.designer.core.ui.editor.process.Process(property))) {
+                    if (currentParam.getName().equals(pType.getName())) {
+                        if (currentParam.getValue() != null && currentParam.getValue().equals(pType.getValue())) {
+                            // don't save parameter if the value is default one.
+                            needAdd = false;
+                            break;
+                        }
+                    }
+                }
+                if (needAdd) {
+                    processType.getElementParameter().add(processTypes);
+                }
             }
 
         }

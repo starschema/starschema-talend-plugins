@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -31,6 +31,8 @@ public enum EDatabaseTypeName {
              "ORACLE_SERVICE_NAME", "Oracle with service name", Boolean.TRUE, "ORACLE", "DBORACLE", EDatabaseSchemaOrCatalogMapping.None, EDatabaseSchemaOrCatalogMapping.Schema), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
     ORACLE_OCI(
                "ORACLE_OCI", "Oracle OCI", Boolean.TRUE, "ORACLE", "DBORACLE", EDatabaseSchemaOrCatalogMapping.None, EDatabaseSchemaOrCatalogMapping.Schema), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+    ORACLE_RAC(
+               "ORACLE_RAC", "Oracle RAC", Boolean.TRUE, "ORACLE", "DBORACLE", EDatabaseSchemaOrCatalogMapping.None, EDatabaseSchemaOrCatalogMapping.Schema), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$           
     GODBC(
           "Generic ODBC", "Generic ODBC", Boolean.FALSE, "ODBC", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.None), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     MSODBC(
@@ -95,7 +97,7 @@ public enum EDatabaseTypeName {
              "ParAccel", "ParAccel", Boolean.TRUE, "PARACCEL", "PARACCEL", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.Schema), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
     NETEZZA(
             "Netezza", "Netezza", Boolean.FALSE, "NETEZZA", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.None), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-    SAS("SAS", "SAS", Boolean.FALSE, "SAS", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.None), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    SAS("SAS", "SAS", Boolean.TRUE, "SAS", EDatabaseSchemaOrCatalogMapping.None, EDatabaseSchemaOrCatalogMapping.Schema), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     // General JDBC not support schema defalut
     GENERAL_JDBC(
                  "General JDBC", "General JDBC", Boolean.FALSE, "JDBC", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.None), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -103,7 +105,10 @@ public enum EDatabaseTypeName {
 
     HIVE("Hive", "Hive", Boolean.FALSE, "HIVE", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.None), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 
-    H2("H2", "H2", Boolean.TRUE, "H2", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.None);//$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    H2("H2", "H2", Boolean.FALSE, "H2", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.None), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+
+    HBASE(
+          "HBase", "HBase", Boolean.FALSE, "HBASE", EDatabaseSchemaOrCatalogMapping.Sid, EDatabaseSchemaOrCatalogMapping.Column_Family, true); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 
     // displayName is used in Java code.
     private String displayName;
@@ -118,6 +123,8 @@ public enum EDatabaseTypeName {
 
     // needs a mapping for bug 0004305
     private String xmlType;
+
+    private boolean useProvider = false;
 
     private EDatabaseSchemaOrCatalogMapping catalogMappingField;
 
@@ -160,6 +167,13 @@ public enum EDatabaseTypeName {
         this.xmlType = product;
         this.catalogMappingField = catalogMappingField;
         this.schemaMappingField = schemaMappingField;
+    }
+
+    EDatabaseTypeName(String dbType, String displayName, Boolean isNeedSchema, String product,
+            EDatabaseSchemaOrCatalogMapping catalogMappingField, EDatabaseSchemaOrCatalogMapping schemaMappingField,
+            boolean useProvider) {
+        this(dbType, displayName, isNeedSchema, product, catalogMappingField, schemaMappingField);
+        this.useProvider = useProvider;
     }
 
     EDatabaseTypeName(String dbType, String displayName, Boolean isNeedSchema, String product, String xmlType,
@@ -260,6 +274,10 @@ public enum EDatabaseTypeName {
             }
         }
         return false;
+    }
+
+    public boolean isUseProvider() {
+        return useProvider;
     }
 
 }

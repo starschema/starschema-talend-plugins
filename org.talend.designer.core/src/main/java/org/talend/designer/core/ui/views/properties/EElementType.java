@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -44,9 +44,11 @@ public enum EElementType {
                 EComponentCategory.BASICRUN,
                 EComponentCategory.DEBUGRUN,
                 EComponentCategory.ADVANCESETTING,
-                EComponentCategory.TARGET)
-
-    ;
+                EComponentCategory.TARGET),
+    SCHEDULE_4_HADOOP_NON_WINDOWS(
+                                  EComponentCategory.SCHEDULE_4_HADOOP_EXECUTE_JOB,
+                                  EComponentCategory.SCHEDULE_4_HADOOP_MONITORING),
+    SCHEDULE_4_HADOOP_WINDOWS(EComponentCategory.SCHEDULE_4_HADOOP_EXECUTE_JOB);
 
     private EComponentCategory[] categories;
 

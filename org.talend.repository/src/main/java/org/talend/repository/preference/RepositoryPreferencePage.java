@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -27,6 +27,7 @@ import org.talend.commons.ui.swt.preferences.CheckBoxFieldEditor;
 import org.talend.core.PluginChecker;
 import org.talend.core.model.repository.IRepositoryPrefConstants;
 import org.talend.core.model.repository.RepositoryManager;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.ui.views.IRepositoryView;
 
@@ -65,8 +66,8 @@ public class RepositoryPreferencePage extends FieldEditorPreferencePage implemen
         refreshGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         refreshGroup.setText(Messages.getString("RepositoryPreferencePage.RefreshTitle")); //$NON-NLS-1$
 
-        manuallyRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.MANUALLY_REFRESH, Messages
-                .getString("RepositoryPreferencePage.RefreshManually"), //$NON-NLS-1$
+        manuallyRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.MANUALLY_REFRESH,
+                Messages.getString("RepositoryPreferencePage.RefreshManually"), //$NON-NLS-1$
                 refreshGroup);
         GridDataFactory.swtDefaults().indent(5, 5).applyTo(manuallyRefreshEditor.getButton());
 
@@ -75,23 +76,23 @@ public class RepositoryPreferencePage extends FieldEditorPreferencePage implemen
         layoutData.horizontalIndent = 5;
         childGroup.setLayoutData(layoutData);
 
-        creatingRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.CREATING_REFRESH, Messages
-                .getString("RepositoryPreferencePage.RefreshCreated"), childGroup); //$NON-NLS-1$
+        creatingRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.CREATING_REFRESH,
+                Messages.getString("RepositoryPreferencePage.RefreshCreated"), childGroup); //$NON-NLS-1$
         GridDataFactory.swtDefaults().indent(10, 0).applyTo(creatingRefreshEditor.getButton());
 
-        savingRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.SAVING_REFRESH, Messages
-                .getString("RepositoryPreferencePage.RefreshSaved"), //$NON-NLS-1$
+        savingRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.SAVING_REFRESH,
+                Messages.getString("RepositoryPreferencePage.RefreshSaved"), //$NON-NLS-1$
                 childGroup);
         GridDataFactory.swtDefaults().indent(10, 0).applyTo(savingRefreshEditor.getButton());
 
-        deletingRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.DELETING_REFRESH, Messages
-                .getString("RepositoryPreferencePage.RefreshDeleted"), //$NON-NLS-1$
+        deletingRefreshEditor = new CheckBoxFieldEditor(IRepositoryPrefConstants.DELETING_REFRESH,
+                Messages.getString("RepositoryPreferencePage.RefreshDeleted"), //$NON-NLS-1$
                 childGroup);
         GridDataFactory.swtDefaults().indent(10, 0).applyTo(deletingRefreshEditor.getButton());
 
         if (PluginChecker.isRefProjectLoaded()) {
-            mergingReferenceProject = new CheckBoxFieldEditor(IRepositoryPrefConstants.MERGE_REFERENCE_PROJECT, Messages
-                    .getString("RepositoryPreferencePage.ReferenceProjectMerged"), //$NON-NLS-1$
+            mergingReferenceProject = new CheckBoxFieldEditor(IRepositoryPrefConstants.MERGE_REFERENCE_PROJECT,
+                    Messages.getString("RepositoryPreferencePage.ReferenceProjectMerged"), //$NON-NLS-1$
                     comp);
             GridDataFactory.swtDefaults().indent(10, 0).applyTo(mergingReferenceProject.getButton());
             addField(mergingReferenceProject);
@@ -140,7 +141,9 @@ public class RepositoryPreferencePage extends FieldEditorPreferencePage implemen
     @Override
     public void dispose() {
         super.dispose();
-        IRepositoryView view = RepositoryManager.getRepositoryView();
-        view.refresh();
+        IRepositoryView view = RepositoryManagerHelper.findRepositoryView();
+        if (view != null) {
+            view.refresh();
+        }
     }
 }

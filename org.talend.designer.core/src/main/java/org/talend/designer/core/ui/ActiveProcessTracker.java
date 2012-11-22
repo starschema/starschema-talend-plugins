@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -11,6 +11,9 @@
 //
 // ============================================================================
 package org.talend.designer.core.ui;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.ui.IEditorPart;
@@ -38,7 +41,7 @@ import org.talend.designer.runprocess.IRunProcessService;
 /**
  * Track the active Process being edited. <br/>
  * 
- * $Id: ActiveProcessTracker.java 61892 2011-06-07 14:59:18Z nrousseau $
+ * $Id: ActiveProcessTracker.java 82709 2012-04-28 08:12:04Z mwang $
  * 
  */
 public class ActiveProcessTracker implements IPartListener {
@@ -57,6 +60,20 @@ public class ActiveProcessTracker implements IPartListener {
     private static IProcess2 lastProcessOpened;
 
     private static boolean changedProcess;
+
+    private static List<IJobTrackerListener> jobTrackerListeners = new ArrayList<IJobTrackerListener>();
+
+    public static void addJobTrackerListener(IJobTrackerListener listener) {
+        if (currentProcess != null) {
+            listener.focusOnJob(currentProcess);
+        }
+        jobTrackerListeners.add(listener);
+    }
+
+    public static void removeJobTrackerListener(IJobTrackerListener listener) {
+        jobTrackerListeners.remove(listener);
+        listener.allJobClosed();
+    }
 
     public IProcess2 getJobFromActivatedEditor(IWorkbenchPart part) {
         IWorkbenchPart testedPart = part;
@@ -105,6 +122,10 @@ public class ActiveProcessTracker implements IPartListener {
             setContextsView(process);
             // setStatsAndLogsView(process);
             JobSettings.switchToCurJobSettingsView();
+
+            for (IJobTrackerListener listener : jobTrackerListeners) {
+                listener.focusOnJob(process);
+            }
 
             // if (process instanceof Process) {
             // Process p = (Process) process;
@@ -181,6 +202,9 @@ public class ActiveProcessTracker implements IPartListener {
                         lastProcessOpened = null;
                     }
                     currentProcess = null;
+                    for (IJobTrackerListener listener : jobTrackerListeners) {
+                        listener.allJobClosed();
+                    }
                 }
                 if (GlobalServiceRegister.getDefault().isServiceRegistered(ISQLBuilderService.class)) {
                     ISQLBuilderService sqlBuilderService = (ISQLBuilderService) GlobalServiceRegister.getDefault().getService(
@@ -256,6 +280,9 @@ public class ActiveProcessTracker implements IPartListener {
             addJobInProblemView(process);
         } else if (existedJobOpened) {
             currentProcess = process;
+            for (IJobTrackerListener listener : jobTrackerListeners) {
+                listener.focusOnJob(process);
+            }
         }
 
     }

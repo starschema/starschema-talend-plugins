@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -25,6 +25,8 @@ public enum EDatabaseSchemaOrCatalogMapping {
     // catalog or schema definition : represent the use the valuse of Connection.getUserName() ,this is only used for
     // as400.
     Login,
+    // for hbase,column family can be considered as the schema of the db
+    Column_Family,
     // schema definition : use the connection.getName()
     Default_Name
     // this is for databases like micosoft access which didn't require the schema or catalog

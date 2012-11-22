@@ -1,6 +1,7 @@
 package org.talend.designer.core.ui.editor.jobletcontainer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -17,10 +18,14 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.core.GlobalServiceRegister;
+import org.talend.core.PluginChecker;
 import org.talend.core.model.components.ComponentUtilities;
+import org.talend.core.model.components.IComponent;
 import org.talend.core.model.metadata.IMetadataTable;
+import org.talend.core.model.metadata.MetadataTable;
 import org.talend.core.model.process.EConnectionType;
 import org.talend.core.model.process.EParameterFieldType;
+import org.talend.core.model.process.Element;
 import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.IExternalData;
@@ -32,6 +37,7 @@ import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.JobletProcessItem;
 import org.talend.core.ui.IJobletProviderService;
+import org.talend.core.ui.ISVNProviderService;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.NodeConnector;
 import org.talend.designer.core.model.utils.emf.talendfile.ElementParameterType;
@@ -42,8 +48,10 @@ import org.talend.designer.core.ui.editor.nodecontainer.NodeContainer;
 import org.talend.designer.core.ui.editor.nodecontainer.NodeContainerPart;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.nodes.NodePart;
+import org.talend.designer.core.ui.editor.subjobcontainer.SubjobContainer;
 import org.talend.designer.joblet.model.JobletNode;
 import org.talend.designer.joblet.model.JobletProcess;
+import org.talend.repository.model.ComponentsFactoryProvider;
 import org.talend.repository.model.ERepositoryStatus;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IProxyRepositoryService;
@@ -195,6 +203,17 @@ public class JobletUtil {
 
     public NodeContainer cloneNodeContainer(NodeContainer nodeContainer, Node cloneNode) {
         NodeContainerPart nodeConPart = new NodeContainerPart();
+        // TDI-13132
+        IComponent tempComponent = cloneNode.getComponent();
+        if (tempComponent != null) {
+            String tempComponentName = tempComponent.getName();
+            if (tempComponentName != null) {
+                IComponent component = ComponentsFactoryProvider.getInstance().get(tempComponentName);
+                if (component != null) {
+                    cloneNode.setComponent(component);
+                }
+            }
+        }
         NodeContainer cloneNodeContainer = new NodeContainer(cloneNode);
         nodeConPart.setModel(cloneNodeContainer);
         cloneNodeContainer.setNodeError(cloneNode.getNodeError());
@@ -220,6 +239,7 @@ public class JobletUtil {
         }
 
         nodePart.setModel(cloneNode);
+        cloneNode.setLabel(node.getLabel());
         // if (lock == null) {
         // cloneNode.setReadOnly(true);
         // } else {
@@ -420,6 +440,24 @@ public class JobletUtil {
                     if (((Node) node).isJoblet() && jobletItem.getProperty() != null) {
                         if (jobletItem.getProperty().getId().equals(node.getComponent().getProcess().getId())) {
                             boolean haveLock = jobletItem.getState().isLocked();
+                            boolean isSvn = false;
+                            ISVNProviderService service = null;
+                            if (PluginChecker.isSVNProviderPluginLoaded()) {
+                                service = (ISVNProviderService) GlobalServiceRegister.getDefault().getService(
+                                        ISVNProviderService.class);
+                            }
+                            if (service != null && service.isProjectInSvnMode()) {
+                                isSvn = service.isProjectInSvnMode();
+                            }
+                            if (isSvn) {
+                                IProxyRepositoryService proxyService = (IProxyRepositoryService) GlobalServiceRegister
+                                        .getDefault().getService(IProxyRepositoryService.class);
+                                IProxyRepositoryFactory factory = proxyService.getProxyRepositoryFactory();
+                                ERepositoryStatus repositoryStatus = factory.getStatus(jobletItem);
+                                if (repositoryStatus == ERepositoryStatus.LOCK_BY_USER) {
+                                    haveLock = true;
+                                }
+                            }
                             if (haveLock) {
                                 return true;
                             }
@@ -509,8 +547,18 @@ public class JobletUtil {
 
                             if (para.getValue() != null) {
                                 if (paraOra.getValue() != null) {
-                                    if (!para.getValue().equals(paraOra.getValue())) {
-                                        return true;
+                                    // TDI-18915:The parameter here is not only a string value,but can be a
+                                    // MetadataTable
+                                    if (para.getValue() instanceof IMetadataTable) {
+                                        boolean isSame = ((MetadataTable) para.getValue()).sameMetadataAs((MetadataTable) paraOra
+                                                .getValue());
+                                        if (!isSame) {
+                                            return true;
+                                        }
+                                    } else {
+                                        if (!para.getValue().equals(paraOra.getValue())) {
+                                            return true;
+                                        }
                                     }
                                 } else {
                                     return true;
@@ -590,6 +638,7 @@ public class JobletUtil {
                 }
             }
         }
+
         return false;
     }
 
@@ -605,6 +654,27 @@ public class JobletUtil {
 
         }
         return true;
+    }
+
+    public Map<String, List<JobletContainer>> getModifyMap(List<Element> elem) {
+        Map<String, List<JobletContainer>> jobletNodeMap = new HashMap<String, List<JobletContainer>>();
+        for (Element element : elem) {
+            if (element instanceof SubjobContainer) {
+                for (NodeContainer container : ((SubjobContainer) element).getNodeContainers()) {
+                    if (container instanceof JobletContainer) {
+                        String processID = container.getNode().getProcess().getId();
+                        if (!jobletNodeMap.containsKey(processID)) {
+                            List<JobletContainer> nodeList = new ArrayList<JobletContainer>();
+                            nodeList.add((JobletContainer) container);
+                            jobletNodeMap.put(processID, nodeList);
+                        } else {
+                            jobletNodeMap.get(processID).add((JobletContainer) container);
+                        }
+                    }
+                }
+            }
+        }
+        return jobletNodeMap;
     }
 
     // public void reloadJobletComponent(IProcess2 process){

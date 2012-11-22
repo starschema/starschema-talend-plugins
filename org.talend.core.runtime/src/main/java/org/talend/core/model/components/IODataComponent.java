@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -37,6 +37,8 @@ public class IODataComponent {
 
     private IMetadataTable newMetadataTable;
 
+    private IMetadataTable connMetadataTable;
+
     private List<ColumnNameChanged> columnNameChanged = null;
 
     private static ICoreService coreService = (ICoreService) GlobalServiceRegister.getDefault().getService(ICoreService.class);
@@ -50,12 +52,14 @@ public class IODataComponent {
         super();
         this.connection = connection;
         this.newMetadataTable = connection.getMetadataTable().clone();
+        this.connMetadataTable = connection.getMetadataTable().clone();
     }
 
     public IODataComponent(IConnection connection, IMetadataTable clonedTable) {
         super();
         this.connection = connection;
         this.newMetadataTable = clonedTable;
+        this.connMetadataTable = connection.getMetadataTable().clone();
     }
 
     @Override
@@ -101,12 +105,12 @@ public class IODataComponent {
     }
 
     public boolean hasChanged() {
-        return newMetadataTable != null && !newMetadataTable.sameMetadataAs(connection.getMetadataTable(), getColumnOption());
+        return newMetadataTable != null && !newMetadataTable.sameMetadataAs(connMetadataTable, getColumnOption());
     }
 
     public List<ColumnNameChanged> getColumnNameChanged() {
         if (columnNameChanged == null && coreService != null) {
-            columnNameChanged = coreService.getColumnNameChanged(connection.getMetadataTable(), newMetadataTable);
+            columnNameChanged = coreService.getColumnNameChanged(connMetadataTable, newMetadataTable);
         }
         return columnNameChanged;
     }
@@ -115,7 +119,7 @@ public class IODataComponent {
 
     public List<ColumnNameChanged> getNewMetadataColumns() {
         if (newMetadataColumns == null && coreService != null) {
-            newMetadataColumns = coreService.getNewMetadataColumns(connection.getMetadataTable(), newMetadataTable);
+            newMetadataColumns = coreService.getNewMetadataColumns(connMetadataTable, newMetadataTable);
         }
         return newMetadataColumns;
     }
@@ -124,7 +128,7 @@ public class IODataComponent {
 
     public List<ColumnNameChanged> getRemoveMetadataColumns() {
         if (removeMetadataColumns == null && coreService != null) {
-            removeMetadataColumns = coreService.getRemoveMetadataColumns(connection.getMetadataTable(), newMetadataTable);
+            removeMetadataColumns = coreService.getRemoveMetadataColumns(connMetadataTable, newMetadataTable);
         }
         return removeMetadataColumns;
     }
@@ -149,5 +153,13 @@ public class IODataComponent {
      */
     public void setColumnOption(int columnOption) {
         this.columnOption = columnOption;
+    }
+
+    public IMetadataTable getConnMetadataTable() {
+        return connMetadataTable;
+    }
+
+    public void setConnMetadataTable(IMetadataTable connMetadataTable) {
+        this.connMetadataTable = connMetadataTable;
     }
 }

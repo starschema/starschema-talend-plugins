@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,6 +14,7 @@ package org.talend.repository.ui.actions;
 
 import java.util.List;
 
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.wizard.WizardDialog;
@@ -24,11 +25,13 @@ import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
+import org.talend.repository.RepositoryPlugin;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.model.ERepositoryStatus;
 import org.talend.repository.model.IRepositoryNode.ENodeType;
 import org.talend.repository.model.IRepositoryNode.EProperties;
 import org.talend.repository.model.RepositoryNode;
+import org.talend.repository.preference.ExportJobTokenCollector;
 import org.talend.repository.ui.wizards.exportjob.JobScriptsExportWizard;
 
 /**
@@ -55,11 +58,15 @@ public class ExportJobScriptAction extends AContextualAction {
         }
         List<RepositoryNode> nodes = (List<RepositoryNode>) selection.toList();
         for (RepositoryNode node : nodes) {
-            if (node.getType() != ENodeType.REPOSITORY_ELEMENT
-                    || node.getProperties(EProperties.CONTENT_TYPE) != ERepositoryObjectType.PROCESS) {
+            if (node.getProperties(EProperties.CONTENT_TYPE) != ERepositoryObjectType.PROCESS) {
                 canWork = false;
                 break;
             }
+            if (node.getType() != ENodeType.REPOSITORY_ELEMENT && node.getChildren().isEmpty()) {
+                canWork = false;
+                break;
+            }
+
             if (canWork && node.getObject() != null
                     && ProxyRepositoryFactory.getInstance().getStatus(node.getObject()) == ERepositoryStatus.DELETED) {
                 canWork = false;
@@ -82,7 +89,7 @@ public class ExportJobScriptAction extends AContextualAction {
 
     protected void doRun() {
         JobScriptsExportWizard processWizard = new JobScriptsExportWizard();
-        IWorkbench workbench = this.getViewPart().getViewSite().getWorkbenchWindow().getWorkbench();
+        IWorkbench workbench = getWorkbench();
         processWizard.setWindowTitle(EXPORTJOBSCRIPTS);
         processWizard.init(workbench, (IStructuredSelection) this.getSelection());
 
@@ -91,5 +98,10 @@ public class ExportJobScriptAction extends AContextualAction {
         workbench.saveAllEditors(true);
         dialog.setPageSize(830, 450);
         dialog.open();
+
+        // collector
+        IPreferenceStore preferenceStore = RepositoryPlugin.getDefault().getPreferenceStore();
+        int num = preferenceStore.getInt(ExportJobTokenCollector.TOS_COUNT_JOB_EXPORTS.getPrefKey());
+        preferenceStore.setValue(ExportJobTokenCollector.TOS_COUNT_JOB_EXPORTS.getPrefKey(), num + 1);
     }
 }

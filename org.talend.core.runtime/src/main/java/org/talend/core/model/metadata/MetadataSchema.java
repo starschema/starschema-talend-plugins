@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -30,11 +30,13 @@ import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.osgi.framework.Bundle;
+import org.talend.commons.utils.data.list.UniqueStringGenerator;
 import org.talend.commons.xml.XSDValidator;
 import org.talend.core.language.LanguageManager;
 import org.talend.core.model.metadata.builder.connection.ConnectionFactory;
 import org.talend.core.model.metadata.builder.connection.SchemaTarget;
 import org.talend.core.model.metadata.types.PerlTypesManager;
+import org.talend.cwm.helper.TaggedValueHelper;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -44,6 +46,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
+import orgomg.cwm.objectmodel.core.TaggedValue;
 
 import com.sun.org.apache.xml.internal.serialize.OutputFormat;
 import com.sun.org.apache.xml.internal.serialize.XMLSerializer;
@@ -59,7 +62,9 @@ public class MetadataSchema {
     /**
      * 
      */
-    private static final String CORE_PLUGIN_ID = "org.talend.core";
+    // private static final String CORE_PLUGIN_ID = "org.talend.core";
+
+    private static final String CORE_RUNTIME_PLUGIN_ID = "org.talend.core.runtime";
 
     private static final String SCHEMA_LANGUAGE = "http://java.sun.com/xml/jaxp/properties/schemaLanguage"; //$NON-NLS-1$
 
@@ -161,7 +166,7 @@ public class MetadataSchema {
         final List<IMetadataColumn> listColumns = new ArrayList<IMetadataColumn>();
         Set<String> columnsAlreadyAdded = new HashSet<String>();
         if (file != null) {
-            final Bundle b = Platform.getBundle(CORE_PLUGIN_ID);
+            final Bundle b = Platform.getBundle(CORE_RUNTIME_PLUGIN_ID);
             final URL url = FileLocator.toFileURL(FileLocator.find(b, new Path(SCHEMA_XSD), null));
             final File schema = new File(url.getPath());
 
@@ -266,7 +271,7 @@ public class MetadataSchema {
         if (file != null) {
             final DocumentBuilderFactory fabrique = DocumentBuilderFactory.newInstance();
 
-            final Bundle b = Platform.getBundle(CORE_PLUGIN_ID);
+            final Bundle b = Platform.getBundle(CORE_RUNTIME_PLUGIN_ID);
             final URL url = FileLocator.toFileURL(FileLocator.find(b, new Path(SCHEMA_XSD), null));
             final File schema = new File(url.getPath());
 
@@ -296,6 +301,7 @@ public class MetadataSchema {
 
             final NodeList nodes = document.getElementsByTagName("column"); //$NON-NLS-1$
             Set<String> columnsAlreadyAdded = new HashSet<String>();
+
             for (int i = 0; i < nodes.getLength(); i++) {
                 final org.talend.core.model.metadata.builder.connection.MetadataColumn metadataColumn = ConnectionFactory.eINSTANCE
                         .createMetadataColumn();
@@ -311,16 +317,39 @@ public class MetadataSchema {
                 final Node defaultValue = nodeMap.getNamedItem("default"); //$NON-NLS-1$
                 final Node comment = nodeMap.getNamedItem("comment"); //$NON-NLS-1$
                 final Node pattern = nodeMap.getNamedItem("pattern"); //$NON-NLS-1$
+                final Node originalLength = nodeMap.getNamedItem("originalLength");
                 final Node originalField = nodeMap.getNamedItem("originalDbColumnName"); //$NON-NLS-1$
+
+                final Node impliedDecimal = nodeMap.getNamedItem("ImpliedDecimal"); //$NON-NLS-1$
+                final Node signed = nodeMap.getNamedItem("Signed"); //$NON-NLS-1$
 
                 // final Node function = nodeMap.getNamedItem("pattern"); //$NON-NLS-1$
                 // final Node parameter = nodeMap.getNamedItem("pattern"); //$NON-NLS-1$
                 // final Node preview = nodeMap.getNamedItem("pattern"); //$NON-NLS-1$
 
                 String nodeValue = MetadataToolHelper.validateColumnName(label.getNodeValue(), 0);
+                // metadataColumn.setLabel(nodeValue);
                 metadataColumn.setLabel(nodeValue);
+                // TDI-17966:Copybook schema wizard doesn't retrieve the copybook schema correctly
+                UniqueStringGenerator<org.talend.core.model.metadata.builder.connection.MetadataColumn> uniqueLabelGenerator = new UniqueStringGenerator<org.talend.core.model.metadata.builder.connection.MetadataColumn>(
+                        metadataColumn.getLabel(), listColumns) {
+
+                    /*
+                     * (non-Javadoc)
+                     * 
+                     * @see org.talend.commons.utils.data.list.UniqueStringGenerator#getBeanString(java.lang.Object)
+                     */
+                    @Override
+                    protected String getBeanString(org.talend.core.model.metadata.builder.connection.MetadataColumn bean) {
+                        return bean.getLabel();
+                    }
+
+                };
+                metadataColumn.setLabel(uniqueLabelGenerator.getUniqueString());
+
                 metadataColumn.setKey(Boolean.parseBoolean(key.getNodeValue()));
                 metadataColumn.setTalendType(getNewTalendType(type.getNodeValue()));
+
                 if (sourceType != null) {
                     metadataColumn.setSourceType(sourceType.getNodeValue());
                 }
@@ -345,27 +374,34 @@ public class MetadataSchema {
                 metadataColumn.setNullable(Boolean.parseBoolean(nullable.getNodeValue()));
                 metadataColumn.setDefaultValue(defaultValue.getNodeValue());
                 metadataColumn.setComment(comment.getNodeValue());
+                if (originalLength.getNodeValue() != null) {
+                    try {
+                        metadataColumn.setOriginalLength(Integer.parseInt(originalLength.getNodeValue()));
+                    } catch (final NumberFormatException e) {
+                        metadataColumn.setLength(0);
+                    }
+
+                }
                 if (pattern.getNodeValue() != null) {
                     metadataColumn.setPattern(pattern.getNodeValue());
                 }
-                // if (function.getNodeValue()!=null) {
-                // metadataColumn.setPattern(function.getNodeValue());
-                // }
-                // if (parameter.getNodeValue()!=null) {
-                // metadataColumn.setPattern(parameter.getNodeValue());
-                // }
-                // if (preview.getNodeValue()!=null) {
-                // metadataColumn.setPattern(preview.getNodeValue());
-                // }
-                if (originalField != null && originalField.getNodeValue() != null) {
-                    metadataColumn.setOriginalField(originalField.getNodeValue());
-                } else {
-                    metadataColumn.setOriginalField(label.getNodeValue());
-                }
+                metadataColumn.setOriginalField(metadataColumn.getLabel());
 
                 if (!columnsAlreadyAdded.contains(metadataColumn.getLabel())) {
                     listColumns.add(metadataColumn);
                     columnsAlreadyAdded.add(metadataColumn.getLabel());
+                }
+
+                if (impliedDecimal.getNodeValue() != null) {
+                    TaggedValue impliedDc = TaggedValueHelper.createTaggedValue(
+                            "additionalField:" + impliedDecimal.getNodeName(), impliedDecimal.getNodeValue()); //$NON-NLS-1$
+                    metadataColumn.getTaggedValue().add(impliedDc);
+                }
+
+                if (signed.getNodeValue() != null) {
+                    TaggedValue sign = TaggedValueHelper.createTaggedValue(
+                            "additionalField:" + signed.getNodeName(), signed.getNodeValue()); //$NON-NLS-1$
+                    metadataColumn.getTaggedValue().add(sign);
                 }
             }
         }
@@ -387,7 +423,7 @@ public class MetadataSchema {
         if (file != null) {
             final DocumentBuilderFactory fabrique = DocumentBuilderFactory.newInstance();
 
-            final Bundle b = Platform.getBundle(CORE_PLUGIN_ID);
+            final Bundle b = Platform.getBundle(CORE_RUNTIME_PLUGIN_ID);
             final URL url = FileLocator.toFileURL(FileLocator.find(b, new Path(TARGETSCHEMA_XSD), null));
             final File schema = new File(url.getPath());
 
@@ -452,7 +488,7 @@ public class MetadataSchema {
         if (file != null) {
             final DocumentBuilderFactory fabrique = DocumentBuilderFactory.newInstance();
 
-            final Bundle b = Platform.getBundle(CORE_PLUGIN_ID);
+            final Bundle b = Platform.getBundle(CORE_RUNTIME_PLUGIN_ID);
             final URL url = FileLocator.toFileURL(FileLocator.find(b, new Path(SCHEMA_XSD), null));
             final File schema = new File(url.getPath());
 
@@ -562,7 +598,7 @@ public class MetadataSchema {
         if (file != null) {
             final DocumentBuilderFactory fabrique = DocumentBuilderFactory.newInstance();
 
-            final Bundle b = Platform.getBundle(CORE_PLUGIN_ID);
+            final Bundle b = Platform.getBundle(CORE_RUNTIME_PLUGIN_ID);
             final URL url = FileLocator.toFileURL(FileLocator.find(b, new Path(TARGETSCHEMA_XSD), null));
             final File schema = new File(url.getPath());
 
@@ -643,7 +679,7 @@ public class MetadataSchema {
         if (file != null) {
             final DocumentBuilderFactory fabrique = DocumentBuilderFactory.newInstance();
 
-            final Bundle b = Platform.getBundle(CORE_PLUGIN_ID);
+            final Bundle b = Platform.getBundle(CORE_RUNTIME_PLUGIN_ID);
             final URL url = FileLocator.toFileURL(FileLocator.find(b, new Path(SCHEMA_XSD), null));
             final File schema = new File(url.getPath());
 

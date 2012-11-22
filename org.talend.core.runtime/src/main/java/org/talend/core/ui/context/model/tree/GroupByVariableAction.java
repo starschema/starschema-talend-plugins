@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -54,7 +54,7 @@ public class GroupByVariableAction extends Action {
         TreeViewer viewer = parentModel.getViewer();
 
         viewer.setColumnProperties(ContextTreeConstants.GROUP_BY_VARIABLE_COLUMN_PROPERTIES);
-        GroupByVariableProvider labelprovider = new GroupByVariableProvider();
+        GroupByVariableProvider labelprovider = new GroupByVariableProvider(parentModel.getContextModelManager());
         parentModel.setProviderProxy(labelprovider);
         Tree tree = viewer.getTree();
         viewer.setCellEditors(new CellEditor[] { null, null, new CheckboxCellEditor(tree), new TextCellEditor(tree),

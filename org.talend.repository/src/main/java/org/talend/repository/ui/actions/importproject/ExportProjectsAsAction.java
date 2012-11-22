@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -18,13 +18,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
-import org.eclipse.core.resources.IPathVariableManager;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -52,9 +49,7 @@ import org.eclipse.ui.internal.ide.IDEWorkbenchMessages;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.utils.data.container.RootContainer;
-import org.talend.core.CorePlugin;
 import org.talend.core.language.ECodeLanguage;
-import org.talend.core.model.general.ILibrariesService;
 import org.talend.core.model.general.Project;
 import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.repository.IRepositoryViewObject;
@@ -137,8 +132,8 @@ public class ExportProjectsAsAction extends Action implements IWorkbenchWindowAc
 
                 final DeleteResourcesOperation operation = new DeleteResourcesOperation(new IResource[] { libJavaFolder },
                         IDEWorkbenchMessages.DeleteResourceAction_operationLabel, true);
-                PlatformUI.getWorkbench().getOperationSupport().getOperationHistory().execute(operation, null,
-                        WorkspaceUndoUtil.getUIInfoAdapter(window.getShell()));
+                PlatformUI.getWorkbench().getOperationSupport().getOperationHistory()
+                        .execute(operation, null, WorkspaceUndoUtil.getUIInfoAdapter(window.getShell()));
             }
         } catch (Exception e) {
             // e.printStackTrace();
@@ -168,8 +163,8 @@ public class ExportProjectsAsAction extends Action implements IWorkbenchWindowAc
                         CreateFileOperation op = new CreateFileOperation(store.file, store.uri, null,
                                 IDEWorkbenchMessages.WizardNewFileCreationPage_title);
                         try {
-                            PlatformUI.getWorkbench().getOperationSupport().getOperationHistory().execute(op, monitor,
-                                    WorkspaceUndoUtil.getUIInfoAdapter(window.getShell()));
+                            PlatformUI.getWorkbench().getOperationSupport().getOperationHistory()
+                                    .execute(op, monitor, WorkspaceUndoUtil.getUIInfoAdapter(window.getShell()));
                         } catch (final ExecutionException e) {
                             ExceptionHandler.process(e);
                         }
@@ -200,11 +195,11 @@ public class ExportProjectsAsAction extends Action implements IWorkbenchWindowAc
             Project[] projects = repositoryFactory.readProject(true);
             for (Project project : projects) {
                 IProject fsProject = ResourceModelUtils.getProject(project);
-                IFolder libJavaFolder = fsProject.getFolder(ExportProjectsAsAction.CODE);
-                if (libJavaFolder.exists()) {
-                    List<LinkTargetStore> links = getLinksFromProject(project);
-                    map.put(project, links);
-                }
+                // IFolder libJavaFolder = fsProject.getFolder(ExportProjectsAsAction.CODE);
+                // if (libJavaFolder.exists()) {
+                // List<LinkTargetStore> links = getLinksFromProject(project);
+                // map.put(project, links);
+                // }
             }
         } catch (Exception e) {
             // e.printStackTrace();
@@ -224,7 +219,7 @@ public class ExportProjectsAsAction extends Action implements IWorkbenchWindowAc
         List<IMPORTType> imports = null;
         String linkTarget = null;
 
-        RootContainer<String, IRepositoryViewObject> routines = getRouineFromProject(project);
+        RootContainer<String, IRepositoryViewObject> routines = getRoutineFromProject(project);
         List<LinkTargetStore> paths = new ArrayList<LinkTargetStore>();
         String language = project.getLanguage().getName().trim();
 
@@ -263,7 +258,7 @@ public class ExportProjectsAsAction extends Action implements IWorkbenchWindowAc
      * 
      * @param project
      */
-    private RootContainer<String, IRepositoryViewObject> getRouineFromProject(Project project) {
+    private RootContainer<String, IRepositoryViewObject> getRoutineFromProject(Project project) {
         ProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
 
         RootContainer<String, IRepositoryViewObject> routines = null;
@@ -286,26 +281,26 @@ public class ExportProjectsAsAction extends Action implements IWorkbenchWindowAc
      * DOC bqian Comment method "initializeLibPath".
      */
     private void initializeLibPath() {
-        IPathVariableManager pathVariableManager = ResourcesPlugin.getWorkspace().getPathVariableManager();
-        ILibrariesService libService = CorePlugin.getDefault().getLibrariesService();
-        String libPath = libService.getLibrariesPath();
-        try {
-            Pattern javaPattern = Pattern.compile("(.*)java$"); //$NON-NLS-1$
-            Pattern perlPattern = Pattern.compile("(.*)perl$"); //$NON-NLS-1$
-            Matcher javaMatcher = javaPattern.matcher(libPath);
-            Matcher perlMatcher = perlPattern.matcher(libPath);
-            if (javaMatcher.find()) {
-                pathVariableManager.setValue(EXTERNAL_LIB_JAVA_PATH, new Path(libPath));
-                pathVariableManager.setValue(EXTERNAL_LIB_PERL_PATH,
-                        new Path(javaMatcher.group(1) + ECodeLanguage.PERL.getName()));
-            } else if (perlMatcher.find()) {
-                pathVariableManager.setValue(EXTERNAL_LIB_PERL_PATH, new Path(libPath));
-                pathVariableManager.setValue(EXTERNAL_LIB_JAVA_PATH,
-                        new Path(perlMatcher.group(1) + ECodeLanguage.JAVA.getName()));
-            }
-        } catch (Exception e) {
-            ExceptionHandler.process(e);
-        }
+        // IPathVariableManager pathVariableManager = ResourcesPlugin.getWorkspace().getPathVariableManager();
+        // ILibrariesService libService = CorePlugin.getDefault().getLibrariesService();
+        // String libPath = libService.getLibrariesPath();
+        // try {
+        //            Pattern javaPattern = Pattern.compile("(.*)java$"); //$NON-NLS-1$
+        //            Pattern perlPattern = Pattern.compile("(.*)perl$"); //$NON-NLS-1$
+        // Matcher javaMatcher = javaPattern.matcher(libPath);
+        // Matcher perlMatcher = perlPattern.matcher(libPath);
+        // if (javaMatcher.find()) {
+        // pathVariableManager.setValue(EXTERNAL_LIB_JAVA_PATH, new Path(libPath));
+        // pathVariableManager.setValue(EXTERNAL_LIB_PERL_PATH,
+        // new Path(javaMatcher.group(1) + ECodeLanguage.PERL.getName()));
+        // } else if (perlMatcher.find()) {
+        // pathVariableManager.setValue(EXTERNAL_LIB_PERL_PATH, new Path(libPath));
+        // pathVariableManager.setValue(EXTERNAL_LIB_JAVA_PATH,
+        // new Path(perlMatcher.group(1) + ECodeLanguage.JAVA.getName()));
+        // }
+        // } catch (Exception e) {
+        // ExceptionHandler.process(e);
+        // }
     }
 
     /**

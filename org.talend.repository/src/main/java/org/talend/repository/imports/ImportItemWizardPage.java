@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -27,10 +27,12 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
@@ -62,7 +64,6 @@ import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.internal.IWorkbenchGraphicConstants;
@@ -75,17 +76,22 @@ import org.eclipse.ui.internal.wizards.datatransfer.TarException;
 import org.eclipse.ui.internal.wizards.datatransfer.TarFile;
 import org.eclipse.ui.internal.wizards.datatransfer.TarLeveledStructureProvider;
 import org.eclipse.ui.internal.wizards.datatransfer.ZipLeveledStructureProvider;
+import org.osgi.framework.FrameworkUtil;
+import org.talend.commons.exception.LoginException;
 import org.talend.commons.exception.PersistenceException;
+import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.swt.advanced.composite.FilteredCheckboxTree;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.PluginChecker;
-import org.talend.core.model.general.IEcosystemService;
+import org.talend.core.model.general.IExchangeService;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.JobletProcessItem;
-import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.RepositoryViewObject;
+import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.imports.TreeBuilder.IContainerNode;
+import org.talend.repository.model.ERepositoryStatus;
+import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IRepositoryNode.ENodeType;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
@@ -95,15 +101,11 @@ import org.talend.repository.model.RepositoryNodeUtilities;
  */
 class ImportItemWizardPage extends WizardPage {
 
-    private ImportItemUtil repositoryUtil = new ImportItemUtil();
+    private final ImportItemUtil repositoryUtil = new ImportItemUtil();
 
     private Button itemFromDirectoryRadio;
 
     private Text directoryPathField;
-
-    private Table ecoTab;
-
-    private String[] fFilters = new String[] { "Name", "Description" }; //$NON-NLS-1$ //$NON-NLS-2$
 
     protected Shell shell;
 
@@ -121,7 +123,7 @@ class ImportItemWizardPage extends WizardPage {
 
     private Object lastPath;
 
-    private List<ItemRecord> selectedItems = new ArrayList<ItemRecord>();;
+    private List<ItemRecord> selectedItems = new ArrayList<ItemRecord>();
 
     private CheckboxTreeViewer checkTreeViewer;
 
@@ -139,7 +141,7 @@ class ImportItemWizardPage extends WizardPage {
 
     private TableViewer errorsList;
 
-    private List<String> errors = new ArrayList<String>();
+    private final List<String> errors = new ArrayList<String>();
 
     private ResourcesManager manager;
 
@@ -154,6 +156,10 @@ class ImportItemWizardPage extends WizardPage {
     protected String selectedArchive;
 
     protected RepositoryNode rNode;
+
+    private ZipFile sourceFile;
+
+    private TarFile sourceTarFile;
 
     @SuppressWarnings("restriction")
     protected ImportItemWizardPage(RepositoryNode rNode, String pageName) {
@@ -190,33 +196,6 @@ class ImportItemWizardPage extends WizardPage {
             }
 
         });
-    }
-
-    /**
-     * DOC hcw Comment method "getAvailableItems".
-     * 
-     * @return
-     */
-    private String[] getAvailableItems() {
-        boolean jobTemplateEnabled = (Platform.getBundle("org.talend.designer.jobtemplate") == null ? false : true); //$NON-NLS-1$
-        ERepositoryObjectType types[] = { ERepositoryObjectType.BUSINESS_PROCESS, ERepositoryObjectType.PROCESS,
-                ERepositoryObjectType.JOBLET, ERepositoryObjectType.CONTEXT, ERepositoryObjectType.METADATA_CONNECTIONS,
-                ERepositoryObjectType.METADATA_FILE_DELIMITED, ERepositoryObjectType.METADATA_FILE_POSITIONAL,
-                ERepositoryObjectType.METADATA_FILE_REGEXP, ERepositoryObjectType.METADATA_FILE_XML,
-                ERepositoryObjectType.METADATA_FILE_EXCEL, ERepositoryObjectType.METADATA_FILE_LDIF,
-                ERepositoryObjectType.METADATA_LDAP_SCHEMA, ERepositoryObjectType.METADATA_GENERIC_SCHEMA,
-                ERepositoryObjectType.METADATA_SALESFORCE_SCHEMA, ERepositoryObjectType.METADATA_WSDL_SCHEMA,
-                ERepositoryObjectType.ROUTINES, ERepositoryObjectType.SQLPATTERNS };
-        List<String> list = new ArrayList<String>(types.length + 1);
-        list.add("All"); //$NON-NLS-1$
-        for (ERepositoryObjectType type : types) {
-            list.add(type.toString());
-        }
-        if (!jobTemplateEnabled) {
-            // remove joblet
-            list.remove(ERepositoryObjectType.JOBLET.toString());
-        }
-        return list.toArray(new String[list.size()]);
     }
 
     private void createErrorsList(Composite workArea) {
@@ -504,10 +483,10 @@ class ImportItemWizardPage extends WizardPage {
 
                     archivePathField.setEditable(false);
 
-                    IEcosystemService service = (IEcosystemService) GlobalServiceRegister.getDefault().getService(
-                            IEcosystemService.class);
+                    IExchangeService service = (IExchangeService) GlobalServiceRegister.getDefault().getService(
+                            IExchangeService.class);
 
-                    selectedArchive = service.openEcosystemDialog();
+                    selectedArchive = service.openExchangeDialog();
                     if (selectedArchive != null) {
                         previouslyBrowsedArchive = selectedArchive;
                         archivePathField.setText(previouslyBrowsedArchive);
@@ -690,7 +669,7 @@ class ImportItemWizardPage extends WizardPage {
                     File directory = new File(path);
                     monitor.worked(10);
                     if (!dirSelected && ArchiveFileManipulations.isTarFile(path)) {
-                        TarFile sourceTarFile = getSpecifiedTarSourceFile(path);
+                        sourceTarFile = getSpecifiedTarSourceFile(path);
                         if (sourceTarFile == null) {
                             return;
                         }
@@ -702,7 +681,7 @@ class ImportItemWizardPage extends WizardPage {
                             return;
                         }
                     } else if (!dirSelected && ArchiveFileManipulations.isZipFile(path)) {
-                        ZipFile sourceFile = getSpecifiedZipSourceFile(path);
+                        sourceFile = getSpecifiedZipSourceFile(path);
                         if (sourceFile == null) {
                             return;
                         }
@@ -762,11 +741,25 @@ class ImportItemWizardPage extends WizardPage {
                 RepositoryViewObject reObject = (RepositoryViewObject) itemRecord.getExistingItemWithSameId();
                 if (itemRecord.getProperty() != null && reObject != null) {
                     if (itemRecord.getProperty().getId().equals(reObject.getId())
-                            && itemRecord.getProperty().getLabel().equals(reObject.getLabel())
-                            && itemRecord.getProperty().getVersion().equals(reObject.getVersion())) {
+                            && itemRecord.getProperty().getLabel().equals(reObject.getLabel())) {
                         for (String error : itemRecord.getErrors()) {
                             errors.add("'" + itemRecord.getItemName() + "' " + error); //$NON-NLS-1$ //$NON-NLS-2$
                         }
+                    } else {
+                        // TDI-21399,TDI-21401
+                        // if item is locked, cannot overwrite
+                        ERepositoryStatus status = reObject.getRepositoryStatus();
+                        if (status == ERepositoryStatus.LOCK_BY_OTHER || status == ERepositoryStatus.LOCK_BY_USER) {
+                            for (String error : itemRecord.getErrors()) {
+                                errors.add("'" + itemRecord.getItemName() + "' " + error); //$NON-NLS-1$ //$NON-NLS-2$
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (itemRecord.getProperty() != null) {
+                    for (String error : itemRecord.getErrors()) {
+                        errors.add("'" + itemRecord.getItemName() + "' " + error); //$NON-NLS-1$ //$NON-NLS-2$
                     }
                 }
             }
@@ -886,10 +879,31 @@ class ImportItemWizardPage extends WizardPage {
             if (item instanceof JobletProcessItem) {
                 needToRefreshPalette = true;
             }
+
+            IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
+            if (item.getState().isLocked()) {
+                try {
+                    factory.unlock(item);
+                } catch (PersistenceException e) {
+                    ExceptionHandler.process(e);
+                } catch (LoginException e) {
+                    ExceptionHandler.process(e);
+                }
+            }
+            ERepositoryStatus status = factory.getStatus(item);
+            if (status != null && status == ERepositoryStatus.LOCK_BY_USER) {
+                try {
+                    factory.unlock(item);
+                } catch (PersistenceException e) {
+                    ExceptionHandler.process(e);
+                } catch (LoginException e) {
+                    ExceptionHandler.process(e);
+                }
+            }
         }
 
         try {
-            IRunnableWithProgress op = new IRunnableWithProgress() {
+            IRunnableWithProgress iRunnableWithProgress = new IRunnableWithProgress() {
 
                 public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
                     IPath destinationPath = null;
@@ -904,19 +918,19 @@ class ImportItemWizardPage extends WizardPage {
 
                     repositoryUtil.importItemRecords(manager, itemRecords, monitor, overwrite, destinationPath, contentType);
                     if (repositoryUtil.hasErrors()) {
-                        throw new InvocationTargetException(new PersistenceException("")); //$NON-NLS-1$
+                        throw new InvocationTargetException(new CoreException(new Status(IStatus.ERROR, FrameworkUtil.getBundle(
+                                this.getClass()).getSymbolicName(), "Import errors"))); //$NON-NLS-1$
                     }
 
                 }
-
             };
 
-            new ProgressMonitorDialog(getShell()).run(true, true, op);
+            new ProgressMonitorDialog(getShell()).run(true, true, iRunnableWithProgress);
 
         } catch (InvocationTargetException e) {
             Throwable targetException = e.getTargetException();
             if (repositoryUtil.getRoutineExtModulesMap().isEmpty()) {
-                if (targetException instanceof PersistenceException) {
+                if (targetException instanceof CoreException) {
                     MessageDialog.openWarning(getShell(), Messages.getString("ImportItemWizardPage.ImportSelectedItems"), //$NON-NLS-1$
                             Messages.getString("ImportItemWizardPage.ErrorsOccured")); //$NON-NLS-1$
                 }
@@ -925,9 +939,10 @@ class ImportItemWizardPage extends WizardPage {
         } catch (InterruptedException e) {
             //
         }
-        ResourcesManager curManager = (ResourcesManager) this.manager;
-        if (curManager instanceof ProviderManager)
+        ResourcesManager curManager = this.manager;
+        if (curManager instanceof ProviderManager) {
             curManager.closeResource();
+        }
 
         selectedItems = null;
         itemRecords.clear();
@@ -937,6 +952,20 @@ class ImportItemWizardPage extends WizardPage {
     public boolean performCancel() {
         selectedItems = null;
         repositoryUtil.clearAllData();
+        if (sourceFile != null) {
+            try {
+                sourceFile.close();
+            } catch (IOException e) {
+                //
+            }
+        }
+        if (sourceTarFile != null) {
+            try {
+                sourceTarFile.close();
+            } catch (IOException e) {
+                //
+            }
+        }
         return true;
     }
 

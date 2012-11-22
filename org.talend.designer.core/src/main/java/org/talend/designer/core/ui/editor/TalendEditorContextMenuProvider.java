@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,6 +13,7 @@
 package org.talend.designer.core.ui.editor;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.gef.ContextMenuProvider;
@@ -33,6 +34,8 @@ import org.eclipse.ui.actions.ActionFactory;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.PluginChecker;
 import org.talend.core.model.process.EConnectionType;
+import org.talend.core.model.process.IConnection;
+import org.talend.core.model.process.INode;
 import org.talend.core.model.process.INodeConnector;
 import org.talend.core.ui.IJobletProviderService;
 import org.talend.designer.core.i18n.Messages;
@@ -67,7 +70,7 @@ import org.talend.designer.core.ui.hierarchy.OpenJobHierarchyAction;
 /**
  * Class that manages the context menu in the Gef Editor. <br/>
  * 
- * $Id: TalendEditorContextMenuProvider.java 60172 2011-05-10 09:58:38Z hwang $
+ * $Id: TalendEditorContextMenuProvider.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class TalendEditorContextMenuProvider extends ContextMenuProvider {
@@ -259,13 +262,14 @@ public class TalendEditorContextMenuProvider extends ContextMenuProvider {
 
             subMenu = new MenuManager("Move to joblet"); //$NON-NLS-1$
             menu.appendToGroup(GROUP_OTHER, subMenu);
-            action = getMoveToJobletAction(part, null);
+            action = getMoveToJobletAction(part, null, null);
             if (action != null) {
                 ((AddToJobletAction) action).update();
                 List<Node> nodeList = ((AddToJobletAction) action).getJobletNodeList();
+                Map<INode, IConnection> nodeMap = ((AddToJobletAction) action).getJobletNodeMap();
                 if (nodeList != null) {
                     for (Node jobletNode : nodeList) {
-                        action = getMoveToJobletAction(part, jobletNode);
+                        action = getMoveToJobletAction(part, jobletNode, nodeMap);
                         if (action != null) {
                             ((AddToJobletAction) action).update();
                             action.setText(jobletNode.getLabel());
@@ -449,12 +453,12 @@ public class TalendEditorContextMenuProvider extends ContextMenuProvider {
         TalendEditorContextMenuProvider.enableContextMenu = enableContextMenu;
     }
 
-    public SelectionAction getMoveToJobletAction(IWorkbenchPart part, Node jobletNode) {
+    public SelectionAction getMoveToJobletAction(IWorkbenchPart part, Node jobletNode, Map<INode, IConnection> nodeMap) {
         if (PluginChecker.isJobLetPluginLoaded()) {
             IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
                     IJobletProviderService.class);
             if (service != null) {
-                return service.getMoveToJobletAction(part, jobletNode);
+                return service.getMoveToJobletAction(part, jobletNode, nodeMap);
             }
         }
         return null;

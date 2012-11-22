@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement availe at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -31,6 +31,7 @@ import org.eclipse.gef.GraphicalEditPart;
 import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.gef.NodeEditPart;
 import org.eclipse.gef.Request;
+import org.eclipse.gef.RootEditPart;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CommandStack;
 import org.eclipse.gef.editparts.AbstractGraphicalEditPart;
@@ -77,18 +78,18 @@ import org.talend.designer.core.ui.editor.TalendSelectionManager;
 import org.talend.designer.core.ui.editor.cmd.ExternalNodeChangeCommand;
 import org.talend.designer.core.ui.editor.connections.Connection;
 import org.talend.designer.core.ui.editor.connections.ConnectionFigure;
+import org.talend.designer.core.ui.editor.process.Process;
 import org.talend.designer.core.ui.editor.process.ProcessPart;
 import org.talend.designer.core.ui.editor.subjobcontainer.SubjobContainerPart;
 import org.talend.designer.core.ui.views.CodeView;
 import org.talend.designer.core.ui.views.properties.ComponentSettingsView;
 import org.talend.designer.runprocess.ItemCacheManager;
 import org.talend.repository.ProjectManager;
-import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * Graphical part of the node of Gef. <br/>
  * 
- * $Id: NodePart.java 60292 2011-05-12 05:50:57Z zwzhao $
+ * $Id: NodePart.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class NodePart extends AbstractGraphicalEditPart implements PropertyChangeListener, NodeEditPart {
@@ -125,9 +126,11 @@ public class NodePart extends AbstractGraphicalEditPart implements PropertyChang
             GraphicalViewer designerViewer = ((AbstractMultiPageTalendEditor) activeEditor).getTalendEditor().getViewer();
             Control ctrl = designerViewer.getControl();
             String helpLink = (String) ((Node) getModel()).getPropertyValue(EParameterName.HELP.getName());
-            String requiredHelpLink = "org.talend.help." + ((Node) getModel()).getComponent().getName();
+            String requiredHelpLink = ((Process) ((Node) getModel()).getProcess()).getBaseHelpLink()
+                    + ((Node) getModel()).getComponent().getName();
             if (helpLink == null || "".equals(helpLink) || !requiredHelpLink.equals(helpLink)) {
-                helpLink = "org.talend.help." + ((Node) getModel()).getComponent().getName();
+                helpLink = ((Process) ((Node) getModel()).getProcess()).getBaseHelpLink()
+                        + ((Node) getModel()).getComponent().getName();
             }
             if (ctrl != null) {
                 PlatformUI.getWorkbench().getHelpSystem().setHelp(ctrl, helpLink);
@@ -484,7 +487,7 @@ public class NodePart extends AbstractGraphicalEditPart implements PropertyChang
                 int returnValue = externalNode.open(getViewer().getControl().getShell());
                 if (!node.isReadOnly()) {
                     if (returnValue == SWT.OK) {
-                        Command cmd = new ExternalNodeChangeCommand(node, externalNode);
+                        Command cmd = new ExternalNodeChangeCommand(node, externalNode, oldExternalData);
                         CommandStack cmdStack = (CommandStack) part.getAdapter(CommandStack.class);
                         cmdStack.execute(cmd);
                     } else {
@@ -549,12 +552,7 @@ public class NodePart extends AbstractGraphicalEditPart implements PropertyChang
                                 IEditorPart editorPart = page.findEditor(fileEditorInput);
 
                                 if (editorPart == null) {
-                                    IViewPart viewPart = page.findView(IRepositoryView.VIEW_ID);
-                                    if (viewPart != null) {
-                                        fileEditorInput.setView((IRepositoryView) viewPart);
-                                        fileEditorInput.setRepositoryNode(null);
-                                        page.openEditor(fileEditorInput, MultiPageTalendEditor.ID, true);
-                                    }
+                                    page.openEditor(fileEditorInput, MultiPageTalendEditor.ID, true);
                                 } else {
                                     page.activate(editorPart);
                                 }
@@ -694,6 +692,14 @@ public class NodePart extends AbstractGraphicalEditPart implements PropertyChang
      */
     public void setDrop(boolean isDrop) {
         this.isDrop = isDrop;
+    }
+
+    @Override
+    public RootEditPart getRoot() {
+        if (getParent() != null) {
+            return getParent().getRoot();
+        }
+        return null;
     }
 
 }

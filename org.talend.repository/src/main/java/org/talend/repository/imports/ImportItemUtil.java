@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -31,12 +31,22 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceRunnable;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.ISchedulingRule;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -45,9 +55,12 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
+import org.osgi.framework.FrameworkUtil;
+import org.talend.commons.CommonsPlugin;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.utils.VersionUtils;
+import org.talend.commons.utils.time.TimeMeasure;
 import org.talend.core.CorePlugin;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.PluginChecker;
@@ -72,6 +85,7 @@ import org.talend.core.model.properties.ProcessItem;
 import org.talend.core.model.properties.Project;
 import org.talend.core.model.properties.PropertiesPackage;
 import org.talend.core.model.properties.Property;
+import org.talend.core.model.properties.ReferenceFileItem;
 import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.properties.SQLPatternItem;
 import org.talend.core.model.properties.SnippetItem;
@@ -92,7 +106,6 @@ import org.talend.designer.business.model.business.BusinessPackage;
 import org.talend.designer.business.model.business.BusinessProcess;
 import org.talend.designer.codegen.ICodeGeneratorService;
 import org.talend.designer.codegen.ITalendSynchronizer;
-import org.talend.designer.core.ICamelDesignerCoreService;
 import org.talend.designer.core.model.utils.emf.component.IMPORTType;
 import org.talend.designer.core.model.utils.emf.talendfile.ElementParameterType;
 import org.talend.designer.core.model.utils.emf.talendfile.ParametersType;
@@ -121,19 +134,19 @@ public class ImportItemUtil {
 
     private static Logger log = Logger.getLogger(ImportItemUtil.class);
 
-    private XmiResourceManager xmiResourceManager = new XmiResourceManager();
+    private final XmiResourceManager xmiResourceManager = new XmiResourceManager();
 
     private boolean hasErrors = false;
 
-    private RepositoryObjectCache cache = new RepositoryObjectCache();
+    private static RepositoryObjectCache cache = new RepositoryObjectCache();
 
-    private TreeBuilder treeBuilder = new TreeBuilder();
+    private final TreeBuilder treeBuilder = new TreeBuilder();
 
-    private Set<String> deletedItems = new HashSet<String>();
+    private final Set<String> deletedItems = new HashSet<String>();
 
-    private Map<IPath, Project> projects = new HashMap<IPath, Project>();
+    private final Map<IPath, Project> projects = new HashMap<IPath, Project>();
 
-    private Map<String, Set<String>> routineExtModulesMap = new HashMap<String, Set<String>>();
+    private final Map<String, Set<String>> routineExtModulesMap = new HashMap<String, Set<String>>();
 
     private boolean statAndLogsSettingsReloaded = false;
 
@@ -148,7 +161,7 @@ public class ImportItemUtil {
     }
 
     public void setErrors(boolean errors) {
-        this.hasErrors = errors;
+        hasErrors = errors;
     }
 
     public boolean hasErrors() {
@@ -189,7 +202,7 @@ public class ImportItemUtil {
 
             cache.initialize(itemType);
 
-            boolean isSqlPattern = (itemType == ERepositoryObjectType.SQLPATTERNS);
+            boolean isAllowMultipleName = (itemType == ERepositoryObjectType.SQLPATTERNS || itemType == ERepositoryObjectType.METADATA_FILE_XML);
             String itemPath = null;
             if (item.getState() != null) {
                 itemPath = item.getState().getPath();
@@ -201,20 +214,24 @@ public class ImportItemUtil {
 
             // take care, in cache it's RepositoryViewObject, not RepositoryObject
             for (IRepositoryViewObject current : cache.getItemsFromRepository().get(itemType)) {
-                if (itemRecord.getProperty().getLabel().equalsIgnoreCase(current.getLabel())
-                        && itemRecord.getProperty().getId() != current.getId()) {
-                    // To check SQLPattern in same path. see bug 0005038: unable to add a SQLPattern into repository.
-                    if (!isSqlPattern || current.getPath().equals(itemPath)) {
-                        nameAvailable = false;
+                final Property property = itemRecord.getProperty();
+                if (property != null) {
+                    if (property.getLabel() != null && property.getLabel().equalsIgnoreCase(current.getLabel())
+                            && property.getId() != current.getId()) {
+                        // To check SQLPattern in same path. see bug 0005038: unable to add a SQLPattern into
+                        // repository.
+                        if (!isAllowMultipleName || current.getPath().equals(itemPath)) {
+                            nameAvailable = false;
+                        }
+                        // overwrite the item with same label but diff id: 15787: import items does not overwrite some
+                        // elements
+                        if (!nameAvailable) {
+                            itemWithSameName = current;
+                        }
                     }
-                    // overwrite the item with same label but diff id: 15787: import items does not overwrite some
-                    // elements
-                    if (!nameAvailable) {
-                        itemWithSameName = current;
+                    if (property.getId() != null && property.getId().equalsIgnoreCase(current.getId())) {
+                        itemWithSameId = current;
                     }
-                }
-                if (itemRecord.getProperty().getId().equalsIgnoreCase(current.getId())) {
-                    itemWithSameId = current;
                 }
             }
             itemRecord.setExistingItemWithSameId(itemWithSameId);
@@ -289,10 +306,19 @@ public class ImportItemUtil {
                         itemRecord.setExistingItemWithSameId(itemWithSameName);
                         result = true;
                     }
+                    // TDI-21399,TDI-21401
+                    // if item is locked, cannot overwrite
+                    if (result && overwrite && itemWithSameName != null) {
+                        ERepositoryStatus status = itemWithSameName.getRepositoryStatus();
+                        if (status == ERepositoryStatus.LOCK_BY_OTHER || status == ERepositoryStatus.LOCK_BY_USER) {
+                            itemRecord.addError(Messages.getString("RepositoryUtil.itemLocked")); //$NON-NLS-1$
+                            return false;
+                        }
+                    }
 
                 } else {
                     // same name and same id
-                    itemRecord.setState(State.NAME_EXISTED);
+                    itemRecord.setState(State.NAME_AND_ID_EXISTED);
                     if (overwrite) {
                         result = true;
                     }
@@ -301,7 +327,6 @@ public class ImportItemUtil {
                         // if anything system, don't replace the source item if same name.
                         // if not from system, can overwrite.
                         itemRecord.setExistingItemWithSameId(itemWithSameName);
-                        itemRecord.setState(State.NAME_AND_ID_EXISTED);
                         result = true;
                     }
                 }
@@ -310,7 +335,7 @@ public class ImportItemUtil {
                 }
             }
 
-            if (result && overwrite && itemRecord.getState() == State.ID_EXISTED) {
+            if (result && overwrite && itemRecord.getState() == State.NAME_AND_ID_EXISTED) {
                 // if item is locked, cannot overwrite
                 if (checkIfLocked(itemRecord)) {
                     itemRecord.addError(Messages.getString("RepositoryUtil.itemLocked")); //$NON-NLS-1$
@@ -354,6 +379,13 @@ public class ImportItemUtil {
     @SuppressWarnings("unchecked")
     public List<ItemRecord> importItemRecords(final ResourcesManager manager, final List<ItemRecord> itemRecords,
             final IProgressMonitor monitor, final boolean overwrite, final IPath destinationPath, final String contentType) {
+
+        TimeMeasure.display = CommonsPlugin.isDebugMode();
+        TimeMeasure.displaySteps = CommonsPlugin.isDebugMode();
+        TimeMeasure.measureActive = CommonsPlugin.isDebugMode();
+
+        TimeMeasure.begin("importItemRecords");
+
         hasJoblets = false;
         statAndLogsSettingsReloaded = false;
         implicitSettingsReloaded = false;
@@ -364,6 +396,8 @@ public class ImportItemUtil {
             public int compare(ItemRecord o1, ItemRecord o2) {
                 if (o1.getProperty().getItem() instanceof RoutineItem) {
                     return -1;
+                } else if (o1.getProperty().getItem() instanceof ContextItem) {
+                    return 0;
                 } else {
                     return 1;
                 }
@@ -376,83 +410,113 @@ public class ImportItemUtil {
 
             @Override
             public void run() throws PersistenceException {
-                final IProxyRepositoryFactory factory = CorePlugin.getDefault().getProxyRepositoryFactory();
-                // bug 10520
-                final Set<String> overwriteDeletedItems = new HashSet<String>();
+                final IWorkspaceRunnable op = new IWorkspaceRunnable() {
 
-                Map<String, String> nameToIdMap = new HashMap<String, String>();
+                    public void run(IProgressMonitor monitor) throws CoreException {
 
-                for (ItemRecord itemRecord : itemRecords) {
-                    if (!monitor.isCanceled()) {
-                        if (itemRecord.isValid()) {
-                            if (itemRecord.getState() == State.ID_EXISTED || itemRecord.getState() == State.NAME_AND_ID_EXISTED) {
-                                String id = nameToIdMap.get(itemRecord.getProperty().getLabel()
-                                        + ERepositoryObjectType.getItemType(itemRecord.getProperty().getItem()).toString());
-                                if (id == null) {
-                                    /*
-                                     * if id exsist then need to genrate new id for this job,in this case the job won't
-                                     * override the old one
-                                     */
-                                    id = EcoreUtil.generateUUID();
-                                    nameToIdMap.put(
-                                            itemRecord.getProperty().getLabel()
+                        final IProxyRepositoryFactory factory = CorePlugin.getDefault().getProxyRepositoryFactory();
+                        // bug 10520
+                        final Set<String> overwriteDeletedItems = new HashSet<String>();
+                        final Set<String> idDeletedBeforeImport = new HashSet<String>();
+
+                        Map<String, String> nameToIdMap = new HashMap<String, String>();
+
+                        for (ItemRecord itemRecord : itemRecords) {
+                            if (!monitor.isCanceled()) {
+                                if (itemRecord.isValid()) {
+                                    if (itemRecord.getState() == State.ID_EXISTED) {
+                                        String id = nameToIdMap.get(itemRecord.getProperty().getLabel()
+                                                + ERepositoryObjectType.getItemType(itemRecord.getProperty().getItem())
+                                                        .toString());
+                                        if (id == null) {
+                                            /*
+                                             * if id exsist then need to genrate new id for this job,in this case the
+                                             * job won't override the old one
+                                             */
+                                            id = EcoreUtil.generateUUID();
+                                            nameToIdMap.put(itemRecord.getProperty().getLabel()
                                                     + ERepositoryObjectType.getItemType(itemRecord.getProperty().getItem())
                                                             .toString(), id);
+                                        }
+                                        itemRecord.getProperty().setId(id);
+                                    }
                                 }
-                                itemRecord.getProperty().setId(id);
                             }
                         }
-                    }
-                }
 
-                for (ItemRecord itemRecord : itemRecords) {
-                    if (!monitor.isCanceled()) {
-                        if (itemRecord.isValid()) {
-                            importItemRecord(manager, itemRecord, overwrite, destinationPath, overwriteDeletedItems, contentType,
-                                    monitor);
+                        for (ItemRecord itemRecord : itemRecords) {
+                            if (!monitor.isCanceled()) {
+                                if (itemRecord.isValid()) {
+                                    importItemRecord(manager, itemRecord, overwrite, destinationPath, overwriteDeletedItems,
+                                            idDeletedBeforeImport, contentType, monitor);
 
-                            monitor.worked(1);
+                                    monitor.worked(1);
+                                }
+                            }
+                        }
+
+                        // deploy routines Jar
+                        if (!getRoutineExtModulesMap().isEmpty()) {
+                            Set<String> extRoutines = new HashSet<String>();
+                            for (String id : getRoutineExtModulesMap().keySet()) {
+                                Set<String> set = getRoutineExtModulesMap().get(id);
+                                if (set != null) {
+                                    extRoutines.addAll(set);
+                                }
+                            }
+                            if (manager instanceof ProviderManager || manager instanceof ZipFileManager) {
+                                deployJarToDesForArchive(manager, extRoutines);
+                            } else {
+                                deployJarToDes(manager, extRoutines);
+                            }
+                        }
+
+                        if (PluginChecker.isJobLetPluginLoaded()) {
+                            IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault()
+                                    .getService(IJobletProviderService.class);
+                            if (service != null) {
+                                service.loadComponentsFromProviders();
+                            }
+                        }
+                        // cannot cancel this part
+                        //                monitor.beginTask(Messages.getString("ImportItemWizardPage.ApplyMigrationTasks"), itemRecords.size() + 1); //$NON-NLS-1$
+                        // for (ItemRecord itemRecord : itemRecords) {
+                        // if (itemRecord.isImported()) {
+                        // applyMigrationTasks(itemRecord, monitor);
+                        // }
+                        // monitor.worked(1);
+                        // }
+                        checkDeletedFolders();
+                        monitor.done();
+
+                        TimeMeasure.step("importItemRecords", "before save");
+                        if (RelationshipItemBuilder.getInstance().isNeedSaveRelations()) {
+                            RelationshipItemBuilder.getInstance().saveRelations();
+                            TimeMeasure.step("importItemRecords", "save relations");
+                        } else {
+                            // only save the project here if no relation need to be saved, since project will already be
+                            // saved
+                            // with relations
+                            try {
+                                factory.saveProject(ProjectManager.getInstance().getCurrentProject());
+                            } catch (PersistenceException e) {
+                                throw new CoreException(new Status(IStatus.ERROR, FrameworkUtil.getBundle(this.getClass())
+                                        .getSymbolicName(), "Import errors", e));
+                            }
+                            TimeMeasure.step("importItemRecords", "save project");
                         }
                     }
-                }
-                // deploy routines Jar
-                if (!getRoutineExtModulesMap().isEmpty()) {
-                    Set<String> extRoutines = new HashSet<String>();
-                    for (String id : getRoutineExtModulesMap().keySet()) {
-                        Set<String> set = getRoutineExtModulesMap().get(id);
-                        if (set != null) {
-                            extRoutines.addAll(set);
-                        }
-                    }
-                    if (manager instanceof ProviderManager || manager instanceof ZipFileManager) {
-                        deployJarToDesForArchive(manager, extRoutines);
-                    } else {
-                        deployJarToDes(manager, extRoutines);
-                    }
-                }
-                if (PluginChecker.isJobLetPluginLoaded()) {
-                    IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
-                            IJobletProviderService.class);
-                    if (service != null) {
-                        service.loadComponentsFromProviders();
-                    }
-                }
-                // cannot cancel this part
-                //                monitor.beginTask(Messages.getString("ImportItemWizardPage.ApplyMigrationTasks"), itemRecords.size() + 1); //$NON-NLS-1$
-                // for (ItemRecord itemRecord : itemRecords) {
-                // if (itemRecord.isImported()) {
-                // applyMigrationTasks(itemRecord, monitor);
-                // }
-                // monitor.worked(1);
-                // }
-                checkDeletedFolders();
-                monitor.done();
-                if (RelationshipItemBuilder.getInstance().isNeedSaveRelations()) {
-                    RelationshipItemBuilder.getInstance().saveRelations();
-                } else {
-                    // only save the project here if no relation need to be saved, since project will already be saved
-                    // with relations
-                    factory.saveProject(ProjectManager.getInstance().getCurrentProject());
+
+                };
+                IWorkspace workspace = ResourcesPlugin.getWorkspace();
+                try {
+                    ISchedulingRule schedulingRule = workspace.getRoot();
+                    // the update the project files need to be done in the workspace runnable to avoid all
+                    // notification
+                    // of changes before the end of the modifications.
+                    workspace.run(op, schedulingRule, IWorkspace.AVOID_UPDATE, monitor);
+                } catch (CoreException e) {
+                    // ?
                 }
             }
         };
@@ -471,11 +535,16 @@ public class ImportItemUtil {
             ComponentsFactoryProvider.getInstance().resetSpecificComponents();
         }
 
+        TimeMeasure.end("importItemRecords");
+        TimeMeasure.display = false;
+        TimeMeasure.displaySteps = false;
+        TimeMeasure.measureActive = false;
+
         return itemRecords;
     }
 
     private void checkDeletedFolders() {
-        List<FolderItem> foldersList = (List<FolderItem>) ProjectManager.getInstance().getFolders(
+        List<FolderItem> foldersList = ProjectManager.getInstance().getFolders(
                 ProjectManager.getInstance().getCurrentProject().getEmfProject());
         for (FolderItem folderItem : foldersList) {
             setPathToDeleteIfNeed(folderItem);
@@ -487,7 +556,7 @@ public class ImportItemUtil {
             return true;
         }
         boolean allDeleted = folderItem.getType().getValue() == FolderType.FOLDER && folderItem.getChildren().size() != 0;
-        for (Item item : (List<Item>) folderItem.getChildren()) {
+        for (Item item : new ArrayList<Item>(folderItem.getChildren())) {
             if (item instanceof FolderItem) {
                 if (!setPathToDeleteIfNeed((FolderItem) item)) {
                     allDeleted = false;
@@ -518,7 +587,10 @@ public class ImportItemUtil {
 
     public void clearAllData() {
         deletedItems.clear();
-        cache.clear();
+        if ((!CommonsPlugin.isSameProjectLogonCommline() && CommonsPlugin.isHeadless()) || !CommonsPlugin.isHeadless()
+                || !ProjectManager.getInstance().getCurrentProject().isLocal()) {
+            cache.clear();
+        }
         treeBuilder.clear();
         xmiResourceManager.unloadResources();
         xmiResourceManager.resetResourceSet();
@@ -526,10 +598,9 @@ public class ImportItemUtil {
     }
 
     private void importItemRecord(ResourcesManager manager, ItemRecord itemRecord, boolean overwrite, IPath destinationPath,
-            final Set<String> overwriteDeletedItems, String contentType, final IProgressMonitor monitor) {
-
+            final Set<String> overwriteDeletedItems, final Set<String> idDeletedBeforeImport, String contentType,
+            final IProgressMonitor monitor) {
         monitor.subTask(Messages.getString("ImportItemWizardPage.Importing") + itemRecord.getItemName()); //$NON-NLS-1$
-
         resolveItem(manager, itemRecord);
 
         int num = 0;
@@ -592,7 +663,15 @@ public class ImportItemUtil {
                     /* only delete when name exsit rather than id exist */
                     if (itemRecord.getState().equals(ItemRecord.State.NAME_EXISTED)
                             || itemRecord.getState().equals(ItemRecord.State.NAME_AND_ID_EXISTED)) {
-                        repFactory.forceDeleteObjectPhysical(lastVersion, itemRecord.getProperty().getVersion());
+                        if (!idDeletedBeforeImport.contains(id)) {
+                            // TDI-19535 (check if exists, delete all items with same id)
+                            List<IRepositoryViewObject> allVersionToDelete = repFactory.getAllVersion(ProjectManager
+                                    .getInstance().getCurrentProject(), lastVersion.getId(), false);
+                            for (IRepositoryViewObject currentVersion : allVersionToDelete) {
+                                repFactory.forceDeleteObjectPhysical(lastVersion, currentVersion.getVersion());
+                            }
+                            idDeletedBeforeImport.add(id);
+                        }
                     }
                     lastVersion = null;
 
@@ -673,14 +752,7 @@ public class ImportItemUtil {
                     }
 
                 }
-                boolean isCamel = false;
-                if (GlobalServiceRegister.getDefault().isServiceRegistered(ICamelDesignerCoreService.class)) {
-                    ICamelDesignerCoreService service = (ICamelDesignerCoreService) GlobalServiceRegister.getDefault()
-                            .getService(ICamelDesignerCoreService.class);
-                    if (service.isInstanceofCamel(tmpItem)) {
-                        isCamel = true;
-                    }
-                }
+
                 if (lastVersion == null || itemRecord.getState().equals(ItemRecord.State.ID_EXISTED)) {
                     // import has not been developed to cope with migration in mind
                     // so some model may not be able to load like the ConnectionItems
@@ -690,11 +762,7 @@ public class ImportItemUtil {
                             && ((ConnectionItem) tmpItem).getConnection().eResource() == null
                             && !itemRecord.getMigrationTasksToApply().isEmpty();
 
-                    if (isCamel) {
-                        repFactory.createCamel(tmpItem, path, true);
-                    } else {
-                        repFactory.create(tmpItem, path, true);
-                    }
+                    repFactory.create(tmpItem, path, true);
                     if (isConnectionEmptyBeforeMigration) {// copy the file before migration, this is bad because it
                         // should not refer to Filesytem
                         // but this is a quick hack and anyway the migration task only works on files
@@ -718,24 +786,35 @@ public class ImportItemUtil {
                         } finally {
                             is.close();
                         }
+                    } else {
+                        // connections from migrations (from 4.0.x or previous version) doesn't support reference or
+                        // screenshots
+                        // so no need to call this code.
+
+                        // It's needed to avoid to call the save method mainly just before or after the copy of the old
+                        // connection since it will
+                        copyScreenshotFile(manager, itemRecord);
+                        boolean haveRef = copyReferenceFiles(manager, tmpItem, itemRecord.getPath());
+                        if (haveRef) {
+                            repFactory.save(tmpItem, true);
+                        }
                     }
+                    repFactory.unloadResources(tmpItem.getProperty());
 
                     itemRecord.setImportPath(path.toPortableString());
                     itemRecord.setRepositoryType(itemType);
                     itemRecord.setItemId(itemRecord.getProperty().getId());
                     itemRecord.setItemVersion(itemRecord.getProperty().getVersion());
                     itemRecord.setImported(true);
+                    cache.addToCache(tmpItem);
                 } else if (VersionUtils.compareTo(lastVersion.getProperty().getVersion(), tmpItem.getProperty().getVersion()) < 0) {
-                    if (isCamel) {
-                        repFactory.createCamel(tmpItem, path);
-                    } else {
-                        repFactory.forceCreate(tmpItem, path);
-                    }
+                    repFactory.forceCreate(tmpItem, path);
                     itemRecord.setImportPath(path.toPortableString());
                     itemRecord.setItemId(itemRecord.getProperty().getId());
                     itemRecord.setRepositoryType(itemType);
                     itemRecord.setItemVersion(itemRecord.getProperty().getVersion());
                     itemRecord.setImported(true);
+                    cache.addToCache(tmpItem);
                 } else {
                     PersistenceException e = new PersistenceException(Messages.getString(
                             "ImportItemUtil.persistenceException", tmpItem.getProperty())); //$NON-NLS-1$
@@ -744,7 +823,7 @@ public class ImportItemUtil {
                 }
 
                 if (tmpItem != null) {
-                    RelationshipItemBuilder.getInstance().addOrUpdateItem(tmpItem);
+                    RelationshipItemBuilder.getInstance().addOrUpdateItem(tmpItem, true);
                     if (tmpItem.getState() != null) {
                         if (itemType != null) {
                             final Set<String> folders = restoreFolder.getFolders(itemType);
@@ -780,6 +859,7 @@ public class ImportItemUtil {
             }
 
         }
+        String label = itemRecord.getLabel();
         for (Resource resource : itemRecord.getResourceSet().getResources()) {
             // Due to the system of lazy loading for db repository of ByteArray,
             // it can't be unloaded just after create the item.
@@ -787,9 +867,82 @@ public class ImportItemUtil {
                 resource.unload();
             }
         }
+        TimeMeasure.step("importItemRecords", "Import item: " + label);
 
         applyMigrationTasks(itemRecord, monitor);
+        TimeMeasure.step("importItemRecords", "applyMigrationTasks: " + label);
+    }
 
+    // added by dlin 2011-7-25 don't like .item and .property ,just copy .screenshot file will be ok
+    private void copyScreenshotFile(ResourcesManager manager, ItemRecord itemRecord) throws IOException {
+        int id = itemRecord.getItem().eClass().getClassifierID();
+        if (id != PropertiesPackage.PROCESS_ITEM && id != PropertiesPackage.JOBLET_PROCESS_ITEM) {
+            return;
+        }
+        OutputStream os = null;
+        InputStream is = null;
+        try {
+            URI propertyResourceURI = EcoreUtil.getURI(itemRecord.getItem().getProperty());
+            URI relativePlateformDestUri = propertyResourceURI.trimFileExtension().appendFileExtension(
+                    FileConstants.SCREENSHOT_EXTENSION);
+            URL fileURL = FileLocator.toFileURL(new java.net.URL(
+                    "platform:/resource" + relativePlateformDestUri.toPlatformString(true))); //$NON-NLS-1$
+            // for migration task ,there is not .screeenshot file in preceding version - begin
+            boolean hasScreenshotFile = false;
+            Iterator it = manager.getPaths().iterator();
+            IPath screenshotNeeded = itemRecord.getPath().removeFileExtension()
+                    .addFileExtension(FileConstants.SCREENSHOT_EXTENSION);
+            while (it.hasNext()) {
+                IPath path = (IPath) it.next();
+                if (path.equals(screenshotNeeded)) {
+                    hasScreenshotFile = true;
+                    break;
+                }
+            }
+            if (!hasScreenshotFile) {
+                return;
+            }
+            // for migration task ,there is not .screeenshot file in preceding version - begin
+            os = new FileOutputStream(fileURL.getFile());
+            manager.getPaths().iterator().next();
+            is = manager.getStream(screenshotNeeded);
+            FileCopyUtils.copyStreams(is, os);
+        } finally {
+            if (os != null) {
+                os.close();
+            }
+            if (is != null) {
+                is.close();
+            }
+        }
+    }
+
+    private boolean copyReferenceFiles(ResourcesManager manager, Item tmpItem, IPath pathToRead) throws IOException {
+        OutputStream os = null;
+        InputStream is = null;
+
+        boolean haveRef = false;
+        List<ReferenceFileItem> refItems = tmpItem.getReferenceResources();
+        URI propertyResourceURI = EcoreUtil.getURI(tmpItem.getProperty());
+        for (ReferenceFileItem refItem : refItems) {
+            haveRef = true;
+            URI relativePlateformDestUri = propertyResourceURI.trimFileExtension().appendFileExtension(refItem.getExtension());
+            try {
+                URL fileURL = FileLocator.toFileURL(new java.net.URL(
+                        "platform:/resource" + relativePlateformDestUri.toPlatformString(true))); //$NON-NLS-1$
+                os = new FileOutputStream(fileURL.getFile());
+                is = manager.getStream(pathToRead.removeFileExtension().addFileExtension(refItem.getExtension()));
+                FileCopyUtils.copyStreams(is, os);
+            } finally {
+                if (os != null) {
+                    os.close();
+                }
+                if (is != null) {
+                    is.close();
+                }
+            }
+        }
+        return haveRef;
     }
 
     private void applyMigrationTasks(ItemRecord itemRecord, IProgressMonitor monitor) {
@@ -934,8 +1087,17 @@ public class ImportItemUtil {
      * need to returns sorted items by version to correctly import them later.
      */
     public List<ItemRecord> populateItems(ResourcesManager collector, boolean overwrite, IProgressMonitor progressMonitor) {
+        TimeMeasure.display = CommonsPlugin.isDebugMode();
+        TimeMeasure.displaySteps = CommonsPlugin.isDebugMode();
+        TimeMeasure.measureActive = CommonsPlugin.isDebugMode();
+
+        TimeMeasure.begin("populateItems");
+
         treeBuilder.clear();
-        cache.clear();
+        if ((!CommonsPlugin.isSameProjectLogonCommline() && CommonsPlugin.isHeadless()) || !CommonsPlugin.isHeadless()
+                || !ProjectManager.getInstance().getCurrentProject().isLocal()) {
+            cache.clear();
+        }
         projects.clear();
         routineExtModulesMap.clear();
         List<ItemRecord> items = new ArrayList<ItemRecord>();
@@ -957,6 +1119,20 @@ public class ImportItemUtil {
                     // if (collector.getPaths().contains(itemPath)) { //commet by tdq import
                     ItemRecord itemRecord = computeItemRecord(collector, path);
                     if (itemRecord.getProperty() != null) {
+                        boolean alreadyInList = false;
+                        for (ItemRecord currentItemRecord : items) {
+                            if (StringUtils.equals(currentItemRecord.getProperty().getId(), itemRecord.getProperty().getId())
+                                    && StringUtils.equals(currentItemRecord.getProperty().getVersion(), itemRecord.getProperty()
+                                            .getVersion())) {
+                                // if have any duplicate item from same project & same folder, just don't do anything,
+                                // no need to display.
+                                alreadyInList = true;
+                                break;
+                            }
+                        }
+                        if (alreadyInList) {
+                            continue;
+                        }
                         items.add(itemRecord);
 
                         if (checkItem(itemRecord, overwrite)) {
@@ -1004,10 +1180,17 @@ public class ImportItemUtil {
             }
         });
 
-        for (List<IRepositoryViewObject> list : this.cache.getItemsFromRepository().values()) {
-            list.clear();
+        if (!CommonsPlugin.isHeadless() || !ProjectManager.getInstance().getCurrentProject().isLocal()) {
+            for (List<IRepositoryViewObject> list : cache.getItemsFromRepository().values()) {
+                list.clear();
+            }
+            cache.getItemsFromRepository().clear();
         }
-        this.cache.getItemsFromRepository().clear();
+
+        TimeMeasure.end("populateItems");
+        TimeMeasure.display = false;
+        TimeMeasure.displaySteps = false;
+        TimeMeasure.measureActive = false;
 
         return items;
     }
@@ -1051,15 +1234,36 @@ public class ImportItemUtil {
 
     @SuppressWarnings("unchecked")
     private boolean checkMigrationTasks(Project project, ItemRecord itemRecord, Project currentProject) {
-        List<String> itemMigrationTasks = new ArrayList(project.getMigrationTasks());
-        List<String> projectMigrationTasks = new ArrayList(currentProject.getMigrationTasks());
+        List<String> itemMigrationTasks = new ArrayList<String>(project.getMigrationTasks());
+        List<String> projectMigrationTasks = new ArrayList<String>(currentProject.getMigrationTasks());
 
         itemMigrationTasks.removeAll(getOptionnalMigrationTasks());
+
+        // check version + revision
+        // String oldProjectVersion = project.getProductVersion();
+        // String currentProjectVersion = currentProject.getProductVersion();
+        // boolean currentVersionIsValid = isVersionValid(currentProjectVersion);
+        // boolean oldVersionIsValid = isVersionValid(oldProjectVersion);
+        // if (currentVersionIsValid && oldVersionIsValid) {
+        // boolean canImport = canContinueImport(oldProjectVersion, currentProjectVersion);
+        // if (!canImport) {
+        // String message = "The version of " + project.getLabel() + " should be lower than the current project.";
+        // itemRecord.addError(message);
+        // log.info(message);
+        //
+        // return false;
+        // }
+        // }
+
+        // Talend Platform Big Data edition-5.0.2.r78327 / Talend Open Studio for Data Integration-5.1.0NB.r80928
+
+        // the 2 are valid versions SO
 
         // 1. Check if all the migration tasks of the items are done in the
         // project:
         // if not, the item use a more recent version of TOS: impossible to
         // import (forward compatibility)
+        // if no correct version and revision found in the productVersion, do same as before
         if (!projectMigrationTasks.containsAll(itemMigrationTasks)) {
             itemMigrationTasks.removeAll(projectMigrationTasks);
 
@@ -1137,6 +1341,13 @@ public class ImportItemUtil {
             Resource resource = createResource(itemRecord.getResourceSet(), itemPath, byteArray);
 
             resource.load(stream, null);
+
+            for (ReferenceFileItem rfItem : (List<ReferenceFileItem>) item.getReferenceResources()) {
+                itemPath = getReferenceItemPath(itemRecord.getPath(), rfItem.getExtension());
+                stream = manager.getStream(itemPath);
+                Resource rfResource = createResource(itemRecord.getResourceSet(), itemPath, true);
+                rfResource.load(stream, null);
+            }
             resetItemReference(itemRecord, resource);
             // EcoreUtil.resolveAll(itemRecord.getResourceSet());
         } catch (IOException e) {
@@ -1281,6 +1492,10 @@ public class ImportItemUtil {
         return path.removeFileExtension().addFileExtension(FileConstants.ITEM_EXTENSION);
     }
 
+    private IPath getReferenceItemPath(IPath path, String extension) {
+        return path.removeFileExtension().addFileExtension(extension);
+    }
+
     /**
      * 
      * DOC hcw ImportItemUtil class global comment. Detailled comment
@@ -1289,15 +1504,15 @@ public class ImportItemUtil {
 
         static ProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
 
-        private Set<ERepositoryObjectType> types = new HashSet<ERepositoryObjectType>();
+        private final Set<ERepositoryObjectType> types = new HashSet<ERepositoryObjectType>();
 
-        private Map<String, Boolean> lockState = new HashMap<String, Boolean>();
+        private final Map<String, Boolean> lockState = new HashMap<String, Boolean>();
 
         // key is id of IRepositoryObject, value is a list of IRepositoryObject
         // with same id
-        private Map<String, List<IRepositoryViewObject>> cache = new HashMap<String, List<IRepositoryViewObject>>();
+        private final Map<String, List<IRepositoryViewObject>> cache = new HashMap<String, List<IRepositoryViewObject>>();
 
-        private Map<ERepositoryObjectType, List<IRepositoryViewObject>> itemsFromRepository = new HashMap<ERepositoryObjectType, List<IRepositoryViewObject>>();
+        private final Map<ERepositoryObjectType, List<IRepositoryViewObject>> itemsFromRepository = new HashMap<ERepositoryObjectType, List<IRepositoryViewObject>>();
 
         public List<IRepositoryViewObject> findObjectsByItem(ItemRecord itemRecord) throws PersistenceException {
             Item item = itemRecord.getItem();
@@ -1308,6 +1523,25 @@ public class ImportItemUtil {
                 result = Collections.EMPTY_LIST;
             }
             return result;
+        }
+
+        public void addToCache(Item tmpItem) {
+            ERepositoryObjectType itemType = ERepositoryObjectType.getItemType(tmpItem);
+            IRepositoryViewObject newObject = new RepositoryViewObject(tmpItem.getProperty(), true);
+            List<IRepositoryViewObject> items = cache.get(newObject.getId());
+            if (items == null) {
+                items = new ArrayList<IRepositoryViewObject>();
+                cache.put(newObject.getId(), items);
+            }
+            items.add(newObject);
+            List<IRepositoryViewObject> list = itemsFromRepository.get(itemType);
+            if (list != null) {
+                list.add(newObject);
+            } else {
+                List<IRepositoryViewObject> newList = new ArrayList<IRepositoryViewObject>();
+                newList.add(newObject);
+                itemsFromRepository.put(itemType, newList);
+            }
         }
 
         public void initialize(ERepositoryObjectType itemType) throws PersistenceException {
@@ -1420,7 +1654,54 @@ public class ImportItemUtil {
     }
 
     public Map<String, Set<String>> getRoutineExtModulesMap() {
-        return this.routineExtModulesMap;
+        return routineExtModulesMap;
+    }
+
+    private boolean isVersionValid(String version) {
+        if (version == null) {
+            return false;
+        }
+        Pattern p = Pattern.compile("\\-(\\d{1,2}\\.\\d{1,2}\\.\\d{1,2}).+r(\\d{1,6})");
+        Matcher matcher = p.matcher(version);
+        String product = null;
+        String commit = null;
+        while (matcher.find()) {
+            product = matcher.group(1);
+            commit = matcher.group(2);
+        }
+        if (product == null || commit == null) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean canContinueImport(String oldProjectVersion, String currentProjectVersion) {
+        Pattern p = Pattern.compile("\\-(\\d{1,2}\\.\\d{1,2}\\.\\d{1,2}).+r(\\d{1,6})");
+        Matcher oldMatcher = p.matcher(oldProjectVersion);
+        Matcher currentMatcher = p.matcher(currentProjectVersion);
+
+        String oldProduct = null;
+        String oldCommit = null;
+        while (oldMatcher.find()) {
+            oldProduct = oldMatcher.group(1);
+            oldCommit = oldMatcher.group(2);
+        }
+        String currentProduct = null;
+        String currentCommit = null;
+        while (currentMatcher.find()) {
+            currentProduct = currentMatcher.group(1);
+            currentCommit = currentMatcher.group(2);
+            if (Integer.valueOf(oldCommit) > Integer.valueOf(currentCommit)) {
+                return false;
+            }
+        }
+        String cp = currentProduct.replaceAll("\\.", "");
+        String op = oldProduct.replaceAll("\\.", "");
+        if (Integer.valueOf(op) > Integer.valueOf(cp)) {
+            return false;
+        }
+
+        return true;
     }
 
 }

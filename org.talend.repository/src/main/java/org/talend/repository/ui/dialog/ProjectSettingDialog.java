@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,7 +29,9 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
+import org.talend.core.GlobalServiceRegister;
 import org.talend.core.PluginChecker;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.model.ProjectSettingNode;
@@ -64,6 +66,15 @@ public class ProjectSettingDialog {
             try {
                 IPreferencePage page = (IPreferencePage) element.createExecutableExtension("class"); //$NON-NLS-1$
                 node.setPage(page);
+                String id = element.getAttribute("id");
+                if (id.equals("org.talend.repository.preference.VersionManagementPage")) {
+                    IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                            IBrandingService.class);
+                    boolean allowVerchange = brandingService.getBrandingConfiguration().isAllowChengeVersion();
+                    if (!allowVerchange) {
+                        continue;
+                    }
+                }
                 page.setDescription(element.getAttribute("description")); //$NON-NLS-1$
                 page.setTitle(element.getAttribute("title")); //$NON-NLS-1$
             } catch (CoreException e) {

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,7 +12,9 @@
 // ============================================================================
 package org.talend.designer.core.ui.editor.cmd;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.gef.commands.Command;
 import org.eclipse.jface.dialogs.IInputValidator;
@@ -20,6 +22,7 @@ import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.PluginChecker;
+import org.talend.core.model.metadata.IEbcdicConstant;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
 import org.talend.core.model.process.EConnectionType;
@@ -35,11 +38,12 @@ import org.talend.designer.core.ui.dialog.mergeorder.ConnectionTableAndSchemaNam
 import org.talend.designer.core.ui.editor.connections.Connection;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.process.Process;
+import org.talend.designer.core.ui.views.properties.ComponentSettings;
 
 /**
  * Command that creates a new connection. <br/>
  * 
- * $Id: ConnectionCreateCommand.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ConnectionCreateCommand.java 86417 2012-06-28 03:59:13Z nrousseau $
  * 
  */
 public class ConnectionCreateCommand extends Command {
@@ -128,6 +132,7 @@ public class ConnectionCreateCommand extends Command {
             InputDialog id = new InputDialog(null, nodeLabel + Messages.getString("ConnectionCreateAction.dialogTitle"), //$NON-NLS-1$
                     Messages.getString("ConnectionCreateAction.dialogMessage"), oldName, new IInputValidator() { //$NON-NLS-1$ 
 
+                        @Override
                         public String isValid(String newText) {
                             if (newText != null) {
                                 if (!source.getProcess().checkValidConnectionName(newText, creatingConnection)
@@ -148,6 +153,7 @@ public class ConnectionCreateCommand extends Command {
             InputDialog id = new InputDialog(null, nodeLabel + Messages.getString("ConnectionCreateAction.dialogTitle"), //$NON-NLS-1$
                     Messages.getString("ConnectionCreateAction.dialogMessage"), oldName, new IInputValidator() { //$NON-NLS-1$ 
 
+                        @Override
                         public String isValid(String newText) {
                             if (newText != null) {
                                 if (!source.getProcess().checkValidConnectionName(newText, creatingConnection)
@@ -231,6 +237,7 @@ public class ConnectionCreateCommand extends Command {
         return outName;
     }
 
+    @Override
     public boolean canExecute() {
 
         if (target != null) {
@@ -246,6 +253,22 @@ public class ConnectionCreateCommand extends Command {
         return true;
     }
 
+    public boolean canExecute(boolean refactorJoblet) {
+
+        if (target != null) {
+            if (!ConnectionManager.canConnectToTarget(source, null, target, source.getConnectorFromName(connectorName)
+                    .getDefaultConnectionType(), connectorName, connectionName, refactorJoblet)) {
+                creatingConnection = false;
+                return false;
+            }
+            newLineStyle = ConnectionManager.getNewConnectionType();
+
+        }
+        creatingConnection = true;
+        return true;
+    }
+
+    @Override
     public void execute() {
         canExecute();
         if (connectionName == null) {
@@ -287,6 +310,25 @@ public class ConnectionCreateCommand extends Command {
                     }
                 }
 
+                // add for feature TDI-17358
+                IElementParameter elementParameter = source.getElementParameter("SCHEMAS"); //$NON-NLS-1$
+                if (elementParameter != null) {
+                    Map<String, Object> map = new HashMap<String, Object>();
+                    Object[] itemsValue = elementParameter.getListItemsValue();
+                    String[] items = elementParameter.getListItemsDisplayCodeName();
+                    map.put(IEbcdicConstant.FIELD_CODE, newMetadata.getTableName());
+                    map.put(IEbcdicConstant.FIELD_SCHEMA, newMetadata.getTableName());
+                    for (int i = 1; i < items.length; i++) {
+                        map.put(items[i], ((IElementParameter) itemsValue[i]).getValue());
+                    }
+                    Object value = elementParameter.getValue();
+                    if (value instanceof List) {
+                        List list = (List) value;
+                        list.add(map);
+                    }
+                    ComponentSettings.switchToCurComponentSettingsView();
+                }
+
             } else {
                 newMetadata = null;
 
@@ -319,13 +361,17 @@ public class ConnectionCreateCommand extends Command {
         if (newLineStyle == null) {
             newLineStyle = source.getConnectorFromName(connectorName).getDefaultConnectionType();
         }
-        if (newMetadata != null) {
-            source.getMetadataList().add(newMetadata);
-            this.connection = new Connection(source, target, newLineStyle, connectorName, metaName, connectionName,
-                    monitorConnection);
-        } else {
-            this.connection = new Connection(source, target, newLineStyle, connectorName, metaName, connectionName, metaName,
-                    monitorConnection);
+        if (connection == null) {
+            if (newMetadata != null) {
+                source.getMetadataList().add(newMetadata);
+                this.connection = new Connection(source, target, newLineStyle, connectorName, metaName, connectionName,
+                        monitorConnection);
+            } else {
+                this.connection = new Connection(source, target, newLineStyle, connectorName, metaName, connectionName, metaName,
+                        monitorConnection);
+            }
+        } else { // in case of redo, reuse the same instance
+            connection.reconnect(source, target, newLineStyle);
         }
         INodeConnector nodeConnectorSource, nodeConnectorTarget;
         nodeConnectorSource = connection.getSourceNodeConnector();
@@ -351,6 +397,7 @@ public class ConnectionCreateCommand extends Command {
 
     }
 
+    @Override
     public void undo() {
         connection.disconnect();
         INodeConnector nodeConnectorSource, nodeConnectorTarget;
@@ -371,6 +418,7 @@ public class ConnectionCreateCommand extends Command {
         // ((Process) source.getProcess()).checkProcess();
     }
 
+    @Override
     public void redo() {
         execute();
     }
@@ -393,7 +441,4 @@ public class ConnectionCreateCommand extends Command {
         ConnectionCreateCommand.creatingConnection = creatingConnection;
     }
 
-    public Connection getConnection() {
-        return this.connection;
-    }
 }

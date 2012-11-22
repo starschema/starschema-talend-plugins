@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -53,6 +53,7 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.PlatformUI;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.swt.advanced.dataeditor.LabelFieldEditor;
+import org.talend.commons.utils.VersionUtils;
 import org.talend.core.CorePlugin;
 import org.talend.core.model.genhtml.FileCopyUtils;
 import org.talend.core.prefs.ITalendCorePrefConstants;
@@ -613,8 +614,7 @@ public class I18nPreferencePage extends FieldEditorPreferencePage implements IWo
      * @return
      */
     public static String getCurrentTosVersion(boolean normalize) {
-        String version = (String) CorePlugin.getDefault().getBundle().getHeaders()
-                .get(org.osgi.framework.Constants.BUNDLE_VERSION);
+        String version = VersionUtils.getVersion();
         if (normalize) {
             version = normalizeVersion(version);
         }

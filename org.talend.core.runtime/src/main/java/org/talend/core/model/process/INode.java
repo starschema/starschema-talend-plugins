@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -18,6 +18,7 @@ import java.util.Set;
 
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.components.IODataComponent;
+import org.talend.core.model.general.ModuleNeeded;
 import org.talend.core.model.metadata.IMetadataTable;
 
 /**
@@ -95,8 +96,6 @@ public interface INode extends IElement {
      */
     public List<? extends IConnection> getOutgoingConnections();
 
-    public String getPluginFullName();
-
     public boolean hasConditionalOutputs();
 
     public List<BlockCode> getBlocksCodeToClose();
@@ -164,7 +163,7 @@ public interface INode extends IElement {
     public boolean isThereLinkWithHash();
 
     public List<? extends IConnection> getOutgoingSortedConnections();
-    
+
     public List<? extends IConnection> getOutgoingCamelSortedConnections();
 
     public List<? extends IConnection> getMainOutgoingConnections();
@@ -207,7 +206,21 @@ public interface INode extends IElement {
      * @return
      */
     public boolean isVirtualGenerateNode();
+    
+    /**
+     * This method gets the type of the connection used between two components in case of a virtual component
+     * @return Returns the type of the connection (ie. ON_ROWS_END)
+     */
+    
+    public EConnectionType getVirtualLinkTo();
 
+    /**
+     * This method sets the property virtualLinkTo which is the connection type used between two components in case of a virtual component.
+     * @param virtualLinkTo
+     */
+    
+    public void setVirtualLinkTo(EConnectionType virtualLinkTo);
+    
     // if the node should be generated as a virtual component or not.
     // true if the template part of the component is used
 
@@ -278,4 +291,6 @@ public interface INode extends IElement {
     public int getPosY();
 
     public INode getJobletNode();
+
+    public List<ModuleNeeded> getModulesNeeded();
 }

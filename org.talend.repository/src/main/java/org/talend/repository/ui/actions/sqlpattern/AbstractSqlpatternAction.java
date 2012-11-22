@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -23,6 +23,7 @@ import org.talend.core.GlobalServiceRegister;
 import org.talend.core.context.Context;
 import org.talend.core.context.RepositoryContext;
 import org.talend.core.language.ECodeLanguage;
+import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.SQLPatternItem;
 import org.talend.designer.codegen.ICodeGeneratorService;
 import org.talend.designer.codegen.ISQLPatternSynchronizer;
@@ -67,11 +68,17 @@ public abstract class AbstractSqlpatternAction extends AContextualAction {
             if (talendEditorID.equals(editor.getSite().getId())) {
                 // TextEditor talendEditor = (TextEditor) editor;
                 RepositoryEditorInput editorInput = (RepositoryEditorInput) editor.getEditorInput();
-                if (editorInput.getItem().equals(item)) {
-                    page.bringToTop(editor);
-                    found = true;
-                    talendEditor = editor;
-                    break;
+                Item item2 = editorInput.getItem();
+                if (item2 != null && item2 instanceof SQLPatternItem
+                        && item2.getProperty().getId().equals(item.getProperty().getId())) {
+                    if (item2.getProperty().getVersion().equals(item.getProperty().getVersion())) {
+                        page.bringToTop(editor);
+                        found = true;
+                        talendEditor = editor;
+                        break;
+                    } else {
+                        page.closeEditor(editor, false);
+                    }
                 }
             }
         }

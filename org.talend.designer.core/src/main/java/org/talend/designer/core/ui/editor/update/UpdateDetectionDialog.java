@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -85,6 +85,8 @@ public class UpdateDetectionDialog extends SelectionDialog {
     private Label imageLabe;
 
     private boolean canCancel = true;
+
+    private boolean canDeselect = true;
 
     private boolean isJobReadOnly = false;
 
@@ -194,9 +196,11 @@ public class UpdateDetectionDialog extends SelectionDialog {
             case RELOAD:
             case JOBLET_UPDATE:
                 this.canCancel = false;
+                this.canDeselect = false;
                 return;
             default:
                 this.canCancel = true;
+                this.canDeselect = true;
             }
         }
 
@@ -248,7 +252,7 @@ public class UpdateDetectionDialog extends SelectionDialog {
                 }
             }
         });
-        if (!isOnlySimpleShow()) {
+        if (!isOnlySimpleShow() && canDeselect) {
             // "select all" button
             selectButton = createButton(composite, IDialogConstants.SELECT_ALL_ID, WorkbenchMessages.SelectionDialog_selectLabel,
                     false);

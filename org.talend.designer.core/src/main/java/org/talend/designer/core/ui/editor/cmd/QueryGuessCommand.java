@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -14,11 +14,14 @@ package org.talend.designer.core.ui.editor.cmd;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Priority;
 import org.eclipse.gef.commands.Command;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.ITDQRuleService;
 import org.talend.core.database.EDatabaseTypeName;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.QueryUtil;
@@ -30,16 +33,23 @@ import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IElement;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
+import org.talend.core.model.process.IProcess;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.DatabaseConnectionItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.utils.ContextParameterUtils;
 import org.talend.core.model.utils.TalendTextUtils;
+import org.talend.cwm.helper.ConnectionHelper;
 import org.talend.designer.core.DesignerPlugin;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
 import org.talend.designer.core.ui.editor.nodes.Node;
+import org.talend.designer.core.utils.JavaProcessUtil;
 import org.talend.repository.utils.DatabaseConnectionParameterUtil;
+import orgomg.cwm.objectmodel.core.ModelElement;
+import orgomg.cwm.resource.relational.Catalog;
+import orgomg.cwm.resource.relational.Schema;
 
 /**
  * This class is used for generating new query when "Guess Query" button is selected. <br/>
@@ -71,6 +81,8 @@ public class QueryGuessCommand extends Command {
 
     private Connection conn; // hywang add for 9594
 
+    private IProcess process;
+
     /**
      * The property is defined in an element, which can be either a node or a connection.
      * 
@@ -81,6 +93,11 @@ public class QueryGuessCommand extends Command {
     public QueryGuessCommand(IElement node, IMetadataTable newOutputMetadataTable) {
         this.node = node;
         this.newOutputMetadataTable = newOutputMetadataTable;
+    }
+
+    public QueryGuessCommand(INode node2, IMetadataTable metadataTable, Connection conn) {// 9594
+        this(node2, metadataTable);
+        this.conn = conn;
     }
 
     /**
@@ -107,11 +124,82 @@ public class QueryGuessCommand extends Command {
     @SuppressWarnings("unchecked")
     @Override
     public void execute() {
+        IElementParameter dqRuler = node.getElementParameter("DQRULES_LIST");
+        String newQuery;
+        if (dqRuler == null || "".equals(dqRuler.getValue())) {
+            newQuery = generateNewQuery();
+        } else {
+            newQuery = generateNewQueryFromDQRuler(dqRuler);
+        }
 
+        for (IElementParameter param : (List<IElementParameter>) node.getElementParameters()) {
+            if (param.getFieldType() == EParameterFieldType.MEMO_SQL) {
+                oldValue = node.getPropertyValue(param.getName());
+                this.propName = param.getName();
+                String sql = null;
+                try {
+                    // sql = new SQLFormatUtil().formatSQL(newQuery);
+                    if (QueryUtil.needFormatSQL(dbType)) {
+                        sql = fomatQuery(newQuery);
+                    } else {
+                        sql = newQuery;
+                    }
+                    node.setPropertyValue(param.getName(), sql);
+                } catch (Exception e) {
+                    ExceptionHandler.process(e, Priority.WARN);
+                    node.setPropertyValue(param.getName(), newQuery);
+                }
+
+                param.setRepositoryValueUsed(false);
+            }
+        }
+
+        node.setPropertyValue(EParameterName.UPDATE_COMPONENTS.getName(), Boolean.TRUE);
+
+        if (this.node instanceof Node) {
+            ((Node) this.node).checkAndRefreshNode();
+        }
+
+        // Ends
+    }
+
+    private String generateNewQueryFromDQRuler(IElementParameter dqRulerParam) {
+        ITDQRuleService rulerService = null;
+        try {
+            rulerService = (ITDQRuleService) GlobalServiceRegister.getDefault().getService(ITDQRuleService.class);
+        } catch (RuntimeException e) {
+            // nothing to do
+        }
+        if (rulerService != null) {
+            IElementParameter typeParam = node.getElementParameter("TYPE");
+            IElementParameter dbParam = node.getElementParameter(EParameterName.DBNAME.getName());
+            IElementParameter schemaParam = node.getElementParameter(EParameterName.SCHEMA_DB.getName());
+            IElementParameter tableParam = node.getElementParameterFromField(EParameterFieldType.DBTABLE);
+            IElementParameter whereClause = node.getElementParameter("WHERE_CLAUSE");
+
+            List<IMetadataTable> metadataList = null;
+            IMetadataTable metadataTable = null;
+            if (node instanceof Node) {
+                metadataList = ((Node) node).getMetadataList();
+                if (metadataList != null && !metadataList.isEmpty()) {
+                    metadataTable = metadataList.get(0);
+                }
+            }
+            return rulerService.getQueryByRule(dqRulerParam, typeParam, dbParam, schemaParam, tableParam, metadataTable, node
+                    .getElementName().contains("Invalid"), whereClause);
+        }
+        return "";
+    }
+
+    private String generateNewQuery() {
         // used for generating new Query.
 
         if (realDBType != null) {
             dbType = realDBType;
+        }
+        //
+        if (node != null && node instanceof INode) {
+            process = ((INode) node).getProcess();
         }
         if (this.realTableId != null && this.dbNameAndDbTypeMap.containsKey(this.realTableId)) {
             dbType = this.dbNameAndDbTypeMap.get(this.realTableId);
@@ -124,10 +212,19 @@ public class QueryGuessCommand extends Command {
                 }
             }
         }
+        boolean isJdbc = false;
         // hywang add for bug 7575
         if (dbType != null && dbType.equals(EDatabaseTypeName.GENERAL_JDBC.getDisplayName())) {
+            isJdbc = true;
             String driverClassName = node.getElementParameter("DRIVER_CLASS").getValue().toString(); //$NON-NLS-N$
             driverClassName = TalendTextUtils.removeQuotes(driverClassName);
+            //
+            if (driverClassName != null && !"".equals(driverClassName)) { //$NON-NLS-N$
+                boolean isContextModeDriverClass = ContextParameterUtils.containContextVariables(driverClassName);
+                if (isContextModeDriverClass) {
+                    driverClassName = JavaProcessUtil.getContextOriginalValue(process, driverClassName);
+                }
+            }
 
             // DRIVER_JAR:
             String driverJarName = node.getElementParameter("DRIVER_JAR").getValue().toString(); //$NON-NLS-N$
@@ -138,6 +235,10 @@ public class QueryGuessCommand extends Command {
                 }
             }
             if (driverJarName != null && !"".equals(driverJarName)) { //$NON-NLS-N$
+                boolean isContextMode = ContextParameterUtils.containContextVariables(driverJarName);
+                if (isContextMode) {
+                    driverJarName = JavaProcessUtil.getContextOriginalValue(process, driverJarName);
+                }
                 dbType = ExtractMetaDataUtils.getDbTypeByClassNameAndDriverJar(driverClassName, driverJarName);
             } else {
                 dbType = ExtractMetaDataUtils.getDbTypeByClassName(driverClassName);
@@ -206,44 +307,23 @@ public class QueryGuessCommand extends Command {
             }
 
         }
+
+        if (conn instanceof DatabaseConnection && conn.isContextMode()) {
+            schema = DatabaseConnectionParameterUtil.getContextTrueValue((DatabaseConnection) conn, schema);
+        }
+
         String newQuery = null;
         realTableName = QueryUtil.getTableName(node, newOutputMetadataTable, schema, dbType, realTableName);
         if (realTableName.startsWith(TalendTextUtils.QUOTATION_MARK) && realTableName.endsWith(TalendTextUtils.QUOTATION_MARK)
                 && realTableName.length() > 2) {
             realTableName = realTableName.substring(1, realTableName.length() - 1);
         }
-        newQuery = TalendTextUtils.addSQLQuotes(QueryUtil.generateNewQuery(node, newOutputMetadataTable, dbType, schema,
+        if (isJdbc && conn != null) {
+            schema = getDefaultSchema(realTableName);
+        }
+        newQuery = TalendTextUtils.addSQLQuotes(QueryUtil.generateNewQuery(node, newOutputMetadataTable, isJdbc, dbType, schema,
                 realTableName));
-
-        for (IElementParameter param : (List<IElementParameter>) node.getElementParameters()) {
-            if (param.getFieldType() == EParameterFieldType.MEMO_SQL) {
-                oldValue = node.getPropertyValue(param.getName());
-                this.propName = param.getName();
-                String sql = null;
-                try {
-                    // sql = new SQLFormatUtil().formatSQL(newQuery);
-                    if (QueryUtil.needFormatSQL(dbType)) {
-                        sql = fomatQuery(newQuery);
-                    } else {
-                        sql = newQuery;
-                    }
-                    node.setPropertyValue(param.getName(), sql);
-                } catch (Exception e) {
-                    ExceptionHandler.process(e, Priority.WARN);
-                    node.setPropertyValue(param.getName(), newQuery);
-                }
-
-                param.setRepositoryValueUsed(false);
-            }
-        }
-
-        node.setPropertyValue(EParameterName.UPDATE_COMPONENTS.getName(), Boolean.TRUE);
-
-        if (this.node instanceof Node) {
-            ((Node) this.node).checkAndRefreshNode();
-        }
-
-        // Ends
+        return newQuery;
     }
 
     // get DatabaseConnection
@@ -321,5 +401,53 @@ public class QueryGuessCommand extends Command {
             }
         }
         return buffer.toString();
+    }
+
+    private String getDefaultSchema(String realTableName) {
+        String schema = "";
+        List<Schema> schemas = ConnectionHelper.getSchema(this.conn);
+        Set<Catalog> catalog = ConnectionHelper.getAllCatalogs(this.conn);
+        for (Schema deScha : schemas) {
+            for (ModelElement ele : deScha.getOwnedElement()) {
+                String childeleName = TalendTextUtils.addQuotesWithSpaceFieldForSQLStringForce(
+                        TalendTextUtils.declareString(ele.getName()), dbType, true);
+                if (childeleName.startsWith(TalendTextUtils.QUOTATION_MARK)
+                        && childeleName.endsWith(TalendTextUtils.QUOTATION_MARK) && childeleName.length() > 2) {
+                    childeleName = childeleName.substring(1, childeleName.length() - 1);
+                }
+                if (childeleName.equals(realTableName)) {
+                    return deScha.getName();
+                }
+            }
+        }
+
+        for (Catalog cata : catalog) {
+            for (ModelElement ele : cata.getOwnedElement()) {
+                if (ele instanceof Schema) {
+                    for (ModelElement child : ((Schema) ele).getOwnedElement()) {
+                        String childeleName = TalendTextUtils.addQuotesWithSpaceFieldForSQLStringForce(
+                                TalendTextUtils.declareString(child.getName()), dbType, true);
+                        if (childeleName.startsWith(TalendTextUtils.QUOTATION_MARK)
+                                && childeleName.endsWith(TalendTextUtils.QUOTATION_MARK) && childeleName.length() > 2) {
+                            childeleName = childeleName.substring(1, childeleName.length() - 1);
+                        }
+                        if (childeleName.equals(realTableName)) {
+                            return ele.getName();
+                        }
+                    }
+                } else {
+                    String eleName = TalendTextUtils.addQuotesWithSpaceFieldForSQLStringForce(
+                            TalendTextUtils.declareString(ele.getName()), dbType, true);
+                    if (eleName.startsWith(TalendTextUtils.QUOTATION_MARK) && eleName.endsWith(TalendTextUtils.QUOTATION_MARK)
+                            && eleName.length() > 2) {
+                        eleName = eleName.substring(1, eleName.length() - 1);
+                    }
+                    if (eleName.equals(realTableName)) {
+                        return cata.getName();
+                    }
+                }
+            }
+        }
+        return schema;
     }
 }

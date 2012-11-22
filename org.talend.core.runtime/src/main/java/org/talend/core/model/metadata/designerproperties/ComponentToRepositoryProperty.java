@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -56,7 +56,9 @@ import org.talend.core.model.process.IContextManager;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
+import org.talend.core.model.repository.DragAndDropManager;
 import org.talend.core.model.utils.ContextParameterUtils;
+import org.talend.core.model.utils.IDragAndDropServiceHandler;
 import org.talend.core.runtime.i18n.Messages;
 import org.talend.core.utils.TalendQuoteUtils;
 import org.talend.cwm.helper.ConnectionHelper;
@@ -100,13 +102,8 @@ public class ComponentToRepositoryProperty {
             // add url instance ------DataStringConnection
             DatabaseConnection conn = (DatabaseConnection) connection;
             // see bug in 18011, set url and driver_jar.
-            if (conn.getDatabaseType().equals(EDatabaseTypeName.GENERAL_JDBC.getDisplayName())) {
-                String url = conn.getURL();
-                conn.setURL(url);
-            } else {
-                String url = DatabaseConnStrUtil.getURLString(conn);
-                conn.setURL(url);
-            }
+            conn.setURL(DatabaseConnStrUtil.getURLString(conn));
+
             // see bug in feature 5998, set dbmsId.
             String repositoryType = node.getElementParameter("PROPERTY_TYPE").getRepositoryValue(); //$NON-NLS-1$
             if (repositoryType.startsWith("DATABASE") && repositoryType.contains(":")) { //$NON-NLS-1$ //$NON-NLS-2$
@@ -169,6 +166,11 @@ public class ComponentToRepositoryProperty {
             setBRMSValue((BRMSConnection) connection, node, repositoryValue);
         } else if (connection instanceof HL7Connection) {
             setHL7Value((HL7Connection) connection, node, repositoryValue);
+        }
+        for (IDragAndDropServiceHandler handler : DragAndDropManager.getHandlers()) {
+            if (handler.canHandle(connection)) {
+                handler.setComponentValue(connection, node, repositoryValue);
+            }
         }
     }
 
@@ -406,7 +408,8 @@ public class ComponentToRepositoryProperty {
         else if (EDatabaseTypeName.ORACLEFORSID.getProduct().equalsIgnoreCase((String) parameter.getValue())
                 || EDatabaseTypeName.ORACLEFORSID.getXmlName().equalsIgnoreCase((String) parameter.getValue())
                 || EDatabaseTypeName.ORACLESN.getXmlName().equalsIgnoreCase((String) parameter.getValue())
-                || EDatabaseTypeName.ORACLE_OCI.getXmlName().equalsIgnoreCase((String) parameter.getValue())) {
+                || EDatabaseTypeName.ORACLE_OCI.getXmlName().equalsIgnoreCase((String) parameter.getValue())
+                || EDatabaseTypeName.ORACLE_RAC.getXmlName().equalsIgnoreCase((String) parameter.getValue())) {
             parameter = node.getElementParameter("CONNECTION_TYPE"); //$NON-NLS-1$
             // if ("ORACLE_OCI".equals(parameter.getValue())) {
             // }
@@ -416,6 +419,9 @@ public class ComponentToRepositoryProperty {
                 connection.setProductId(EDatabaseTypeName.ORACLESN.getProduct());
             } else if ("ORACLE_SID".equals(parameter.getValue()) || "sid".equals(parameter.getValue())) { //$NON-NLS-1$  //$NON-NLS-2$
                 connection.setDatabaseType(EDatabaseTypeName.ORACLEFORSID.getDisplayName());
+                connection.setProductId(EDatabaseTypeName.ORACLESN.getProduct());
+            } else if ("ORACLE_RAC".equals(parameter.getValue()) || "rac".equals(parameter.getValue())) { //$NON-NLS-1$  //$NON-NLS-2$
+                connection.setDatabaseType(EDatabaseTypeName.ORACLE_RAC.getDisplayName());
                 connection.setProductId(EDatabaseTypeName.ORACLESN.getProduct());
             }
             return;
@@ -864,7 +870,7 @@ public class ComponentToRepositoryProperty {
                         SchemaTarget schemaTarget = ConnectionFactory.eINSTANCE.createSchemaTarget();
                         schemaTargets.add(schemaTarget);
                         schemaTarget.setTagName(schema);
-                        schemaTarget.setRelativeXPathQuery(query);
+                        schemaTarget.setRelativeXPathQuery(TalendQuoteUtils.removeQuotes(query));
                     }
                 }
             }
@@ -922,8 +928,8 @@ public class ComponentToRepositoryProperty {
                 connection.setBindPrincipal(value);
             }
         }
-        if ("PASSWD".equals(repositoryValue)) { //$NON-NLS-1$
-            String value = getParameterValue(connection, node, "PASSWD").replaceAll("\\\\\\\\", "\\\\"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        if ("PASSWORD".equals(repositoryValue)) { //$NON-NLS-1$
+            String value = getParameterValue(connection, node, "PASS").replaceAll("\\\\\\\\", "\\\\"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
             if (value != null) {
                 connection.setBindPassword(value);
             }
@@ -1054,7 +1060,6 @@ public class ComponentToRepositoryProperty {
         if ("DATA_FILE".equals(repositoryValue)) { //$NON-NLS-1$
             String value = getParameterValue(connection, node, "FILENAME"); //$NON-NLS-1$
             if (value != null) {
-                connection.setFilePath(value);
                 connection.setDataFile(value);
             }
         }

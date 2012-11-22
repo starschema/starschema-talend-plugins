@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -67,7 +67,6 @@ public class ReadProcess extends AbstractProcessAction {
             IEditorPart editorPart = page.findEditor(fileEditorInput);
 
             if (editorPart == null) {
-                fileEditorInput.setView(getViewPart());
                 fileEditorInput.setRepositoryNode(node);
                 page.openEditor(fileEditorInput, MultiPageTalendEditor.ID, true);
             } else {

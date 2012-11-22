@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -32,16 +32,17 @@ import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.repository.RepositoryPlugin;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.model.RepositoryConstants;
 import org.talend.repository.model.RepositoryNodeUtilities;
-import org.talend.repository.ui.views.RepositoryView;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC mhelleboid class global comment. Detailled comment <br/>
  * 
- * $Id: NameSection.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: NameSection.java 81205 2012-04-09 07:43:59Z cli $
  * 
  */
 public class NameSection extends AbstractSection {
@@ -154,8 +155,10 @@ public class NameSection extends AbstractSection {
                     try {
                         ERepositoryObjectType type = (ERepositoryObjectType) getNode().getContentType();
                         getRepositoryFactory().renameFolder(type, path, text);
-                        RepositoryView view = (RepositoryView) getActivePage().findView(RepositoryView.VIEW_ID);
-                        view.refresh();
+                        IRepositoryView view = RepositoryManagerHelper.findRepositoryView();
+                        if (view != null) {
+                            view.refresh();
+                        }
                     } catch (PersistenceException e) {
                         // e.printStackTrace();
                         ExceptionHandler.process(e);

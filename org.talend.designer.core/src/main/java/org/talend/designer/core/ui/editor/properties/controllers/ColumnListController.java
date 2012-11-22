@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -43,10 +43,13 @@ import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
 import org.talend.core.model.metadata.ColumnNameChanged;
 import org.talend.core.model.metadata.ColumnNameChangedExt;
 import org.talend.core.model.metadata.IMetadataColumn;
+import org.talend.core.model.metadata.IMetadataConnection;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
+import org.talend.core.model.metadata.builder.ConvertionHelper;
 import org.talend.core.model.metadata.builder.connection.Connection;
+import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.metadata.builder.connection.EDIFACTColumn;
 import org.talend.core.model.metadata.builder.connection.EDIFACTConnection;
 import org.talend.core.model.metadata.builder.connection.MetadataColumn;
@@ -56,14 +59,15 @@ import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IElement;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
+import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.properties.tab.IDynamicProperty;
-import org.talend.core.utils.KeywordsValidator;
 import org.talend.cwm.helper.ConnectionHelper;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.ElementParameter;
 import org.talend.designer.core.ui.editor.cmd.PropertyChangeCommand;
 import org.talend.designer.core.ui.editor.nodes.Node;
+import orgomg.cwm.objectmodel.core.TaggedValue;
 
 /**
  * DOC yzhang class global comment. Detailled comment <br/>
@@ -137,6 +141,7 @@ public class ColumnListController extends AbstractElementPropertySectionControll
 
     IControlCreator cbCtrl = new IControlCreator() {
 
+        @Override
         public Control createControl(final Composite parent, final int style) {
             CCombo cb = new CCombo(parent, style);
             return cb;
@@ -260,6 +265,7 @@ public class ColumnListController extends AbstractElementPropertySectionControll
      * 
      * @see java.beans.PropertyChangeListener#propertyChange(java.beans.PropertyChangeEvent)
      */
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // TODO Auto-generated method stub
     }
@@ -414,9 +420,9 @@ public class ColumnListController extends AbstractElementPropertySectionControll
             }
             if (param.getFieldType() == EParameterFieldType.TABLE) {
                 Object[] itemsValue = param.getListItemsValue();
-                for (int j = 0; j < itemsValue.length; j++) {
-                    if (itemsValue[j] instanceof IElementParameter) {
-                        IElementParameter tmpParam = (IElementParameter) itemsValue[j];
+                for (Object element2 : itemsValue) {
+                    if (element2 instanceof IElementParameter) {
+                        IElementParameter tmpParam = (IElementParameter) element2;
                         columnList = getColumnList(element, tmpParam.getContext());
                         String[] tableColumnNameList = columnList.toArray(new String[0]);
                         if (tmpParam.getFieldType() == EParameterFieldType.COLUMN_LIST) {
@@ -496,7 +502,7 @@ public class ColumnListController extends AbstractElementPropertySectionControll
                         newLine = TableController.createNewLine(param);
                         newLine.put(codes[0], columnName);
                         if (!StringUtils.isEmpty(edifactId)) {
-                            org.talend.core.model.metadata.builder.connection.Connection connection = MetadataTool
+                            org.talend.core.model.metadata.builder.connection.Connection connection = MetadataToolHelper
                                     .getConnectionFromRepository(edifactId);
                             if (connection != null && connection instanceof EDIFACTConnection) {
                                 List<org.talend.core.model.metadata.builder.connection.MetadataTable> tables = ConnectionHelper
@@ -511,6 +517,57 @@ public class ColumnListController extends AbstractElementPropertySectionControll
                                             break;
                                         }
                                     }
+                                }
+                            }
+
+                        }
+                        if (element instanceof Node) {
+                            Node node = (Node) element;
+                            String familyName = node.getComponent().getOriginalFamilyName();
+                            /** need add second parameter for hbase input/output component **/
+                            if (familyName != null && familyName.equals("Databases/HBase")) {
+                                for (IElementParameter par : node.getElementParametersWithChildrens()) {
+                                    if (par.getName().equals("REPOSITORY_PROPERTY_TYPE")) {
+                                        String hbaseConnectionId = par.getValue().toString();
+                                        String columnFamily = null;
+                                        org.talend.core.model.metadata.builder.connection.Connection connection = MetadataToolHelper
+                                                .getConnectionFromRepository(hbaseConnectionId);
+                                        if (connection != null && connection instanceof DatabaseConnection) {
+                                            /* use imetadataconnection because maybe it's in context model */
+                                            IMetadataConnection metadataConnection = ConvertionHelper.convert(connection);
+                                            List<org.talend.core.model.metadata.builder.connection.MetadataTable> tables = ConnectionHelper
+                                                    .getTablesWithOrders(connection);
+                                            boolean find = false;
+                                            for (org.talend.core.model.metadata.builder.connection.MetadataTable table : tables) {
+
+                                                for (MetadataColumn column : table.getColumns()) {
+                                                    if (column.getLabel() != null && column.getLabel().equals(columnName)) {
+                                                        for (TaggedValue tv : column.getTaggedValue()) {
+                                                            String tag = tv.getTag();
+                                                            if (tag != null && tag.equals("COLUMN FAMILY")) {
+                                                                String value = tv.getValue();
+                                                                if (value != null) {
+                                                                    columnFamily = value;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    if (find) {
+                                                        break;
+                                                    }
+                                                }
+                                                if (find) {
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (columnFamily != null) {
+                                            newLine.put(codes[1], TalendTextUtils.addQuotes(columnFamily));
+                                            break;
+                                        }
+                                    }
+
                                 }
                             }
 
@@ -543,7 +600,7 @@ public class ColumnListController extends AbstractElementPropertySectionControll
                     listItemsShowIf[j] = null;
                     listItemsNotShowIf[j] = null;
                     newParam = new ElementParameter(element);
-                    newParam.setName(columnName); //$NON-NLS-1$
+                    newParam.setName(columnName);
                     newParam.setDisplayName(""); //$NON-NLS-1$
                     newParam.setFieldType(EParameterFieldType.TEXT);
                     newParam.setValue(""); //$NON-NLS-1$
@@ -695,14 +752,14 @@ public class ColumnListController extends AbstractElementPropertySectionControll
             for (IMetadataColumn column : table.getListColumns()) {
                 // add for bug 12034
                 String label = column.getLabel();
-                if (element instanceof INode && ((INode) element).getComponent().getName().endsWith("tFileInputXML")) {//$NON-NLS-1$
-                    if (label.length() > 1) {
-                        String labelSub = label.substring(1);
-                        if (labelSub != null && KeywordsValidator.isKeyword(labelSub)) {
-                            label = labelSub;
-                        }
-                    }
-                }
+                //                if (element instanceof INode && ((INode) element).getComponent().getName().endsWith("tFileInputXML")) {//$NON-NLS-1$
+                // if (label.length() > 1) {
+                // String labelSub = label.substring(1);
+                // if (labelSub != null && KeywordsValidator.isKeyword(labelSub)) {
+                // label = labelSub;
+                // }
+                // }
+                // }
                 columnList.add(label);
             }
         }
@@ -793,8 +850,8 @@ public class ColumnListController extends AbstractElementPropertySectionControll
         for (ColumnNameChanged colChanged : columnsChanged) {
             String newName = preRowLookup + colChanged.getNewName();
             ColumnNameChanged theChanged = null;
-            for (int j = 0; j < columnNameList.length; j++) {
-                if (newName.equals(columnNameList[j])) {
+            for (String element : columnNameList) {
+                if (newName.equals(element)) {
                     theChanged = colChanged;
                     break;
                 }
@@ -845,8 +902,8 @@ public class ColumnListController extends AbstractElementPropertySectionControll
         for (ColumnNameChanged colChanged : columnsChanged) {
             boolean found = false;
             String newName = preRowLookup + colChanged.getNewName();
-            for (int j = 0; j < columnNameList.length; j++) {
-                if (newName.equals(columnNameList[j])) {
+            for (String element : columnNameList) {
+                if (newName.equals(element)) {
                     found = true;
                     break;
                 }

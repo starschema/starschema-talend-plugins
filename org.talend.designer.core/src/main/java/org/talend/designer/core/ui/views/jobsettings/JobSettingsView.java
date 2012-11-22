@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -45,11 +45,13 @@ import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.EmptyRepositoryObject;
 import org.talend.core.model.repository.IRepositoryEditorInput;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.properties.tab.HorizontalTabFactory;
 import org.talend.core.properties.tab.IDynamicProperty;
 import org.talend.core.properties.tab.TalendPropertyTabDescriptor;
 import org.talend.core.ui.IHeaderFooterProviderService;
 import org.talend.core.ui.ISVNProviderService;
+import org.talend.core.ui.branding.IBrandingService;
 import org.talend.designer.business.diagram.custom.IDiagramModelService;
 import org.talend.designer.core.ICamelDesignerCoreService;
 import org.talend.designer.core.i18n.Messages;
@@ -65,6 +67,7 @@ import org.talend.designer.core.ui.views.statsandlogs.StatsAndLogsComposite;
 import org.talend.repository.model.IRepositoryNode.EProperties;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.ui.views.IJobSettingsView;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC ggu class global comment. Detailled comment
@@ -90,6 +93,8 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
 
     private boolean selectedPrimary;
 
+    private boolean allowVerchange = true;
+
     private Process process;
 
     private Composite parent;
@@ -99,6 +104,9 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
     public JobSettingsView() {
         tabFactory = new HorizontalTabFactory();
         CorePlugin.getDefault().getRepositoryService().addRepositoryTreeViewListener(this);
+        IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                IBrandingService.class);
+        allowVerchange = brandingService.getBrandingConfiguration().isAllowChengeVersion();
     }
 
     public static String getViewNameLable() {
@@ -226,8 +234,10 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
         } else if (EComponentCategory.MAIN.equals(category)) {
             dynamicComposite = new MainComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(), (IRepositoryViewObject) data);
         } else if (EComponentCategory.VERSIONS.equals(category)) {
-            dynamicComposite = new ProcessVersionComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(),
-                    (IRepositoryViewObject) data);
+            if (allowVerchange) {
+                dynamicComposite = new ProcessVersionComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(),
+                        (IRepositoryViewObject) data);
+            }
         } else if (EComponentCategory.HEADERFOOTER.equals(category)) {
             if (GlobalServiceRegister.getDefault().isServiceRegistered(IHeaderFooterProviderService.class)) {
                 IHeaderFooterProviderService headerFooterService = (IHeaderFooterProviderService) GlobalServiceRegister
@@ -241,11 +251,14 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
             dynamicComposite = service.createProcessSVNHistoryComposite(parent, tabFactory.getWidgetFactory(),
                     (IRepositoryViewObject) data);
         } else if (EComponentCategory.APPEARANCE.equals(category)) {
-            dynamicComposite = new BusinessAppearanceComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(), selectedModel);
+            dynamicComposite = (IDynamicProperty) CorePlugin.getDefault().getDiagramModelService()
+                    .getBusinessAppearanceComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(), selectedModel);
         } else if (EComponentCategory.RULERS_AND_GRID.equals(category)) {
-            dynamicComposite = new BusinessRulersAndGridComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(), null);
+            dynamicComposite = (IDynamicProperty) CorePlugin.getDefault().getDiagramModelService()
+                    .getBusinessRulersAndGridComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(), null);
         } else if (EComponentCategory.ASSIGNMENT.equals(category)) {
-            dynamicComposite = new BusinessAssignmentComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(), selectedModel);
+            dynamicComposite = (IDynamicProperty) CorePlugin.getDefault().getDiagramModelService()
+                    .getBusinessAssignmentComposite(parent, SWT.NONE, tabFactory.getWidgetFactory(), selectedModel);
         }
 
         if (dynamicComposite != null) {
@@ -432,9 +445,17 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
             if (!isJoblet && !route) {
                 category.add(EComponentCategory.STATSANDLOGS);
             }
-            category.add(EComponentCategory.VERSIONS);
+
+            if (allowVerchange) {
+                category.add(EComponentCategory.VERSIONS);
+            }
+
             if (GlobalServiceRegister.getDefault().isServiceRegistered(IHeaderFooterProviderService.class)) {
-                category.add(EComponentCategory.HEADERFOOTER);
+                IHeaderFooterProviderService headerFooterService = (IHeaderFooterProviderService) GlobalServiceRegister
+                        .getDefault().getService(IHeaderFooterProviderService.class);
+                if (headerFooterService.isVisible()) {
+                    category.add(EComponentCategory.HEADERFOOTER);
+                }
             }
 
             // if svn remote connection, added by nma
@@ -445,7 +466,9 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
 
         } else if (obj instanceof IRepositoryViewObject) {
             category.add(EComponentCategory.MAIN);
-            category.add(EComponentCategory.VERSIONS);
+            if (allowVerchange) {
+                category.add(EComponentCategory.VERSIONS);
+            }
 
             if (service != null
                     && service.isProjectInSvnMode()
@@ -457,7 +480,9 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
                 category.add(EComponentCategory.MAIN);
                 category.add(EComponentCategory.APPEARANCE);
                 category.add(EComponentCategory.RULERS_AND_GRID);
-                category.add(EComponentCategory.VERSIONS);
+                if (allowVerchange) {
+                    category.add(EComponentCategory.VERSIONS);
+                }
             }
         } else {
             BusinessType type = CorePlugin.getDefault().getDiagramModelService().getBusinessModelType(obj);
@@ -621,7 +646,10 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
                     repositoryObject = new EmptyRepositoryObject();
                     return;
                 }
-                String title = repositoryObject.getLabel() + " " + repositoryObject.getVersion(); //$NON-NLS-1$
+                String title = repositoryObject.getLabel(); //$NON-NLS-1$
+                if (allowVerchange) {
+                    title = repositoryObject.getLabel() + " " + repositoryObject.getVersion(); //$NON-NLS-1$
+                }
 
                 setElement(repositoryObject, type + SEPARATOR + title, ImageProvider.getImage(repositoryNode.getIcon()));
             }
@@ -646,8 +674,11 @@ public class JobSettingsView extends ViewPart implements IJobSettingsView, ISele
 
         } else if (service != null && service.isSVNHistoryComposite(dc)) {
             return service.getSVNHistorySelection(dc);
-        } else if (dc instanceof BusinessAssignmentComposite) {
-            return CorePlugin.getDefault().getRepositoryService().getRepositoryTreeView().getSelection();
+        } else if (CorePlugin.getDefault().getDiagramModelService().isInstanceOfBusinessAssignmentComposite(dc)) {
+            IRepositoryView repositoryView = RepositoryManagerHelper.findRepositoryView();
+            if (repositoryView != null) {
+                return repositoryView.getViewer().getSelection();
+            }
         }
 
         return null;

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -30,6 +30,8 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.events.SelectionEvent;
@@ -41,7 +43,7 @@ import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.ui.PlatformUI;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
 import org.talend.commons.exception.SystemException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
@@ -61,15 +63,18 @@ import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.properties.tab.IDynamicProperty;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.designer.codegen.ITalendSynchronizer;
 import org.talend.designer.core.DesignerPlugin;
+import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.utils.emf.component.ComponentFactory;
 import org.talend.designer.core.model.utils.emf.component.IMPORTType;
+import org.talend.designer.core.model.utils.emf.talendfile.RoutinesParameterType;
+import org.talend.designer.core.model.utils.emf.talendfile.TalendFileFactory;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.runprocess.IRunProcessService;
-import org.talend.repository.ProjectManager;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.ui.views.IRepositoryView;
 
@@ -100,12 +105,30 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
         }
 
         public void widgetSelected(SelectionEvent e) {
-            generateJavaFile();
+            // MOD xwang 2011-08-12 make the editor dirty
+            executeCommand(new Command() {
 
-            IRepositoryView viewPart = (IRepositoryView) PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
-                    .findView(IRepositoryView.VIEW_ID);
+                @Override
+                public void execute() {
+                    Display disp = Display.getCurrent();
+                    if (disp == null) {
+                        disp = Display.getDefault();
+                    }
+                    disp.syncExec(new Runnable() {
 
-            viewPart.refreshView();
+                        public void run() {
+                            generateJavaFile();
+                        }
+                    });
+                }
+
+            });
+
+            IRepositoryView repoView = RepositoryManagerHelper.findRepositoryView();
+            if (repoView != null) {
+                repoView.refreshView();
+            }
+            refreshProject();
         }
 
     };
@@ -127,7 +150,7 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
             Control lastControl) {
         Button btnEdit;
         btnEdit = getWidgetFactory().createButton(subComposite, "", SWT.PUSH); //$NON-NLS-1$
-        btnEdit.setImage(ImageProvider.getImage(CorePlugin.getImageDescriptor(DOTS_BUTTON)));
+        btnEdit.setImage(ImageProvider.getImage(DesignerPlugin.getImageDescriptor("icons/routine_generate.gif")));
         FormData data;
         btnEdit.addSelectionListener(listenerSelection);
 
@@ -177,8 +200,55 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
         hashCurControls.put(param.getName(), btnEdit);
         Point initialSize = btnEdit.computeSize(SWT.DEFAULT, SWT.DEFAULT);
         dynamicProperty.setCurRowSize(initialSize.y + ITabbedPropertyConstants.VSPACE);
+        return addButton(subComposite, param, btnEdit, numInRow, top);
+        // return btnEdit;
+    }
 
-        return btnEdit;
+    private Control addButton(Composite subComposite, final IElementParameter param, Control lastControl, int numInRow, int top) {
+        FormData data;
+        Button btnImport = getWidgetFactory().createButton(subComposite, "", SWT.PUSH); //$NON-NLS-1$
+        btnImport.setImage(ImageProvider.getImage(CorePlugin.getImageDescriptor("icons/import.gif")));//$NON-NLS-1$
+        btnImport.addSelectionListener(new ImportRulesFromRepository(this));
+        btnImport.setData(NAME, Messages.getString("GenerateGrammarController.import"));//$NON-NLS-1$
+        btnImport.setData(PARAMETER_NAME, param.getName());
+        if (elem instanceof Node) {
+            btnImport.setToolTipText(Messages.getString("GenerateGrammarController.importtip"));//$NON-NLS-1$
+        }
+        data = new FormData();
+        data.left = new FormAttachment(lastControl, 0);
+        data.right = new FormAttachment(lastControl, btnImport.computeSize(SWT.DEFAULT, SWT.DEFAULT).x
+                + (ITabbedPropertyConstants.HSPACE * 2), SWT.RIGHT);
+        {
+            data.top = new FormAttachment(0, top);
+        }
+        data.height = STANDARD_BUTTON_WIDTH + 1;
+        data.width = STANDARD_BUTTON_WIDTH;
+        btnImport.setLayoutData(data);
+        if (numInRow != 1) {
+            btnImport.setAlignment(SWT.RIGHT);
+        }
+        Button btnExport = getWidgetFactory().createButton(subComposite, "", SWT.PUSH); //$NON-NLS-1$
+        btnExport.setSize(lastControl.getSize());
+
+        Point btnSize = btnExport.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+        btnExport.setImage(ImageProvider.getImage(CorePlugin.getImageDescriptor("icons/export.gif")));//$NON-NLS-1$
+        btnExport.addSelectionListener(new ExportRulesToRepository(this));
+        btnExport.setData(NAME, Messages.getString("GenerateGrammarController.export"));//$NON-NLS-1$
+        btnExport.setData(PARAMETER_NAME, param.getName());
+        if (elem instanceof Node) {
+            btnExport.setToolTipText(Messages.getString("GenerateGrammarController.exporttip"));//$NON-NLS-1$
+        }
+        data = new FormData();
+        data.left = new FormAttachment(btnImport, 0);
+        data.right = new FormAttachment(btnImport, STANDARD_BUTTON_WIDTH + 15, SWT.RIGHT);
+        {
+            data.top = new FormAttachment(0, top);
+        }
+        data.height = STANDARD_BUTTON_WIDTH + 1;
+        data.width = STANDARD_BUTTON_WIDTH;
+        btnExport.setLayoutData(data);
+        dynamicProperty.setCurRowSize(btnSize.y + ITabbedPropertyConstants.VSPACE);
+        return btnExport;
     }
 
     /**
@@ -189,14 +259,19 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
     private void generateJavaFile() {
         Node node = (Node) elem;
 
-        final String PROJECT_NAME = ProjectManager.getInstance().getCurrentProject().getTechnicalLabel().toLowerCase();
         final String JOB_NAME = node.getProcess().getName().toLowerCase();
         final String COMPONENT_NAME = node.getUniqueName().toLowerCase();
 
-        String javaClassName = StringUtils.capitalize(PROJECT_NAME) + StringUtils.capitalize(JOB_NAME)
-                + StringUtils.capitalize(COMPONENT_NAME);
+        String javaClassName = StringUtils.capitalize(JOB_NAME) + StringUtils.capitalize(COMPONENT_NAME);
         ITDQItemService service = (ITDQItemService) GlobalServiceRegister.getDefault().getService(ITDQItemService.class);
-        File fileCreated = service.fileCreatedInRoutines(node, javaClassName);
+        File fileCreated = null;
+        try {
+            fileCreated = service.fileCreatedInRoutines(node, javaClassName);
+        } catch (Exception ex) {
+            MessageDialog.openError(Display.getDefault().getActiveShell(),
+                    Messages.getString("GenerateGrammarController.prompt"),//$NON-NLS-1$
+                    ex.getMessage());
+        }
 
         if (fileCreated == null)
             return;
@@ -204,6 +279,15 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
         try {
             RoutineItem returnItem = persistInRoutine(new Path(JOB_NAME), fileCreated, javaClassName);
             addReferenceJavaFile(returnItem, true);
+            // ADD (to line 292) xwang 2011-08-12 add routine dependency in job
+            if (node.getProcess() instanceof org.talend.designer.core.ui.editor.process.Process) {
+                RoutinesParameterType r = TalendFileFactory.eINSTANCE.createRoutinesParameterType();
+                r.setId(returnItem.getProperty().getId());
+                r.setName(returnItem.getProperty().getLabel());
+                List<RoutinesParameterType> routines = new ArrayList<RoutinesParameterType>();
+                routines.add(r);
+                ((org.talend.designer.core.ui.editor.process.Process) node.getProcess()).addGeneratingRoutines(routines);
+            }
             refreshProject();
         } catch (Exception e) {
             ExceptionHandler.process(e);
@@ -230,7 +314,7 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
         Property property = PropertiesFactory.eINSTANCE.createProperty();
         property.setAuthor(((RepositoryContext) CorePlugin.getContext().getProperty(Context.REPOSITORY_CONTEXT_KEY)).getUser());
         property.setVersion(VersionUtils.DEFAULT_VERSION);
-        property.setStatusCode("");
+        property.setStatusCode(""); //$NON-NLS-1$
         // Label must match pattern ^[a-zA-Z\_]+[a-zA-Z0-9\_]*$
         // Must be composed with JAVA_PORJECT_NAME + JOB NAME + COMPONENT NAME,
         // since all projects share with the same routines
@@ -353,18 +437,15 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
      */
     private void addRequiredLib(RoutineItem routineItem) {
         List<IMPORTType> listRequiredJar = new ArrayList<IMPORTType>();
-        String javaLabPath = CorePlugin.getDefault().getLibrariesService().getJavaLibrariesPath() + "/";
 
         IMPORTType type1 = ComponentFactory.eINSTANCE.createIMPORTType();
-        type1.setMODULE("antlr-3.3.jar");
-        type1.setUrlPath(javaLabPath + "antlr-3.3.jar");
+        type1.setMODULE("antlr-3.3.jar"); //$NON-NLS-1$
         type1.setREQUIRED(true);
         type1.setNAME(routineItem.getProperty().getLabel());
         listRequiredJar.add(type1);
 
         IMPORTType type2 = ComponentFactory.eINSTANCE.createIMPORTType();
-        type2.setMODULE("org.talend.dataquality.parser.jar");
-        type2.setUrlPath(javaLabPath + "org.talend.dataquality.parser.jar");
+        type2.setMODULE("org.talend.dataquality.parser.jar"); //$NON-NLS-1$
         type2.setREQUIRED(true);
         type2.setNAME(routineItem.getProperty().getLabel());
         listRequiredJar.add(type2);
@@ -372,11 +453,6 @@ public class GenerateGrammarController extends AbstractElementPropertySectionCon
         routineItem.getImports().addAll(listRequiredJar);
 
         try {
-            File url1 = new File(javaLabPath + "antlr-3.3.jar");
-            File url2 = new File(javaLabPath + "org.talend.dataquality.parser.jar");
-
-            CorePlugin.getDefault().getLibrariesService().deployLibrary(url1.toURL());
-            CorePlugin.getDefault().getLibrariesService().deployLibrary(url2.toURL());
             CorePlugin.getDefault().getProxyRepositoryFactory().save(routineItem);
         } catch (Exception e) {
             ExceptionHandler.process(e);

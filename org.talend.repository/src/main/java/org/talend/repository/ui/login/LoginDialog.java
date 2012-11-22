@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,6 +13,8 @@
 package org.talend.repository.ui.login;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Map;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -22,7 +24,9 @@ import org.eclipse.jface.dialogs.TrayDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.viewers.ListViewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Color;
@@ -34,14 +38,20 @@ import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
+import org.talend.commons.exception.BusinessException;
 import org.talend.commons.exception.LoginException;
 import org.talend.commons.exception.PersistenceException;
+import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.exception.MessageBoxExceptionHandler;
 import org.talend.core.CorePlugin;
 import org.talend.core.GlobalServiceRegister;
+import org.talend.core.PluginChecker;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.model.general.ConnectionBean;
+import org.talend.core.model.general.IExchangeService;
 import org.talend.core.model.general.Project;
+import org.talend.core.model.properties.ExchangeUser;
 import org.talend.core.prefs.ITalendCorePrefConstants;
 import org.talend.core.prefs.PreferenceManipulator;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
@@ -54,7 +64,7 @@ import org.talend.repository.ui.login.connections.ConnectionUserPerReader;
 /**
  * Login dialog. <br/>
  * 
- * $Id: LoginDialog.java 60149 2011-05-10 08:28:15Z sgandon $
+ * $Id: LoginDialog.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class LoginDialog extends TrayDialog {
@@ -65,6 +75,12 @@ public class LoginDialog extends TrayDialog {
     private ConnectionUserPerReader perReader;
 
     private boolean inuse = false;
+
+    private Composite base;
+
+    private StackLayout stackLayout;
+
+    private TOSLoginComposite tosLoginComposite;
 
     /**
      * Construct a new LoginDialog.
@@ -136,7 +152,8 @@ public class LoginDialog extends TrayDialog {
         layout.horizontalSpacing = 0;
         layout.verticalSpacing = 0;
         container.setLayout(layout);
-        container.setBackground(new Color(null, 215, 215, 215));
+        // container.setBackground(new Color(null, 215, 215, 215));
+        container.setBackground(new Color(null, 255, 255, 255));
         IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
                 IBrandingService.class);
         new ImageCanvas(container, brandingService.getLoginVImage()); //$NON-NLS-1$
@@ -144,13 +161,74 @@ public class LoginDialog extends TrayDialog {
         if (!perReader.isHaveUserPer()) {
             perReader.createPropertyFile();
         }
-        loginComposite = new LoginComposite(container, SWT.NONE, this, inuse);
+        base = new Composite(container, SWT.NONE);
+        base.setLayoutData(new GridData(GridData.FILL_BOTH));
+        stackLayout = new StackLayout();
+        base.setLayout(stackLayout);
+        if (!PluginChecker.isSVNProviderPluginLoaded()) {// tos
+            loginComposite = new LoginComposite(base, SWT.NONE, this, inuse, tosLoginComposite, stackLayout);
+            loginComposite.populateProjectList();
+            tosLoginComposite = new TOSLoginComposite(base, SWT.NONE, loginComposite, this, inuse);
+        } else {
+            loginComposite = new LoginComposite(base, SWT.NONE, this, inuse, tosLoginComposite, stackLayout);
+        }
         GridData data = new GridData(GridData.FILL_BOTH);
         // data.widthHint = INNER_LOGIN_COMPOSITE_WIDTH;
         // data.heightHint = DIALOG_HEIGHT;
         loginComposite.setLayoutData(data);
-
+        stackLayout.topControl = loginComposite;
+        base.layout();
+        if (!PluginChecker.isSVNProviderPluginLoaded()) {
+            Project[] projectList = readProject();
+            if (projectList.length > 0) {
+                advanced();
+            }
+        }
         return container;
+    }
+
+    private Project[] readProject() {
+        ProxyRepositoryFactory repositoryFactory = ProxyRepositoryFactory.getInstance();
+        Project[] projects = null;
+        try {
+            projects = repositoryFactory.readProject();
+        } catch (PersistenceException e1) {
+            e1.printStackTrace();
+        } catch (BusinessException e1) {
+            e1.printStackTrace();
+        }
+        return projects;
+    }
+
+    public void advanced() {
+        stackLayout.topControl = tosLoginComposite;
+        base.layout();
+        Project[] projectCollection = tosLoginComposite.readProject();
+
+        Map<String, String> convertorMapper = tosLoginComposite.getConvertorMapper();
+
+        for (int i = 0; i < projectCollection.length; i++) {
+
+            tosLoginComposite.getProjectMap().put(projectCollection[i].getLabel().toUpperCase(), projectCollection[i]);
+            convertorMapper.put(projectCollection[i].getLabel().toUpperCase(), projectCollection[i].getLabel());
+
+        }
+
+        ListViewer projectListViewer = tosLoginComposite.getProjectListViewer();
+        projectListViewer.setInput(new ArrayList(convertorMapper.values()));
+
+        try {
+            tosLoginComposite.setStatusArea();
+        } catch (PersistenceException e) {
+            ExceptionHandler.process(e);
+        }
+
+        if (projectListViewer.getList().getItemCount() > 0) {
+
+            projectListViewer.getList().select(0);
+            tosLoginComposite.enableOpenAndDelete(true);
+
+        }
     }
 
     /**
@@ -170,10 +248,14 @@ public class LoginDialog extends TrayDialog {
         if (LoginComposite.isRestart) {
             super.okPressed();
         } else {
-            boolean isLogInOk = logIn(loginComposite.getProject());
-            if (isLogInOk) {
+            if (PluginChecker.isSVNProviderPluginLoaded()) {
+                boolean isLogInOk = logIn(loginComposite.getProject());
+                if (isLogInOk) {
+                    super.okPressed();
+                }// else login failed so ignor the ok button.
+            } else {
                 super.okPressed();
-            }// else login failed so ignor the ok button.
+            }
         }
     }
 
@@ -229,6 +311,40 @@ public class LoginDialog extends TrayDialog {
             return false;
         }
 
+        // if (!PluginChecker.isSVNProviderPluginLoaded()) {// tos
+        // if (project.getExchangeUser().getLogin() == null || project.getExchangeUser().getLogin().equals("")) {
+        // TalendForgeDialog tfDialog = new TalendForgeDialog(this.getShell(), project);
+        // tfDialog.open();
+        // }
+        // } else {// tis
+        IPreferenceStore prefStore = PlatformUI.getPreferenceStore();
+        boolean checkTisVersion = prefStore.getBoolean(ITalendCorePrefConstants.EXCHANGE_CHECK_TIS_VERSION);
+        IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
+                IBrandingService.class);
+        if (!checkTisVersion && brandingService.isPoweredbyTalend()) {
+            int count = prefStore.getInt(TalendForgeDialog.LOGINCOUNT);
+            ExchangeUser exchangeUser = project.getExchangeUser();
+            boolean isExchangeLogon = exchangeUser.getLogin() != null && !exchangeUser.getLogin().equals("");
+            boolean isUserPassRight = true;
+            if (isExchangeLogon) {
+                if (PluginChecker.isExchangeSystemLoaded()) {
+                    IExchangeService service = (IExchangeService) GlobalServiceRegister.getDefault().getService(
+                            IExchangeService.class);
+                    if (service.checkUserAndPass(exchangeUser.getUsername(), exchangeUser.getPassword()) != null) {
+                        isUserPassRight = false;
+                    }
+                }
+            }
+
+            if (!isExchangeLogon || !isUserPassRight) {
+                if (count < 10) {
+                    TalendForgeDialog tfDialog = new TalendForgeDialog(this.getShell(), project);
+                    tfDialog.open();
+                }
+            }
+        }
+        // }
+
         final Shell shell = this.getShell();
         ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
 
@@ -256,11 +372,20 @@ public class LoginDialog extends TrayDialog {
             dialog.run(true, true, runnable);
 
         } catch (InvocationTargetException e) {
-            loginComposite.populateProjectList();
-            MessageBoxExceptionHandler.process(e.getTargetException(), getShell());
+            if (PluginChecker.isSVNProviderPluginLoaded()) {
+                loginComposite.populateProjectList();
+                MessageBoxExceptionHandler.process(e.getTargetException(), getShell());
+            } else {
+                loginComposite.populateTOSProjectList();
+                MessageBoxExceptionHandler.process(e.getTargetException(), getShell());
+            }
             return false;
         } catch (InterruptedException e) {
-            loginComposite.populateProjectList();
+            if (PluginChecker.isSVNProviderPluginLoaded()) {
+                loginComposite.populateProjectList();
+            } else {
+                loginComposite.populateTOSProjectList();
+            }
             return false;
         }
 
@@ -275,7 +400,7 @@ public class LoginDialog extends TrayDialog {
     /**
      * Canvas displaying an image.<br/>
      * 
-     * $Id: LoginDialog.java 60149 2011-05-10 08:28:15Z sgandon $
+     * $Id: LoginDialog.java 77219 2012-01-24 01:14:15Z mhirt $
      * 
      */
     private class ImageCanvas extends Canvas {

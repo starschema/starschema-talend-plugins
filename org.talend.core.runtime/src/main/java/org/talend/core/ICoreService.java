@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -21,11 +21,13 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 import org.talend.commons.exception.BusinessException;
 import org.talend.commons.exception.SystemException;
+import org.talend.commons.ui.swt.actions.ITreeContextualAction;
 import org.talend.core.model.general.Project;
 import org.talend.core.model.metadata.ColumnNameChanged;
 import org.talend.core.model.metadata.IMetadataTable;
@@ -33,7 +35,6 @@ import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.designer.core.model.utils.emf.talendfile.NodeType;
-import org.talend.repository.model.IRepositoryNode;
 
 /**
  * DOC hywang class global comment. Detailled comment
@@ -59,8 +60,6 @@ public interface ICoreService extends IService {
     public void setFlagForQueryUtils(boolean flag);
 
     public boolean getContextFlagFromQueryUtils();
-
-    public IRepositoryNode getRoot();
 
     public Map<String, List<URI>> getRoutineAndJars();
 
@@ -135,4 +134,8 @@ public interface ICoreService extends IService {
     public void updatePalette();
 
     public IMetadataTable convert(MetadataTable originalTable);
+
+    public MenuManager[] getRepositoryContextualsActionGroups();
+
+    public List<ITreeContextualAction> getRepositoryContextualsActions();
 }

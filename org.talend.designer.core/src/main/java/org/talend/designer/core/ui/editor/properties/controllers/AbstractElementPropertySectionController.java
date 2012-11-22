@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -99,8 +99,8 @@ import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.IRepositoryViewObject;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.model.utils.ContextParameterUtils;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.properties.tab.IDynamicProperty;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
@@ -121,6 +121,7 @@ import org.talend.designer.core.ui.AbstractMultiPageTalendEditor;
 import org.talend.designer.core.ui.editor.cmd.ChangeValuesFromRepository;
 import org.talend.designer.core.ui.editor.cmd.PropertyChangeCommand;
 import org.talend.designer.core.ui.editor.nodes.Node;
+import org.talend.designer.core.ui.editor.process.Process;
 import org.talend.designer.core.ui.editor.properties.ContextParameterExtractor;
 import org.talend.designer.core.ui.preferences.TalendDesignerPrefConstants;
 import org.talend.designer.core.ui.projectsetting.ImplicitContextLoadElement;
@@ -134,7 +135,9 @@ import org.talend.designer.core.ui.views.properties.WidgetFactory;
 import org.talend.designer.core.utils.UpgradeParameterHelper;
 import org.talend.designer.runprocess.IRunProcessService;
 import org.talend.repository.RepositoryPlugin;
+import org.talend.repository.model.IMetadataService;
 import org.talend.repository.model.IProxyRepositoryFactory;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC yzhang class global comment. Detailled comment <br/>
@@ -274,7 +277,7 @@ public abstract class AbstractElementPropertySectionController implements Proper
     protected String getRepositoryItemFromRepositoryName(IElementParameter param, String repositoryName) {
         String value = (String) param.getValue();
         Object[] valuesList = param.getListItemsValue();
-        String[] originalList = param.getListItemsDisplayName();
+        String[] originalList = param.getListItemsDisplayCodeName();
         for (int i = 0; i < valuesList.length; i++) {
             if (valuesList[i].equals(value)) {
                 if ("DB_VERSION".equals(repositoryName)) {
@@ -1324,7 +1327,7 @@ public abstract class AbstractElementPropertySectionController implements Proper
         } else {
             type = getValueFromRepositoryName(element, "TYPE"); //$NON-NLS-1$
         }
-        if (type.equals("Oracle")) {
+        if (type.equals("Oracle") || type.contains("OCLE")) {
             IElementParameter ele = element.getElementParameter("CONNECTION_TYPE");
             if (ele != null) {
                 type = (String) ele.getValue();
@@ -1386,6 +1389,15 @@ public abstract class AbstractElementPropertySectionController implements Proper
 
         // General jdbc
         String url = getValueFromRepositoryName(element, EConnectionParameterName.URL.getName());
+        if (StringUtils.isEmpty(url)) {
+            // for oracle RAC
+            // url = getValueFromRepositoryName(element, "RAC_" + EConnectionParameterName.URL.getName());
+            // Changed by Marvin Wang on Feb. 14, 2012 for bug TDI-19597. Above is the original code, below is new code
+            // to get the Oracle RAC url.
+            if (EDatabaseTypeName.ORACLE_RAC.getXmlName().equals(type)) {
+                url = getValueFromRepositoryName(element, "RAC_" + EConnectionParameterName.URL.getName());
+            }
+        }
         connParameters.setUrl(TalendTextUtils.removeQuotes(url));
 
         String driverJar = getValueFromRepositoryName(element, EConnectionParameterName.DRIVER_JAR.getName());
@@ -1459,6 +1471,28 @@ public abstract class AbstractElementPropertySectionController implements Proper
         if (connParameters == null) {
             connParameters = new ConnectionParameters();
         }
+
+        Object value = elem.getPropertyValue("USE_EXISTING_CONNECTION"); //$NON-NLS-1$
+        IElementParameter compList = elem.getElementParameterFromField(EParameterFieldType.COMPONENT_LIST);
+        if (value != null && (value instanceof Boolean) && ((Boolean) value) && compList != null) {
+            if (connectionNode == null) {
+                Object compValue = compList.getValue();
+                if (compValue != null && !compValue.equals("")) { //$NON-NLS-1$
+                    List<? extends INode> nodes = part.getProcess().getGraphicalNodes();
+                    for (INode node : nodes) {
+                        if (node.getUniqueName().equals(compValue) && (node instanceof Node)) {
+                            connectionNode = (Node) node;
+                            break;
+                        }
+                    }
+
+                }
+            }
+            if (connectionNode != null) {
+                element = connectionNode;
+            }
+        }
+
         connParameters.setDbName(getParameterValueWithContext(element, EConnectionParameterName.SID.getName(), context));
         connParameters.setPassword(getParameterValueWithContext(element, EConnectionParameterName.PASSWORD.getName(), context));
         connParameters.setPort(getParameterValueWithContext(element, EConnectionParameterName.PORT.getName(), context));
@@ -1468,13 +1502,33 @@ public abstract class AbstractElementPropertySectionController implements Proper
         connParameters.setDirectory(getParameterValueWithContext(element, EConnectionParameterName.DIRECTORY.getName(), context));
         connParameters.setHttps(Boolean.parseBoolean(getParameterValueWithContext(element,
                 EConnectionParameterName.HTTPS.getName(), context)));
-        // TODO here maybe need url,driver class, driver jar parameters setting.
-        connParameters.setUrl(TalendTextUtils.removeQuotesIfExist(getParameterValueWithContext(element,
-                EConnectionParameterName.URL.getName(), context)));
+        String url = TalendTextUtils.removeQuotesIfExist(getParameterValueWithContext(element,
+                EConnectionParameterName.URL.getName(), context));
+        if (StringUtils.isEmpty(url)) {
+            // try to get url for oracle RAC.
+            // url = TalendTextUtils.removeQuotesIfExist(getParameterValueWithContext(element,
+            // "RAC_" + EConnectionParameterName.URL.getName(), context));
+            // Changed by Marvin Wang on Feb. 14, 2012 for bug TDI-19597. Above is the original code, below is new code
+            // to get the Oracle RAC url.
+            String dbType = connParameters.getDbType();
+            if (EDatabaseTypeName.ORACLE_RAC.getDisplayName().equals(dbType))
+                url = TalendTextUtils.removeQuotesIfExist(getParameterValueWithContext(element, "RAC_"
+                        + EConnectionParameterName.URL.getName(), context));
+        }
+        connParameters.setUrl(url);
         connParameters.setDriverClass(TalendTextUtils.removeQuotesIfExist(getParameterValueWithContext(element,
                 EConnectionParameterName.DRIVER_CLASS.getName(), context)));
         connParameters.setDriverJar(TalendTextUtils.removeQuotesIfExist(getParameterValueWithContext(element,
                 EConnectionParameterName.DRIVER_JAR.getName(), context)));
+
+        // for jdbc connection from reposiotry
+        final String dbTypeByClassName = ExtractMetaDataUtils.getDbTypeByClassName(connParameters.getDriverClass());
+        if (connParameters.getDbType() == null || EDatabaseTypeName.MYSQL.getDisplayName().equals(connParameters.getDbType())
+                && !EDatabaseTypeName.MYSQL.getProduct().equals(dbTypeByClassName)) {
+            if (dbTypeByClassName != null && !"".equals(dbTypeByClassName)) {
+                connParameters.setDbType(dbTypeByClassName);
+            }
+        }
 
         if (connParameters.getDbType().equals(EDatabaseTypeName.SQLITE.getXmlName())
                 || connParameters.getDbType().equals(EDatabaseTypeName.ACCESS.getXmlName())
@@ -1546,7 +1600,9 @@ public abstract class AbstractElementPropertySectionController implements Proper
      * @return
      */
     protected String getImplicitRepositoryId() {
-        if (elem instanceof ImplicitContextLoadElement) {
+        // TDI-17078:when db connection with jdbc work as the implicit context,the elem is Process intance ,it also need
+        // get the ImplicitRepositoryId
+        if (elem instanceof ImplicitContextLoadElement || elem instanceof Process) {
             IElementParameter implicitContext = elem.getElementParameter("PROPERTY_TYPE_IMPLICIT_CONTEXT");//$NON-NLS-N$
             if (implicitContext != null) {
                 Map<String, IElementParameter> childParameters = implicitContext.getChildParameters();
@@ -1598,7 +1654,7 @@ public abstract class AbstractElementPropertySectionController implements Proper
 
         connParameters = new ConnectionParameters();
         String type = getValueFromRepositoryName(elem, "TYPE"); //$NON-NLS-1$
-        if (type.equals("Oracle")) {
+        if (type.equals("Oracle") || type.contains("OCLE")) {
             IElementParameter ele = elem.getElementParameter("CONNECTION_TYPE");
             if (ele != null) {
                 type = (String) ele.getValue();
@@ -1744,8 +1800,16 @@ public abstract class AbstractElementPropertySectionController implements Proper
                     initConnectionParametersWithContext(connectionNode, part.getProcess().getContextManager().getDefaultContext());
                 }
             }
-
-            openSqlBuilderBuildIn(connParameters, propertyName);
+            // add for bug TDI-20335
+            if (part == null) {
+                Shell parentShell = new Shell(composite.getShell().getDisplay());
+                ISQLBuilderService service = (ISQLBuilderService) GlobalServiceRegister.getDefault().getService(
+                        ISQLBuilderService.class);
+                Dialog sqlBuilder = service.openSQLBuilderDialog(parentShell, "", connParameters);
+                sqlBuilder.open();
+            } else {
+                openSqlBuilderBuildIn(connParameters, propertyName);
+            }
 
         } else if (repositoryType.equals(EmfComponent.REPOSITORY)) {
             String repositoryName2 = ""; //$NON-NLS-1$
@@ -1819,6 +1883,7 @@ public abstract class AbstractElementPropertySectionController implements Proper
                         ISQLBuilderService.class);
 
                 connParameters.setQuery(query);
+                connParameters.setFirstOpenSqlBuilder(true); // first open Sql Builder,set true
 
                 Dialog sqlBuilder = service.openSQLBuilderDialog(parentShell, processName, connParameters);
 
@@ -1926,8 +1991,14 @@ public abstract class AbstractElementPropertySectionController implements Proper
                     // for bug 14535
                     if (o != null && elem instanceof INode) {
                         INode node = (INode) elem;
-                        RepositoryPlugin.getDefault().getRepositoryService().openMetadataConnection(o, node);
-                        RepositoryManager.getRepositoryView().refresh();
+                        IMetadataService metadataService = CorePlugin.getDefault().getMetadataService();
+                        if (metadataService != null) {
+                            metadataService.openMetadataConnection(o, node);
+                        }
+                        IRepositoryView view = RepositoryManagerHelper.findRepositoryView();
+                        if (view != null) {
+                            view.refresh();
+                        }
                     }
                 } catch (Exception e) {
                     ExceptionHandler.process(e);

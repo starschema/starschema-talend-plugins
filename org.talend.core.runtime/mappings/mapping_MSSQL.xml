@@ -67,7 +67,6 @@
 				<talendType type="id_Date">
 					<dbType type="DATETIME" default="true" />
 					<dbType type="SMALLDATETIME" />
-					<dbType type="TIMESTAMP" />
 					<dbType type="DATE" />
 					<dbType type="DATETIME2" />
 					<dbType type="DATETIMEOFFSET" />
@@ -242,7 +241,7 @@
 					<talendType type="id_String" default="true" />
 				</dbType>
 				<dbType type="TIMESTAMP">
-					<talendType type="id_Date" default="true" />
+					<talendType type="id_String" default="true" />
 				</dbType>
 				<dbType type="TINYINT">
 					<talendType type="id_Short" default="true" />

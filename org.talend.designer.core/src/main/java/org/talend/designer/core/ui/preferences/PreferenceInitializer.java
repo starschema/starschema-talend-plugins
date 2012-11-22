@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,7 +38,7 @@ import org.talend.repository.ProjectManager;
 /**
  * Preference Initializer for the designer.
  * 
- * $Id: PreferenceInitializer.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: PreferenceInitializer.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class PreferenceInitializer extends AbstractPreferenceInitializer {
@@ -146,8 +146,8 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
                     public void run() {
                         IPreferenceStore store = CorePlugin.getDefault().getPreferenceStore();
                         Font font = new Font(null, "courier", 10, SWT.NONE); //$NON-NLS-1$
-                        PreferenceConverter.setValue(store, TalendDesignerPrefConstants.MEMO_TEXT_FONT, font.getFontData());
-                        PreferenceConverter.setValue(store, TalendDesignerPrefConstants.CONSOLT_TEXT_FONT, font.getFontData());
+                        PreferenceConverter.setDefault(store, TalendDesignerPrefConstants.MEMO_TEXT_FONT, font.getFontData());
+                        PreferenceConverter.setDefault(store, TalendDesignerPrefConstants.CONSOLT_TEXT_FONT, font.getFontData());
                     }
                 });
             }

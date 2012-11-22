@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -23,7 +23,7 @@ import org.talend.designer.core.ui.editor.process.Process;
  * This class gets all node to add them in the tree in the Outline It doesn't give any detail, it just adds the roots
  * objects. <br/>
  * 
- * $Id: ProcessTreeEditPart.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ProcessTreeEditPart.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class ProcessTreeEditPart extends AbstractTreeEditPart implements PropertyChangeListener {

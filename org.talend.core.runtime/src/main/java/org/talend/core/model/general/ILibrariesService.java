@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -51,15 +51,11 @@ public interface ILibrariesService extends IService {
 
     public List<URL> getTalendRoutines();
 
-    public String getLibrariesPath();
-
-    public String getJavaLibrariesPath();
-
     public String getPerlLibrariesPath();
 
     public void deployLibrary(URL source) throws IOException;
 
-    public void undeployLibrary(String path) throws IOException;
+    public void undeployLibrary(String jarName) throws IOException;
 
     public URL getRoutineTemplate();
 

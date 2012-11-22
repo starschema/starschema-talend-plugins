@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -28,15 +28,15 @@ public enum EDatabaseVersion4Drivers {
     ACCESS_2007(new DbVersion4Drivers(EDatabaseTypeName.ACCESS, "Access 2007", "Access_2007")), //$NON-NLS-1$ //$NON-NLS-2$
     // oracle
     ORACLE_11(new DbVersion4DriversForOracle11(new EDatabaseTypeName[] { EDatabaseTypeName.ORACLEFORSID,
-            EDatabaseTypeName.ORACLESN, EDatabaseTypeName.ORACLE_OCI },
+            EDatabaseTypeName.ORACLESN, EDatabaseTypeName.ORACLE_OCI, EDatabaseTypeName.ORACLE_RAC },
             "Oracle 11", "ORACLE_11", new String[] { DbVersion4DriversForOracle11.DRIVER_1_5, //$NON-NLS-1$ //$NON-NLS-2$
                     DbVersion4DriversForOracle11.DRIVER_1_6 })),
     ORACLE_10(new DbVersion4Drivers(new EDatabaseTypeName[] { EDatabaseTypeName.ORACLEFORSID, EDatabaseTypeName.ORACLESN,
-            EDatabaseTypeName.ORACLE_OCI }, "Oracle 10", "ORACLE_10", "ojdbc14-10g.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            EDatabaseTypeName.ORACLE_OCI, EDatabaseTypeName.ORACLE_RAC }, "Oracle 10", "ORACLE_10", "ojdbc14-10g.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     ORACLE_9(new DbVersion4Drivers(new EDatabaseTypeName[] { EDatabaseTypeName.ORACLEFORSID, EDatabaseTypeName.ORACLESN,
-            EDatabaseTypeName.ORACLE_OCI }, "Oracle 9", "ORACLE_9", "ojdbc14-9i.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            EDatabaseTypeName.ORACLE_OCI, EDatabaseTypeName.ORACLE_RAC }, "Oracle 9", "ORACLE_9", "ojdbc14-9i.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     ORACLE_8(new DbVersion4Drivers(new EDatabaseTypeName[] { EDatabaseTypeName.ORACLEFORSID, EDatabaseTypeName.ORACLESN,
-            EDatabaseTypeName.ORACLE_OCI }, "Oracle 8", "ORACLE_8", "ojdbc12-8i.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            EDatabaseTypeName.ORACLE_OCI, EDatabaseTypeName.ORACLE_RAC }, "Oracle 8", "ORACLE_8", "ojdbc12-8i.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     // AS400
     AS400_V5R4_V6R1(new DbVersion4Drivers(EDatabaseTypeName.AS400, "V5R4 to V6R1", "V5R4 to V6R1", "jt400_V5R3.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     AS400_V5R2_V5R4(new DbVersion4Drivers(EDatabaseTypeName.AS400, "V5R2 to V5R4", "V5R2 to V5R4", "jt400_V5R2.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -51,7 +51,7 @@ public enum EDatabaseVersion4Drivers {
 
     //
     JAVADB_EMBEDED(new DbVersion4Drivers(EDatabaseTypeName.JAVADB_EMBEDED, "derby.jar")), //$NON-NLS-1$
-    SQLITE(new DbVersion4Drivers(EDatabaseTypeName.SQLITE, "sqlitejdbc_v037_nested.jar")), //$NON-NLS-1$
+    SQLITE(new DbVersion4Drivers(EDatabaseTypeName.SQLITE, "sqlitejdbc-v056.jar")), //$NON-NLS-1$
     FIREBIRD(new DbVersion4Drivers(EDatabaseTypeName.FIREBIRD, "jaybird-full-2.1.1.jar")), //$NON-NLS-1$
     TERADATA(new DbVersion4Drivers(EDatabaseTypeName.TERADATA,
             new String[] { "terajdbc4.jar", "tdgssconfig.jar", "tdgssjava.jar" })), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -59,8 +59,10 @@ public enum EDatabaseVersion4Drivers {
     NETEZZA(new DbVersion4Drivers(EDatabaseTypeName.NETEZZA, "nzjdbc.jar")), //$NON-NLS-1$
     INFORMIX(new DbVersion4Drivers(EDatabaseTypeName.INFORMIX, "ifxjdbc.jar")), //$NON-NLS-1$
 
-    SAS(new DbVersion4Drivers(EDatabaseTypeName.SAS, new String[] { "sas.core.jar", //$NON-NLS-1$
+    SAS_9_1(new DbVersion4Drivers(EDatabaseTypeName.SAS, "SAS 9.1", "SAS_9.1", new String[] { "sas.core.jar", //$NON-NLS-1$
             "sas.intrnet.javatools.jar", "sas.svc.connection.jar" })), //$NON-NLS-1$ //$NON-NLS-2$
+    SAS_9_2(new DbVersion4Drivers(EDatabaseTypeName.SAS,
+            "SAS 9.2", "SAS_9.2", new String[] { "sas.core.jar", "sas.security.sspi.jar", "sas.svc.connection.jar" })), //$NON-NLS-1$ //$NON-NLS-2$
     // MYSQL, add for 9594
     MYSQL_5(new DbVersion4Drivers(EDatabaseTypeName.MYSQL, "MySQL 5", "MYSQL_5", "mysql-connector-java-5.1.0-bin.jar")), //$NON-NLS-1$  //$NON-NLS-2$ //$NON-NLS-3$
     MYSQL_4(new DbVersion4Drivers(EDatabaseTypeName.MYSQL, "MySQL 4", "MYSQL_4", "mysql-connector-java-3.1.14-bin.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -71,11 +73,14 @@ public enum EDatabaseVersion4Drivers {
     MSSQL2008(new DbVersion4Drivers(EDatabaseTypeName.MSSQL05_08,
             "MSSQL2008", "MSSQL_2008", new String[] { "sqljdbc.jar", "sqljdbc4.jar" })), //$NON-NLS-1$
 
+    VERTICA_5(new DbVersion4Drivers(EDatabaseTypeName.VERTICA, "VERTICA 5", "VERTICA_5", "vertica_4.1.14_jdk_5.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    VERTICA_4_1(new DbVersion4Drivers(EDatabaseTypeName.VERTICA, "VERTICA 4.1", "VERTICA_4_1", "vertica_4.1.7_jdk_5.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     VERTICA_4(new DbVersion4Drivers(EDatabaseTypeName.VERTICA, "VERTICA 4", "VERTICA_4", "vertica_4.0_jdk_5.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     VERTICA_3(new DbVersion4Drivers(EDatabaseTypeName.VERTICA, "VERTICA 3", "VERTICA_3", "vertica_3.0_jdk_5.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
     VERTICA_3_5(new DbVersion4Drivers(EDatabaseTypeName.VERTICA, "VERTICA 3.5", "VERTICA_3.5", "vertica_3.5_jdk_5.jar")), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 
     // for bug 0017930
+    GREENPLUM(new DbVersion4Drivers(EDatabaseTypeName.GREENPLUM, "postgresql-8.3-603.jdbc3.jar")), //$NON-NLS-1$ 
     PSQL(new DbVersion4Drivers(EDatabaseTypeName.PSQL, "postgresql-8.3-603.jdbc3.jar")), //$NON-NLS-1$ 
     PLUSPSQL(new DbVersion4Drivers(EDatabaseTypeName.PLUSPSQL, "postgresql-8.3-603.jdbc3.jar")), //$NON-NLS-1$
     IBMDB2(new DbVersion4Drivers(EDatabaseTypeName.IBMDB2, new String[] { "db2jcc.jar", "db2jcc_license_cu.jar", //$NON-NLS-1$ //$NON-NLS-2$
@@ -93,9 +98,13 @@ public enum EDatabaseVersion4Drivers {
 
     INGRES(new DbVersion4Drivers(EDatabaseTypeName.INGRES, "iijdbc.jar")), //$NON-NLS-1$
 
-    HIVE(new DbVersion4Drivers(EDatabaseTypeName.HIVE, new String[] { "hive-jdbc-0.7.0.jar", "hive-metastore-0.7.0.jar",
-            "hive-exec-0.7.0.jar", "hive-service-0.7.0.jar", "libfb303.jar", "hadoop-0.20.2-core.jar",
-            "commons-logging-1.0.4.jar", "log4j-1.2.15.jar", "slf4j-api-1.6.1.jar", "slf4j-log4j12-1.6.1.jar" }));
+    HIVE(new DbVersion4Drivers(EDatabaseTypeName.HIVE, new String[] { "hive-jdbc-0.7.1.jar", "hive-metastore-0.7.1.jar",
+            "hive-exec-0.7.1.jar", "hive-service-0.7.1.jar", "libfb303.jar", "hadoop-core-0.20.203.0.jar",
+            "commons-logging-1.0.4.jar", "log4j-1.2.15.jar", "slf4j-api-1.6.1.jar", "slf4j-log4j12-1.6.1.jar" })),
+
+    HBASE(new DbVersion4Drivers(EDatabaseTypeName.HBASE, new String[] { "hadoop-core-0.20.2-cdh3u0.jar",
+            "hbase-0.90.1-cdh3u0.jar", "zookeeper-3.3.3-cdh3u0.jar", "commons-lang3-3.0.jar", "commons-logging-1.1.1.jar",
+            "log4j-1.2.16.jar" }));
 
     private DbVersion4Drivers dbVersionBean;
 
@@ -223,7 +232,8 @@ public enum EDatabaseVersion4Drivers {
         for (EDatabaseVersion4Drivers v4d : EDatabaseVersion4Drivers.values()) {
             if (dbType != null) {
                 if (v4d.supportDatabase(dbType)) {
-                    if (version == null || v4d.getVersionValue() == null) { // add all for this db type
+                    if (version == null || v4d.getVersionValue() == null || version.equals("")) { // add all for this db
+                                                                                                  // type
                         drivers.addAll(v4d.getProviderDrivers());
                     } else
                     // check both db type and version value.

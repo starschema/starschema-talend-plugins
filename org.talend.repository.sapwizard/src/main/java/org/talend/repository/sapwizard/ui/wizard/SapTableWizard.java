@@ -109,7 +109,7 @@ public class SapTableWizard extends CheckLastVersionRepositoryWizard implements 
 		this.propertiesWizardPage = new Step0WizardPage(connectionProperty, pathToSave,
 				ERepositoryObjectType.METADATA_MDMCONNECTION, true, creation);
 		this.sapTablePage = new SapTableWizardPage(this.connectionItem, functionUnit, this.metadataTable,
-				isRepositoryObjectEditable());
+				isRepositoryObjectEditable(), this.existingNames);
 
 		if (creation) {
 			propertiesWizardPage.setTitle(Messages.getString("SapTableWizardPage.TitleCreate.Step1")); //$NON-NLS-1$
@@ -119,7 +119,6 @@ public class SapTableWizard extends CheckLastVersionRepositoryWizard implements 
 			sapTablePage.setTitle(Messages.getString("SapTableWizardPage.TitleCreate.Step2")); //$NON-NLS-1$
 			sapTablePage.setDescription(Messages.getString("SapTableWizardPage.DescriptionCreate.Step2")); //$NON-NLS-1$
 			sapTablePage.setPageComplete(false);
-
 		} else {
 			propertiesWizardPage.setTitle(Messages.getString("SapTableWizardPage.TitleUpdate.Step1")); //$NON-NLS-1$
 			propertiesWizardPage.setDescription(Messages.getString("SapTableWizardPage.DescriptionUpdate.Step1")); //$NON-NLS-1$

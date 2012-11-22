@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,8 +29,6 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.talend.core.CorePlugin;
 import org.talend.core.context.Context;
 import org.talend.core.context.RepositoryContext;
-import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.designer.runprocess.ProcessorUtilities;
 import org.talend.repository.i18n.Messages;
 
@@ -57,15 +55,6 @@ public class JobScriptsExportWizard extends Wizard implements IExportWizard {
         IDialogSettings section = workbenchSettings.getSection("JobScriptsExportWizard"); //$NON-NLS-1$
         if (section == null) {
             section = workbenchSettings.addNewSection("JobScriptsExportWizard"); //$NON-NLS-1$
-            section.put(PerlJobScriptsExportWizardPage.STORE_SHELL_LAUNCHER_ID, true);
-            section.put(PerlJobScriptsExportWizardPage.STORE_SYSTEM_ROUTINE_ID, true);
-            section.put(PerlJobScriptsExportWizardPage.STORE_USER_ROUTINE_ID, true);
-            section.put(PerlJobScriptsExportWizardPage.STORE_MODEL_ID, true);
-            section.put(PerlJobScriptsExportWizardPage.STORE_JOB_ID, true);
-            section.put(PerlJobScriptsExportWizardPage.STORE_DEPENDENCIES_ID, false);
-            section.put(PerlJobScriptsExportWizardPage.STORE_CONTEXT_ID, true);
-            section.put(PerlJobScriptsExportWizardPage.APPLY_TO_CHILDREN_ID, false);
-
             section.put(JavaJobScriptsExportWizardPage.STORE_SHELL_LAUNCHER_ID, true);
             section.put(JavaJobScriptsExportWizardPage.STORE_SYSTEM_ROUTINE_ID, true);
             section.put(JavaJobScriptsExportWizardPage.STORE_USER_ROUTINE_ID, true);
@@ -92,6 +81,7 @@ public class JobScriptsExportWizard extends Wizard implements IExportWizard {
     /*
      * (non-Javadoc) Method declared on IWizard.
      */
+    @Override
     public void addPages() {
         super.addPages();
 
@@ -99,9 +89,6 @@ public class JobScriptsExportWizard extends Wizard implements IExportWizard {
                 .getLanguage()) {
         case JAVA:
             mainPage = new JavaJobScriptsExportWSWizardPage(selection, exportType);
-            break;
-        case PERL:
-            mainPage = new PerlJobScriptsExportWizardPage(selection);
             break;
         }
         addPage(mainPage);
@@ -111,10 +98,10 @@ public class JobScriptsExportWizard extends Wizard implements IExportWizard {
      * (non-Javadoc) Method declared on IWorkbenchWizard.
      */
     public void init(IWorkbench workbench, IStructuredSelection currentSelection) {
-        this.selection = currentSelection;
+        selection = currentSelection;
         List selectedResources = IDE.computeSelectedResources(currentSelection);
         if (!selectedResources.isEmpty()) {
-            this.selection = new StructuredSelection(selectedResources);
+            selection = new StructuredSelection(selectedResources);
         }
 
         setWindowTitle(Messages.getString("JobScriptsExportWizard.exportJob")); //$NON-NLS-1$
@@ -126,6 +113,7 @@ public class JobScriptsExportWizard extends Wizard implements IExportWizard {
     /*
      * (non-Javadoc) Method declared on IWizard.
      */
+    @Override
     public boolean performFinish() {
         boolean finish = mainPage.finish();
         if (!finish && !getShell().isDisposed()) {
@@ -145,7 +133,6 @@ public class JobScriptsExportWizard extends Wizard implements IExportWizard {
     @Override
     public boolean performCancel() {
         ProcessorUtilities.resetExportConfig();
-        RepositoryManager.refreshCreatedNode(ERepositoryObjectType.PROCESS);
         selection = null;
         mainPage = null;
         return true;

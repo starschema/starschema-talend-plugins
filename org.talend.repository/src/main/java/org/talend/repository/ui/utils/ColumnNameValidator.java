@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,7 +12,7 @@
 // ============================================================================
 package org.talend.repository.ui.utils;
 
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 
 /**
  * This class is used for column name validation.
@@ -20,6 +20,7 @@ import org.talend.core.model.metadata.MetadataTool;
  * @author ftang, 2007-06-13 <br/>
  * @deprecated use MetadataToolHelper
  */
+@Deprecated
 public class ColumnNameValidator {
 
     /**
@@ -31,6 +32,6 @@ public class ColumnNameValidator {
      * @param index
      */
     public static String validateColumnNameFormat(String columnName, int index) {
-        return MetadataTool.validateColumnName(columnName, index);
+        return MetadataToolHelper.validateColumnName(columnName, index);
     }
 }

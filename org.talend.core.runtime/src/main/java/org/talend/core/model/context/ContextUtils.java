@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.swt.widgets.Shell;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.swt.colorstyledtext.jedit.KeywordMap;
@@ -54,6 +55,9 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 public class ContextUtils {
 
     private static List<String> keywords = new ArrayList<String>();
+
+    private static Shell sqlBuilderDialogShell;
+
     static {
         initJavaKeyWords();
     }
@@ -153,9 +157,10 @@ public class ContextUtils {
         ContextType contextType = null;
         ContextType defaultContextType = null;
         for (ContextType type : contextTypeList) {
-            if (contextName != null && type.getName().equals(contextName)) {
+            // Modified by Marvin Wang on Jun. 21, 2012 for bug TDI-21009. To avoid case sensitive.
+            if (contextName != null && type.getName().toLowerCase().equals(contextName.toLowerCase())) {
                 contextType = type;
-            } else if (defaultContextName != null && type.getName().equals(defaultContextName)) {
+            } else if (defaultContextName != null && type.getName().toLowerCase().equals(defaultContextName.toLowerCase())) {
                 defaultContextType = type;
             }
         }
@@ -604,6 +609,14 @@ public class ContextUtils {
         contextParam.setComment(contextParamType.getComment());
         contextParam.setSource(contextItem.getProperty().getId());
         return contextParam;
+    }
+
+    public static Shell getSqlBuilderDialogShell() {
+        return sqlBuilderDialogShell;
+    }
+
+    public static void setSqlBuilderDialogShell(Shell sqlBuilderDialogShellTem) {
+        sqlBuilderDialogShell = sqlBuilderDialogShellTem;
     }
 
 }

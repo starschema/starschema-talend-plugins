@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -34,7 +34,7 @@ public enum EDatabase4DriverClassName {
     IBMDB2ZOS(EDatabaseTypeName.IBMDB2ZOS, "COM.ibm.db2os390.sqlj.jdbc.DB2SQLJDriver"), //$NON-NLS-1$
 
     INFORMIX(EDatabaseTypeName.INFORMIX, "com.informix.jdbc.IfxDriver"), //$NON-NLS-1$
-    INGRES(EDatabaseTypeName.INGRES, "com.ingres.jdbc.IngresDriver"), //$NON-NLS-1$
+    INGRES(EDatabaseTypeName.INGRES, "ca.ingres.jdbc.IngresDriver"), //$NON-NLS-1$
     INTERBASE(EDatabaseTypeName.INTERBASE, "interbase.interclient.Driver"), //$NON-NLS-1$
     VECTORWISE(EDatabaseTypeName.VECTORWISE, "com.ingres.jdbc.IngresDriver"), //$NON-NLS-1$
 
@@ -55,6 +55,7 @@ public enum EDatabase4DriverClassName {
     ORACLEFORSID(EDatabaseTypeName.ORACLEFORSID, "oracle.jdbc.OracleDriver", "oracle.jdbc.driver.OracleDriver"), //$NON-NLS-1$ //$NON-NLS-2$
     ORACLESN(EDatabaseTypeName.ORACLESN, "oracle.jdbc.OracleDriver", "oracle.jdbc.driver.OracleDriver"), //$NON-NLS-1$ //$NON-NLS-2$
     ORACLE_OCI(EDatabaseTypeName.ORACLE_OCI, "oracle.jdbc.OracleDriver", "oracle.jdbc.driver.OracleDriver"), //$NON-NLS-1$ //$NON-NLS-2$
+    ORACLE_RAC(EDatabaseTypeName.ORACLE_RAC, "oracle.jdbc.OracleDriver", "oracle.jdbc.driver.OracleDriver"), //$NON-NLS-1$ //$NON-NLS-2$
 
     PARACCEL(EDatabaseTypeName.PARACCEL, "com.paraccel.Driver"), //$NON-NLS-1$
 

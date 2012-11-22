@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -48,8 +48,12 @@ import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.commons.ui.swt.formtools.LabelText;
 import org.talend.commons.ui.swt.formtools.LabelledCombo;
+import org.talend.commons.utils.workbench.extensions.ExtensionPointLimiterImpl;
+import org.talend.commons.utils.workbench.extensions.IExtensionPointLimiter;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.general.ConnectionBean;
+import org.talend.core.repository.ILoginConnectionService;
+import org.talend.core.repository.LoginConnectionManager;
 import org.talend.core.repository.model.DynamicButtonBean;
 import org.talend.core.repository.model.DynamicChoiceBean;
 import org.talend.core.repository.model.DynamicFieldBean;
@@ -97,6 +101,11 @@ public class ConnectionFormComposite extends Composite {
     private Map<IRepositoryFactory, Map<String, Button>> dynamicButtons = new HashMap<IRepositoryFactory, Map<String, Button>>();
 
     private Map<IRepositoryFactory, Map<String, LabelledCombo>> dynamicChoices = new HashMap<IRepositoryFactory, Map<String, LabelledCombo>>();
+
+    private static final IExtensionPointLimiter CONNECT_PROVIDER = new ExtensionPointLimiterImpl(
+            "org.talend.core.repository.connection_provider", "connectionValidate");
+
+    public static final String URL_FIELD_NAME = "url";
 
     /**
      * DOC smallet ConnectionsComposite constructor comment.
@@ -304,28 +313,38 @@ public class ConnectionFormComposite extends Composite {
         boolean valid = true;
         IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
                 IBrandingService.class);
+        boolean isOnlyRemoteConnection = brandingService.getBrandingConfiguration().isOnlyRemoteConnection();
         boolean usesMailCheck = brandingService.getBrandingConfiguration().isUseMailLoginCheck();
-        if (valid && getRepository() == null) {
-            valid = false;
-            errorMsg = Messages.getString("connections.form.emptyField.repository"); //$NON-NLS-1$
-        } else if (valid && getName().length() == 0) {
-            valid = false;
-            errorMsg = Messages.getString("connections.form.emptyField.connname"); //$NON-NLS-1$
-        } else if (valid && getUser().length() == 0) {
-            valid = false;
-            errorMsg = Messages.getString("connections.form.emptyField.username"); //$NON-NLS-1$
-        } else if (valid && usesMailCheck && !Pattern.matches(RepositoryConstants.MAIL_PATTERN, getUser())) {
-            valid = false;
-            errorMsg = Messages.getString("connections.form.malformedField.username"); //$NON-NLS-1$
-        } else {
-            for (LabelText current : dynamicRequiredControls.get(getRepository()).values()) {
-                if (valid && current.getText().length() == 0) {
-                    valid = false;
-                    errorMsg = Messages.getString("connections.form.dynamicFieldEmpty", current.getLabel()); //$NON-NLS-1$
+        LabelText emptyUrl = null;
+        if (getRepository() != null) {
+            for (LabelText currentUrlLabel : dynamicRequiredControls.get(getRepository()).values()) {
+                if (valid && currentUrlLabel.getText().length() == 0) {
+                    emptyUrl = currentUrlLabel;
                 }
             }
         }
-
+        if (valid && getRepository() == null) {
+            errorMsg = Messages.getString("connections.form.emptyField.repository"); //$NON-NLS-1$
+        } else if (valid && getName().length() == 0) {
+            errorMsg = Messages.getString("connections.form.emptyField.connname"); //$NON-NLS-1$
+        } else if (valid && getUser().length() == 0) {
+            errorMsg = Messages.getString("connections.form.emptyField.username"); //$NON-NLS-1$
+        } else if (valid && usesMailCheck && !Pattern.matches(RepositoryConstants.MAIL_PATTERN, getUser())) {
+            errorMsg = Messages.getString("connections.form.malformedField.username"); //$NON-NLS-1$
+        } else if (valid && emptyUrl != null) {
+            errorMsg = Messages.getString("connections.form.dynamicFieldEmpty", emptyUrl.getLabel()); //$NON-NLS-1$
+        } else if (valid && isOnlyRemoteConnection) {
+            // Uniserv feature 8,Add new Extension point to allow Uniserv to add some custom controls during TAC
+            // connection check
+            List<ILoginConnectionService> loginConnections = LoginConnectionManager.getRemoteConnectionService();
+            for (ILoginConnectionService loginConncetion : loginConnections) {
+                errorMsg = loginConncetion.checkConnectionValidation(getName(), getDesc(), getUser(), getPassword(),
+                        getWorkspace(), connection.getDynamicFields().get(RepositoryConstants.REPOSITORY_URL));
+            }
+        }
+        if (errorMsg != null && !errorMsg.equals("")) {
+            valid = false;
+        }
         if (!valid) {
             dialog.setErrorMessage(errorMsg);
         } else {
@@ -334,6 +353,7 @@ public class ConnectionFormComposite extends Composite {
 
         if (connection != null) {
             connection.setComplete(valid);
+            connectionsListComposite.refresh(connection);
         }
         return valid;
     }
@@ -402,15 +422,27 @@ public class ConnectionFormComposite extends Composite {
         return nameText.getText();
     }
 
+    private String getDesc() {
+        return descriptionText.getText();
+    }
+
     private String getUser() {
         return userText.getText();
+    }
+
+    private String getPassword() {
+        return passwordText.getText();
+    }
+
+    private String getWorkspace() {
+        return workSpaceText.getText();
     }
 
     ModifyListener standardTextListener = new ModifyListener() {
 
         public void modifyText(ModifyEvent e) {
-            validateFields();
             fillBean();
+            validateFields();
         }
     };
 

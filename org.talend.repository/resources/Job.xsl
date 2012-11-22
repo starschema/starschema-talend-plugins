@@ -305,7 +305,7 @@
 				<h2 class="FONTSTYLE">
 					<a name="#Job settings"><xsl:value-of select="/project/@i18n.job.job.setting" /></a>
 				</h2>
-				<table border="0" width="80%" class="FONTSTYLE"
+				<table border="0" width="90%" class="FONTSTYLE"
 					cellpadding="0" cellspacing="0" style="border-collapse: collapse"
 					bordercolor="#111111" summary="">
 					<tr bgcolor="#E6E6E6" class="FONTSTYLE">
@@ -318,7 +318,7 @@
 				<xsl:variable name="extra"
 					select="$job/jobSetting/extra">
 				</xsl:variable>
-				<table width="80%" border="1" cellpadding="0"
+				<table width="90%" border="1" cellpadding="0"
 					cellspacing="0"
 					style="border-collapse: collapse; padding-left:10mm;"
 					bordercolor="#111111" frame="box" summary="">
@@ -345,7 +345,7 @@
 				</table>
 				<br />
 				<br />
-				<table border="0" width="80%" class="FONTSTYLE"
+				<table border="0" width="90%" class="FONTSTYLE"
 					cellpadding="0" cellspacing="0" style="border-collapse: collapse"
 					bordercolor="#111111" summary="">
 					<tr bgcolor="#E6E6E6" class="FONTSTYLE">
@@ -358,7 +358,7 @@
 				<xsl:variable name="statsAndLog"
 					select="$job/jobSetting/Statslogs">
 				</xsl:variable>
-				<table width="80%" border="1" cellpadding="0"
+				<table width="90%" border="1" cellpadding="0"
 					cellspacing="0"
 					style="border-collapse: collapse; padding-left:10mm;"
 					bordercolor="#111111" frame="box" summary="">
@@ -391,7 +391,7 @@
 					<a name="#Context List"><xsl:value-of select="/project/@i18n.job.context.list" /></a>
 				</h2>
 				<xsl:for-each select="$job/contextList/context">
-					<table border="0" width="80%" class="FONTSTYLE"
+					<table border="0" width="90%" class="FONTSTYLE"
 						cellpadding="0" cellspacing="0" style="border-collapse: collapse"
 						bordercolor="#111111" summary="">
 						<tr bgcolor="#E6E6E6" class="FONTSTYLE">
@@ -404,7 +404,7 @@
 						</tr>
 					</table>
 					<br />
-					<table width="80%" border="1" cellpadding="0"
+					<table width="90%" border="1" cellpadding="0"
 						cellspacing="0"
 						style="border-collapse: collapse; padding-left:10mm;"
 						bordercolor="#111111" frame="box" summary="">
@@ -469,7 +469,7 @@
 				<h2 class="FONTSTYLE">
 					<a name="#ComponentList"><xsl:value-of select="/project/@i18n.job.component.list" /></a>
 				</h2>
-				<table width="60%" border="1" cellpadding="0"
+				<table width="90%" border="1" cellpadding="0"
 					cellspacing="0"
 					style="border-collapse: collapse; padding-left:10mm;"
 					bordercolor="#111111" frame="box" summary="">
@@ -632,12 +632,10 @@
 						<xsl:for-each select="parameters/column">
 							<tr>
 								<td class="FONTSTYLE" align="left">
-									<xsl:variable name="propname"
-										select="@name" />
-									<xsl:value-of select="$propname" />
+									<xsl:value-of select="@name" />
 								</td>
 								<td class="FONTSTYLE" align="left">
-									<xsl:value-of select="text()" />
+									<xsl:value-of select="@value" />
 								</td>
 							</tr>
 						</xsl:for-each>

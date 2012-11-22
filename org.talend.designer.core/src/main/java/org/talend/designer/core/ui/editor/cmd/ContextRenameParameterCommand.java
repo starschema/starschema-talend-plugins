@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -26,7 +26,7 @@ import org.talend.designer.core.ui.views.contexts.ContextsView;
 /**
  * Command that will rename the parameter in all contexts. <br/>
  * 
- * $Id: ContextRenameParameterCommand.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ContextRenameParameterCommand.java 80103 2012-03-20 07:30:16Z mwang $
  * 
  */
 public class ContextRenameParameterCommand extends Command {
@@ -34,6 +34,13 @@ public class ContextRenameParameterCommand extends Command {
     String oldName, newName;
 
     IContextManager contextManager;
+
+    private String sourceId;
+
+    public ContextRenameParameterCommand(IContextManager contextManager, String sourceId, String oldName, String newName) {
+        this(contextManager, oldName, newName);
+        this.sourceId = sourceId;
+    }
 
     public ContextRenameParameterCommand(IContextManager contextManager, String oldName, String newName) {
         this.contextManager = contextManager;
@@ -62,14 +69,17 @@ public class ContextRenameParameterCommand extends Command {
             listParams = contextManager.getListContext().get(i).getContextParameterList();
             found = false;
             for (int j = 0; j < listParams.size() && !found; j++) {
-                if (listParams.get(j).getName().equals(oldName)) {
-                    listParams.get(j).setName(newName);
+                IContextParameter contextParameter = listParams.get(j);
+                String tempName = contextParameter.getName();
+                String tempSourceId = contextParameter.getSource();
+                if (tempName.equals(oldName) && tempSourceId.equals(sourceId)) {
+                    contextParameter.setName(newName);
                     // see 0003889: Context script code not refreshed.
-                    String scriptCode = listParams.get(j).getScriptCode().replaceAll(oldName, newName);
-                    listParams.get(j).setScriptCode(scriptCode);
+                    String scriptCode = contextParameter.getScriptCode().replaceAll(oldName, newName);
+                    contextParameter.setScriptCode(scriptCode);
                     // if the user haven't modified prompt, change it
-                    if (listParams.get(j).getPrompt().equals(oldName + "?")) { //$NON-NLS-1$
-                        listParams.get(j).setPrompt(newName + "?"); //$NON-NLS-1$
+                    if (contextParameter.getPrompt().equals(oldName + "?")) { //$NON-NLS-1$
+                        contextParameter.setPrompt(newName + "?"); //$NON-NLS-1$
                     }
 
                     found = true;
@@ -94,14 +104,17 @@ public class ContextRenameParameterCommand extends Command {
             listParams = contextManager.getListContext().get(i).getContextParameterList();
             found = false;
             for (int j = 0; j < listParams.size() && !found; j++) {
-                if (listParams.get(j).getName().equals(newName)) {
-                    listParams.get(j).setName(oldName);
+                IContextParameter contextParameter = listParams.get(j);
+                String name = contextParameter.getName();
+                String tempSourceId = contextParameter.getSource();
+                if (name.equals(newName) && tempSourceId.equals(sourceId)) {
+                    contextParameter.setName(oldName);
                     // see 0003889: Context script code not refreshed.
-                    String scriptCode = listParams.get(j).getScriptCode().replaceAll(newName, oldName);
-                    listParams.get(j).setScriptCode(scriptCode);
+                    String scriptCode = contextParameter.getScriptCode().replaceAll(newName, oldName);
+                    contextParameter.setScriptCode(scriptCode);
                     // if the user haven't modified prompt, change it
-                    if (listParams.get(j).getPrompt().equals(newName + "?")) { //$NON-NLS-1$
-                        listParams.get(j).setPrompt(oldName + "?"); //$NON-NLS-1$
+                    if (contextParameter.getPrompt().equals(newName + "?")) { //$NON-NLS-1$
+                        contextParameter.setPrompt(oldName + "?"); //$NON-NLS-1$
                     }
                     found = true;
                 }

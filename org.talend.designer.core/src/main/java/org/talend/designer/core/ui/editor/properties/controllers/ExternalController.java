@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -69,7 +69,7 @@ public class ExternalController extends AbstractElementPropertySectionController
         if (externalNode == null) {
             MessageBox mBox = new MessageBox(composite.getShell(), SWT.ICON_ERROR);
             mBox.setText("Error"); //$NON-NLS-1$
-            mBox.setMessage("Component plugin not found: " + node.getPluginFullName()); //$NON-NLS-1$
+            mBox.setMessage("Component plugin not found: " + node.getComponent().getPluginExtension()); //$NON-NLS-1$
             mBox.open();
         } else {
             if (externalNode.open(composite.getShell()) == SWT.OK) {

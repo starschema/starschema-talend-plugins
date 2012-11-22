@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,25 +20,24 @@ import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkbenchWindowActionDelegate;
+import org.eclipse.ui.PlatformUI;
 import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
-import org.talend.core.CorePlugin;
 import org.talend.core.model.components.ComponentUtilities;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.imports.ImportItemWizard;
 import org.talend.repository.model.ERepositoryStatus;
 import org.talend.repository.model.IProxyRepositoryFactory;
-import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.IRepositoryNode.ENodeType;
+import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.ui.actions.AContextualAction;
 import org.talend.repository.ui.views.IRepositoryView;
-import org.talend.repository.ui.views.RepositoryView;
 
 /**
  */
@@ -93,35 +92,33 @@ public final class ImportItemAction extends AContextualAction implements IWorkbe
 
     @Override
     protected void doRun() {
+        if (ProxyRepositoryFactory.getInstance().isUserReadOnlyOnCurrentProject()) {
+            return;
+        }
+
         // qli modified to fix the bug "6999".
-        final TreeViewer repositoryTreeView = CorePlugin.getDefault().getRepositoryService().getRepositoryTreeView();
-        if (repositoryTreeView != null) {
-            repositoryTreeView.getTree().setFocus();
+        IRepositoryView repositoryView = RepositoryManagerHelper.findRepositoryView();
+        if (repositoryView != null && repositoryView.getViewer() instanceof TreeViewer) {
+            ((TreeViewer) repositoryView.getViewer()).getTree().setFocus();
         }
 
         ISelection selection = this.getSelection();
-        if (toolbarAction == true) {
-            IRepositoryView repositoryView = RepositoryView.show();
-            selection = (IStructuredSelection) repositoryView.getViewer().getSelection();
-        }
-        if (selection instanceof IStructuredSelection) {
-            RepositoryNode rNode = null;
-            if (((IStructuredSelection) selection).getFirstElement() instanceof RepositoryNode) {
-                rNode = (RepositoryNode) ((IStructuredSelection) selection).getFirstElement();
+        if (toolbarAction) {
+            if (repositoryView != null) {
+                selection = (IStructuredSelection) repositoryView.getViewer().getSelection();
             }
+        }
 
-            ImportItemWizard wizard = new ImportItemWizard(rNode);
-            IWorkbench workbench = this.getViewPart().getViewSite().getWorkbenchWindow().getWorkbench();
-            wizard.setWindowTitle(IMPORT_ITEM);
-            wizard.init(workbench, (IStructuredSelection) selection);
+        ImportItemWizard wizard = new ImportItemWizard(null);
+        wizard.setWindowTitle(IMPORT_ITEM);
+        wizard.init(PlatformUI.getWorkbench(), (IStructuredSelection) selection);
 
-            Shell activeShell = Display.getCurrent().getActiveShell();
-            WizardDialog dialog = new WizardDialog(activeShell, wizard);
-            if (dialog.open() == Window.OK) {
-                refresh();
-                if (wizard.isNeedToRefreshPalette()) {
-                    ComponentUtilities.updatePalette();
-                }
+        Shell activeShell = Display.getCurrent().getActiveShell();
+        WizardDialog dialog = new WizardDialog(activeShell, wizard);
+        if (dialog.open() == Window.OK) {
+            refresh();
+            if (wizard.isNeedToRefreshPalette()) {
+                ComponentUtilities.updatePalette();
             }
         }
     }

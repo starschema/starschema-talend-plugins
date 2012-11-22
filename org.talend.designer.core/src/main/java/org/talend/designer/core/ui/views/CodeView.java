@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -57,7 +57,7 @@ import org.talend.designer.core.model.process.AbstractProcessProvider;
 /**
  * View that will show the code of the current component.
  * 
- * $Id: CodeView.java 55606 2011-02-23 02:23:50Z nrousseau $
+ * $Id: CodeView.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class CodeView extends ViewPart {

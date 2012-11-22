@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -52,7 +52,7 @@ import org.talend.designer.core.i18n.Messages;
 /**
  * Wizard used to add a new context parameter.
  * 
- * $Id: ContextParameterPage.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ContextParameterPage.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class ContextParameterPage extends WizardPage {
@@ -185,7 +185,7 @@ public class ContextParameterPage extends WizardPage {
                 } else if (existingParameterNames.contains(nameText.getText())) {
                     nameStatus = new Status(IStatus.ERROR, DesignerPlugin.ID, IStatus.OK, Messages
                             .getString("ContextParameterPage.nameExists"), null); //$NON-NLS-1$
-                } else if (!contextManager.checkValidParameterName(nameText.getText())) {
+                } else if (!contextManager.checkValidParameterName(null, nameText.getText())) {
                     nameStatus = new Status(IStatus.ERROR, DesignerPlugin.ID, IStatus.OK, "Parameter name is not valid.", null); //$NON-NLS-1$
                 } else {
                     nameStatus = createOkStatus();
@@ -334,7 +334,7 @@ public class ContextParameterPage extends WizardPage {
     /**
      * Listener on prompt changes. <br/>
      * 
-     * $Id: ContextParameterPage.java 54939 2011-02-11 01:34:57Z mhirt $
+     * $Id: ContextParameterPage.java 77219 2012-01-24 01:14:15Z mhirt $
      * 
      */
     private class PromptListener extends SelectionAdapter implements ModifyListener {
@@ -350,8 +350,8 @@ public class ContextParameterPage extends WizardPage {
 
         private void updateStatus() {
             if (promptText.getText().length() == 0 && promptBtn.getSelection()) {
-                promptStatus = new Status(IStatus.ERROR, DesignerPlugin.ID, IStatus.OK, Messages
-                        .getString("ContextParameterPage.promptEmpty"), null); //$NON-NLS-1$
+                promptStatus = new Status(IStatus.ERROR, DesignerPlugin.ID, IStatus.OK,
+                        Messages.getString("ContextParameterPage.promptEmpty"), null); //$NON-NLS-1$
             } else {
                 promptStatus = createOkStatus();
             }

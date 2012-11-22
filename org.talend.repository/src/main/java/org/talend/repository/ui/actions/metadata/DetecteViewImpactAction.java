@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,14 +29,15 @@ import org.talend.core.model.properties.DatabaseConnectionItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.JobletProcessItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.repository.IRepositoryContentHandler;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.repository.RepositoryContentManager;
 import org.talend.core.model.update.RepositoryUpdateManager;
 import org.talend.core.repository.model.ISubRepositoryObject;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.repository.model.repositoryObject.MetadataTableRepositoryObject;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.i18n.Messages;
-import org.talend.repository.model.BinRepositoryNode;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IRepositoryNode.ENodeType;
 import org.talend.repository.model.RepositoryConstants;
@@ -62,7 +63,7 @@ public class DetecteViewImpactAction extends AContextualAction {
     }
 
     public boolean isOnlySimpleShow() {
-        return this.onlySimpleShow;
+        return onlySimpleShow;
     }
 
     /**
@@ -131,14 +132,27 @@ public class DetecteViewImpactAction extends AContextualAction {
                             || objectType == ERepositoryObjectType.CONTEXT || objectType == ERepositoryObjectType.JOBLET) {
                         canWork = true;
                     } else {
-                        canWork = false;
+                        Object obj = selection.getFirstElement();
+                        RepositoryNode nodeObj = (RepositoryNode) obj;
+                        Item item = nodeObj.getObject().getProperty().getItem();
+                        for (IRepositoryContentHandler handler : RepositoryContentManager.getHandlers()) {
+                            ERepositoryObjectType stype = handler.getRepositoryObjectType(item);
+                            if (stype == objectType) {
+                                canWork = true;
+                                break;
+                            }
+                        }
+                        if (RepositoryContentManager.getHandlers().size() < 0) {
+                            canWork = false;
+                        }
+
                     }
                     break;
                 default:
                     canWork = false;
                 }
                 RepositoryNode parent = node.getParent();
-                if (canWork && parent != null && parent instanceof BinRepositoryNode) {
+                if (canWork && parent != null && parent.isBin()) {
                     canWork = false;
                 }
                 if (canWork && !ProjectManager.getInstance().isInCurrentMainProject(node)) {

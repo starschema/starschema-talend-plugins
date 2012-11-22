@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,6 +20,8 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.eclipse.gef.palette.CombinedTemplateCreationEntry;
@@ -55,7 +57,7 @@ import org.talend.repository.model.ComponentsFactoryProvider;
 /**
  * This class creates the palette in the Gef Editor. <br/>
  * 
- * $Id: TalendEditorPaletteFactory.java 61885 2011-06-07 14:45:21Z nrousseau $
+ * $Id: TalendEditorPaletteFactory.java 83089 2012-05-09 02:19:40Z plv $
  * 
  */
 public final class TalendEditorPaletteFactory {
@@ -179,7 +181,7 @@ public final class TalendEditorPaletteFactory {
                 String regex = getFilterRegex();
                 needAddNote = "Note".toLowerCase().matches(regex); //$NON-NLS-1$
             }
-            if (oraFamily.equals("Misc") && !noteAeeded && needAddNote) { //$NON-NLS-1$
+            if ((oraFamily.equals("Misc") || oraFamily.equals("Miscellaneous")) && !noteAeeded && needAddNote) { //$NON-NLS-1$
                 CreationToolEntry noteCreationToolEntry = new CreationToolEntry(
                         Messages.getString("TalendEditorPaletteFactory.Note"), //$NON-NLS-1$
                         Messages.getString("TalendEditorPaletteFactory.CreateNote"), //$NON-NLS-1$
@@ -395,11 +397,16 @@ public final class TalendEditorPaletteFactory {
             family = xmlComponent.getTranslatedFamilyName();
             oraFamily = xmlComponent.getOriginalFamilyName();
             if (filter != null) {
+                Pattern pattern = Pattern.compile("^[A-Za-z0-9]+$");//$NON-NLS-1$
+                Matcher matcher = pattern.matcher(filter);
+                if (!matcher.matches() && filter.length() != 0) {
+                    filter = "None";
+                }
                 String regex = getFilterRegex();
                 needAddNote = "Note".toLowerCase().matches(regex); //$NON-NLS-1$
             }
             // if (isFavorite == false) {
-            if (oraFamily.equals("Misc") && !noteAeeded && needAddNote) { //$NON-NLS-1$
+            if ((oraFamily.equals("Misc") || oraFamily.equals("Miscellaneous")) && !noteAeeded && needAddNote) { //$NON-NLS-1$
                 CreationToolEntry noteCreationToolEntry = new CreationToolEntry(
                         Messages.getString("TalendEditorPaletteFactory.Note"), //$NON-NLS-1$
                         Messages.getString("TalendEditorPaletteFactory.CreateNote"), //$NON-NLS-1$
@@ -425,10 +432,14 @@ public final class TalendEditorPaletteFactory {
             // }
 
             if (filter != null) {
-                String regex = getFilterRegex();
-                if (!xmlComponent.getName().toLowerCase().matches(regex)
-                        && !xmlComponent.getLongName().toLowerCase().matches(regex)) {
-                    continue;
+                Pattern pattern = Pattern.compile("^[A-Za-z0-9]+$");//$NON-NLS-1$
+                Matcher matcher = pattern.matcher(filter);
+                if (matcher.matches()) {
+                    String regex = getFilterRegex();
+                    if (!xmlComponent.getName().toLowerCase().matches(regex)
+                            && !xmlComponent.getLongName().toLowerCase().matches(regex)) {
+                        continue;
+                    }
                 }
             }
 

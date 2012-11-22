@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -36,7 +36,7 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 /**
  * DOC tguiu class global comment. Detailled comment <br/>
  * 
- * $Id: StatusEditor.java 60623 2011-05-17 08:50:04Z zwzhao $
+ * $Id: StatusEditor.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class StatusEditor extends TableEditor {
@@ -66,7 +66,7 @@ public class StatusEditor extends TableEditor {
         colValue.setWidth(150);
         IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
         if (factory.isUserReadOnlyOnCurrentProject()) {
-            contextTable.setEnabled(false);
+            parent.setEnabled(false);
         }
         return contextTable;
     }

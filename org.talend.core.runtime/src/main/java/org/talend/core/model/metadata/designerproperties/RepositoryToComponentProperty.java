@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -35,6 +35,7 @@ import org.talend.core.model.metadata.EMetadataEncoding;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTalendType;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.MultiSchemasUtil;
 import org.talend.core.model.metadata.builder.connection.BRMSConnection;
 import org.talend.core.model.metadata.builder.connection.Concept;
@@ -71,7 +72,9 @@ import org.talend.core.model.metadata.builder.connection.XmlXPathLoopDescriptor;
 import org.talend.core.model.metadata.designerproperties.PropertyConstants.CDCTypeMode;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
+import org.talend.core.model.repository.DragAndDropManager;
 import org.talend.core.model.utils.ContextParameterUtils;
+import org.talend.core.model.utils.IDragAndDropServiceHandler;
 import org.talend.core.runtime.CoreRuntimePlugin;
 import org.talend.core.service.IMetadataManagmentService;
 import org.talend.core.service.IMetadataManagmentUiService;
@@ -137,6 +140,12 @@ public class RepositoryToComponentProperty {
         if (connection instanceof EDIFACTConnection) {
             return getEDIFACTSchemaValue((EDIFACTConnection) connection, value);
         }
+
+        for (IDragAndDropServiceHandler handler : DragAndDropManager.getHandlers()) {
+            if (handler.canHandle(connection)) {
+                return handler.getComponentValue(connection, value);
+            }
+        }
         return null;
     }
 
@@ -175,11 +184,11 @@ public class RepositoryToComponentProperty {
      * 
      * @param conn
      * @param value2
-     * @param functionName
+     * @param functionLabel
      * @param isInput
      * @return
      */
-    public static void getSAPInputAndOutputValue(SAPConnection conn, List<Map<String, Object>> value2, String functionName,
+    public static void getSAPInputAndOutputValue(SAPConnection conn, List<Map<String, Object>> value2, String functionLabel,
             boolean isInput) {
         if (conn == null) {
             return;
@@ -187,7 +196,7 @@ public class RepositoryToComponentProperty {
         SAPFunctionUnit unit = null;
         for (int i = 0; i < conn.getFuntions().size(); i++) {
             SAPFunctionUnit tmp = (SAPFunctionUnit) conn.getFuntions().get(i);
-            if (tmp.getLabel().equals(functionName)) {
+            if (tmp.getLabel().equals(functionLabel)) {
                 unit = tmp;
                 break;
             }
@@ -295,18 +304,18 @@ public class RepositoryToComponentProperty {
      * DOC xye Comment method "getSAPValuesForFunction".
      * 
      * @param conn
-     * @param functionName
+     * @param functionLabel
      * @param paramterName
      * @return
      */
-    public static String getSAPValuesForFunction(SAPConnection conn, String functionName, String paramterName) {
+    public static String getSAPValuesForFunction(SAPConnection conn, String functionLabel, String paramterName) {
         SAPFunctionUnit unit = null;
         if (conn == null) {
             return null;
         }
         for (int i = 0; i < conn.getFuntions().size(); i++) {
             unit = (SAPFunctionUnit) conn.getFuntions().get(i);
-            if (unit.getName().equals(functionName)) {
+            if (unit.getLabel().equals(functionLabel)) {
                 break;
             }
         }
@@ -319,11 +328,11 @@ public class RepositoryToComponentProperty {
             }
         } else if (paramterName.equals("SAP_ITERATE_OUT_TABLENAME")) { //$NON-NLS-1$
             return TalendQuoteUtils.addQuotes(unit.getOutputTableName());
-		} else if (paramterName.equals("SAP_TABLE_NAME")) { //$NON-NLS-1$
+        } else if (paramterName.equals("SAP_TABLE_NAME")) { //$NON-NLS-1$
 			if (unit.getLabel() != null) {
 				return TalendQuoteUtils.addQuotes(unit.getLabel()); //$NON-NLS-1$ //$NON-NLS-2$
 			}
-        }
+		}
         return null;
     }
 
@@ -388,7 +397,18 @@ public class RepositoryToComponentProperty {
                 return TalendQuoteUtils.addQuotes(connection.getSystemNumber());
             }
         } else if ("SAP_VERSION".equals(value)) {
-            return connection.getJcoVersion();
+        	return connection.getJcoVersion();
+        } else if ("VERSION".equals(value)) {
+            // before 421 sap version value was defined as SAP2 SAP3 in component side(see 17789) and saved in items ,
+            // after component changed the value to the jar name
+            String version = connection.getJcoVersion();
+            if (SapJcoVersion.SAP2.name().equals(version)) {
+                version = SapJcoVersion.SAP2.getModulName();
+            } else if (SapJcoVersion.SAP3.name().equals(version)) {
+                version = SapJcoVersion.SAP3.getModulName();
+            }
+
+            return version;
         }
 
         return null;
@@ -450,9 +470,13 @@ public class RepositoryToComponentProperty {
             } else {
                 return TalendQuoteUtils.addQuotes(connection.getPassword());
             }
-        } else if ("CUSTOM_MODULE_NAME".equals(value)) { //$NON-NLS-1$
-            return TalendQuoteUtils.addQuotes(connection.getModuleName());
-        } else if ("MODULENAME".equals(value)) { //$NON-NLS-1$
+        }
+        // for bug TDI-8662 . should be careful that connection.getModuleName() will always get the latest name of the
+        // module which was the last one be retrived
+        //        else if ("CUSTOM_MODULE_NAME".equals(value)) { //$NON-NLS-1$
+        // return TalendQuoteUtils.addQuotes(connection.getModuleName());
+        // }
+        else if ("MODULENAME".equals(value)) { //$NON-NLS-1$
             if (connection.isUseCustomModuleName()) {
                 return "CustomModule"; //$NON-NLS-1$
             } else {
@@ -778,6 +802,8 @@ public class RepositoryToComponentProperty {
                 return EDatabaseTypeName.ORACLESN.getXmlName();
             } else if (databaseType.equals(EDatabaseTypeName.ORACLE_OCI.getDisplayName())) {
                 return EDatabaseTypeName.ORACLE_OCI.getXmlName();
+            } else if (databaseType.equals(EDatabaseTypeName.ORACLE_RAC.getDisplayName())) {
+                return EDatabaseTypeName.ORACLE_RAC.getXmlName();
             } else if (databaseType.equals(EDatabaseTypeName.MSSQL.getDisplayName())) {
                 return EDatabaseTypeName.MSSQL.getXMLType(); // for component
             }
@@ -911,6 +937,8 @@ public class RepositoryToComponentProperty {
                     return "ORACLE_SERVICE_NAME";
                 } else if (databaseType.equals(EDatabaseTypeName.ORACLE_OCI.getDisplayName())) {
                     return "ORACLE_OCI";
+                } else if (databaseType.equals(EDatabaseTypeName.ORACLE_RAC.getDisplayName())) {
+                    return "ORACLE_RAC";
                 }
             } else {
                 if (databaseType.equals(EDatabaseTypeName.ORACLEFORSID.getDisplayName())) {
@@ -919,6 +947,8 @@ public class RepositoryToComponentProperty {
                     return "ORACLE_SERVICE_NAME";
                 } else if (databaseType.equals(EDatabaseTypeName.ORACLE_OCI.getDisplayName())) {
                     return "ORACLE_OCI";
+                } else if (databaseType.equals(EDatabaseTypeName.ORACLE_RAC.getDisplayName())) {
+                    return "ORACLE_RAC";
                 }
             }
         }
@@ -937,13 +967,16 @@ public class RepositoryToComponentProperty {
             if (isContextMode(connection, url)) {
                 return url;
             } else {
-                String h2Prefix = "jdbc:h2:";
-                if (url.startsWith(h2Prefix)) {
-                    String path = url.substring(h2Prefix.length(), url.length());
-                    path = PathUtils.getPortablePath(path);
-                    url = h2Prefix + path;
+                // TDI-18737:in case the url maybe null
+                if (url != null) {
+                    String h2Prefix = "jdbc:h2:"; //$NON-NLS-1$
+                    if (url.startsWith(h2Prefix)) {
+                        String path = url.substring(h2Prefix.length(), url.length());
+                        path = PathUtils.getPortablePath(path);
+                        url = h2Prefix + path;
+                    }
+                    return TalendQuoteUtils.addQuotes(url);
                 }
-                return TalendQuoteUtils.addQuotes(connection.getURL());
             }
         }
 
@@ -1045,6 +1078,13 @@ public class RepositoryToComponentProperty {
                 return TalendQuoteUtils.addQuotes(connection.getDatasourceName());
             }
         }
+        if (value.equals("RAC_URL")) {
+            if (isContextMode(connection, connection.getServerName())) {
+                return connection.getServerName();
+            } else {
+                return TalendQuoteUtils.addQuotes(connection.getServerName());
+            }
+        }
         return null;
     }
 
@@ -1052,6 +1092,7 @@ public class RepositoryToComponentProperty {
         if (connection == null || value == null) {
             return false;
         }
+
         if (connection.isContextMode() && ContextParameterUtils.isContainContextParam(value)) {
             return true;
         }
@@ -1150,14 +1191,14 @@ public class RepositoryToComponentProperty {
      * 
      */
     private static Object getEBCDICFieldValue(EbcdicConnection connection, String value) {
-        if ("XC2J_FILE".equals(value)) { //$NON-NLS-1$
-            if (isContextMode(connection, connection.getFilePath())) {
-                return connection.getMidFile();
-            } else {
-                Path p = new Path(connection.getMidFile());
-                return TalendQuoteUtils.addQuotes(p.toPortableString());
-            }
-        }
+        //        if ("XC2J_FILE".equals(value)) { //$NON-NLS-1$
+        // if (isContextMode(connection, connection.getFilePath())) {
+        // return connection.getMidFile();
+        // } else {
+        // // Path p = new Path(connection.getMidFile());
+        // return TalendQuoteUtils.addQuotes("");
+        // }
+        // }
         if ("DATA_FILE".equals(value)) { //$NON-NLS-1$
             if (isContextMode(connection, connection.getDataFile())) {
                 return connection.getDataFile();
@@ -1310,7 +1351,7 @@ public class RepositoryToComponentProperty {
     // added by nma to deal with .xsd file
     public static Object getXmlAndXSDFileValue(XmlFileConnection connection, String value) {
         EList list = connection.getSchema();
-        XmlXPathLoopDescriptor xmlDesc = (XmlXPathLoopDescriptor) list.get(0);
+
         if (value.equals("FILE_PATH")) { //$NON-NLS-1$
             if (isContextMode(connection, connection.getXmlFilePath())) {
                 return connection.getXmlFilePath();
@@ -1329,21 +1370,25 @@ public class RepositoryToComponentProperty {
                 return TalendQuoteUtils.addQuotes(p.toPortableString());
             }
         }
-        if (value.equals("LIMIT")) { //$NON-NLS-1$
-            if ((xmlDesc == null) || (xmlDesc.getLimitBoucle() == null)) {
-                return ""; //$NON-NLS-1$
-            } else {
-                return xmlDesc.getLimitBoucle().toString();
-            }
-        }
-        if (value.equals("XPATH_QUERY")) { //$NON-NLS-1$
-            if (xmlDesc == null) {
-                return ""; //$NON-NLS-1$
-            } else {
-                if (isContextMode(connection, xmlDesc.getAbsoluteXPathQuery())) {
-                    return xmlDesc.getAbsoluteXPathQuery();
+        if (!list.isEmpty()) {
+            XmlXPathLoopDescriptor xmlDesc = (XmlXPathLoopDescriptor) list.get(0);
+
+            if (value.equals("LIMIT")) { //$NON-NLS-1$
+                if ((xmlDesc == null) || (xmlDesc.getLimitBoucle() == null)) {
+                    return ""; //$NON-NLS-1$
                 } else {
-                    return TalendQuoteUtils.addQuotes(xmlDesc.getAbsoluteXPathQuery());
+                    return xmlDesc.getLimitBoucle().toString();
+                }
+            }
+            if (value.equals("XPATH_QUERY")) { //$NON-NLS-1$
+                if (xmlDesc == null) {
+                    return ""; //$NON-NLS-1$
+                } else {
+                    if (isContextMode(connection, xmlDesc.getAbsoluteXPathQuery())) {
+                        return xmlDesc.getAbsoluteXPathQuery();
+                    } else {
+                        return TalendQuoteUtils.addQuotes(xmlDesc.getAbsoluteXPathQuery());
+                    }
                 }
             }
         }
@@ -1484,11 +1529,24 @@ public class RepositoryToComponentProperty {
                 // }
                 // }
                 // }
-                for (SchemaTarget schema : schemaTargets) {
-                    Map<String, Object> map = new HashMap<String, Object>();
-                    map.put("SCHEMA_COLUMN", schema.getTagName()); //$NON-NLS-1$
-                    map.put("QUERY", TalendQuoteUtils.addQuotes(schema.getRelativeXPathQuery())); //$NON-NLS-1$
-                    tableInfo.add(map);
+                // for (SchemaTarget schema : schemaTargets) {
+                // Map<String, Object> map = new HashMap<String, Object>();
+                //                    map.put("SCHEMA_COLUMN", schema.getTagName()); //$NON-NLS-1$
+                //                    map.put("QUERY", TalendQuoteUtils.addQuotes(schema.getRelativeXPathQuery())); //$NON-NLS-1$
+                // tableInfo.add(map);
+                // }
+
+                String tagName;
+                for (int j = 0; j < schemaTargets.size(); j++) {
+                    SchemaTarget schemaTarget = schemaTargets.get(j);
+                    if (schemaTarget.getTagName() != null && !schemaTarget.getTagName().equals("")) { //$NON-NLS-1$
+                        tagName = "" + schemaTarget.getTagName().trim().replaceAll(" ", "_"); //$NON-NLS-1$ //$NON-NLS-2$
+                        tagName = MetadataToolHelper.validateColumnName(tagName, j);
+                        Map<String, Object> map = new HashMap<String, Object>();
+                        map.put("SCHEMA_COLUMN", tagName); //$NON-NLS-1$
+                        map.put("QUERY", TalendQuoteUtils.addQuotes(schemaTarget.getRelativeXPathQuery())); //$NON-NLS-1$
+                        tableInfo.add(map);
+                    }
                 }
             }
         }
@@ -1645,33 +1703,28 @@ public class RepositoryToComponentProperty {
             MDMConnection mdmConnection = (MDMConnection) connection;
             EList objectList = mdmConnection.getSchemas();
             for (Concept concept : (List<Concept>) objectList) {
-                if (concept.getLabel() == null || concept.getLabel().equals(metaTable.getLabel())) {
+                if (concept.getLabel() != null && concept.getLabel().equals(metaTable.getLabel())) {
                     if (value.equals("XML_MAPPING")) { //$NON-NLS-1$
-                        if (concept == null) {
-                            return;
-                        } else {
-                            String[] list = param.getListRepositoryItems();
+                        String[] list = param.getListRepositoryItems();
 
-                            int column = 0;
-                            boolean found = false;
-                            for (int k = 0; (k < list.length) && (!found); k++) {
-                                if (list[k].equals("XML_QUERY")) { //$NON-NLS-1$
-                                    column = k;
-                                    found = true;
-                                }
+                        int column = 0;
+                        boolean found = false;
+                        for (int k = 0; (k < list.length) && (!found); k++) {
+                            if (list[k].equals("XML_QUERY")) { //$NON-NLS-1$
+                                column = k;
+                                found = true;
                             }
-                            EList conceptTargetsList = concept.getConceptTargets();
-                            String[] names = param.getListItemsDisplayCodeName();
-                            for (int k = 0; k < conceptTargetsList.size(); k++) {
-                                if (tableInfo.size() > k) {
-                                    Map<String, Object> line = tableInfo.get(k);
-                                    if (metaTable != null) {
-                                        if (metaTable.getListColumns().size() > k) {
-                                            ConceptTarget conceptTarget = (ConceptTarget) conceptTargetsList.get(k);
-                                            String strValue = TalendQuoteUtils.addQuotes(conceptTarget
-                                                    .getRelativeLoopExpression());
-                                            line.put(names[column], strValue);
-                                        }
+                        }
+                        EList conceptTargetsList = concept.getConceptTargets();
+                        String[] names = param.getListItemsDisplayCodeName();
+                        for (int k = 0; k < conceptTargetsList.size(); k++) {
+                            if (tableInfo.size() > k) {
+                                Map<String, Object> line = tableInfo.get(k);
+                                if (metaTable != null) {
+                                    if (metaTable.getListColumns().size() > k) {
+                                        ConceptTarget conceptTarget = (ConceptTarget) conceptTargetsList.get(k);
+                                        String strValue = TalendQuoteUtils.addQuotes(conceptTarget.getRelativeLoopExpression());
+                                        line.put(names[column], strValue);
                                     }
                                 }
                             }

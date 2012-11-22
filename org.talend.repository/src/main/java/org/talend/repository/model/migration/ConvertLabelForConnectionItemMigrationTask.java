@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,7 +20,7 @@ import java.util.Set;
 
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.migration.AbstractItemMigrationTask;
@@ -49,7 +49,7 @@ public class ConvertLabelForConnectionItemMigrationTask extends AbstractItemMigr
                 MetadataTable table = (MetadataTable) tableObj;
                 String label = table.getLabel();
                 if (label != null) {
-                    String validateValue = MetadataTool.validateValue(label);
+                    String validateValue = MetadataToolHelper.validateValue(label);
                     if (validateValue != null && !label.equals(validateValue)) {
                         table.setLabel(validateValue);
                         changed = true;

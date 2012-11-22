@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -114,11 +114,16 @@ import org.talend.core.model.properties.RulesItem;
 import org.talend.core.model.properties.SAPConnectionItem;
 import org.talend.core.model.properties.SQLPatternItem;
 import org.talend.core.model.properties.SalesforceSchemaConnectionItem;
+import org.talend.core.model.properties.ValidationRulesConnectionItem;
+import org.talend.core.model.repository.DragAndDropManager;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.utils.ContextParameterUtils;
+import org.talend.core.model.utils.IComponentName;
+import org.talend.core.model.utils.IDragAndDropServiceHandler;
 import org.talend.core.model.utils.SQLPatternUtils;
 import org.talend.core.model.utils.TalendTextUtils;
+import org.talend.core.repository.RepositoryComponentManager;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.repository.model.repositoryObject.MetadataTableRepositoryObject;
 import org.talend.core.ui.ICDCProviderService;
@@ -134,6 +139,7 @@ import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
 import org.talend.designer.core.model.components.ExternalUtilities;
+import org.talend.designer.core.model.process.ConnectionManager;
 import org.talend.designer.core.model.utils.emf.talendfile.impl.ContextParameterTypeImpl;
 import org.talend.designer.core.model.utils.emf.talendfile.impl.ContextTypeImpl;
 import org.talend.designer.core.ui.AbstractMultiPageTalendEditor;
@@ -142,6 +148,7 @@ import org.talend.designer.core.ui.editor.AbstractTalendEditor;
 import org.talend.designer.core.ui.editor.TalendEditor;
 import org.talend.designer.core.ui.editor.cmd.ChangeValuesFromRepository;
 import org.talend.designer.core.ui.editor.cmd.ConnectionCreateCommand;
+import org.talend.designer.core.ui.editor.cmd.ConnectionReconnectCommand;
 import org.talend.designer.core.ui.editor.cmd.CreateNodeContainerCommand;
 import org.talend.designer.core.ui.editor.cmd.PropertyChangeCommand;
 import org.talend.designer.core.ui.editor.cmd.QueryGuessCommand;
@@ -157,9 +164,9 @@ import org.talend.designer.core.ui.editor.subjobcontainer.SubjobContainer;
 import org.talend.designer.core.ui.editor.subjobcontainer.SubjobContainerPart;
 import org.talend.designer.core.ui.preferences.TalendDesignerPrefConstants;
 import org.talend.designer.core.utils.DesignerUtilities;
+import org.talend.designer.core.utils.ValidationRulesUtil;
 import org.talend.repository.RepositoryPlugin;
 import org.talend.repository.editor.JobEditorInput;
-import org.talend.repository.model.ComponentsFactoryProvider;
 import org.talend.repository.model.ERepositoryStatus;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IRepositoryNode.EProperties;
@@ -478,8 +485,13 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
                     createQuery(getSelection().getFirstElement(), getTargetEditPart());
                     createProperty(getSelection().getFirstElement(), getTargetEditPart());
                     createChildJob(getSelection().getFirstElement(), getTargetEditPart());
+                    createValidationRule(getSelection().getFirstElement(), getTargetEditPart());
                 }
             }
+        }
+        // in case after drag/drop the editor is dirty but can not get focus
+        if (editor.isDirty()) {
+            editor.setFocus();
         }
         this.eraseTargetFeedback();
     }
@@ -631,6 +643,40 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
     }
 
     /**
+     * DOC ycbai Comment method "createValidationRule".
+     * 
+     * @param dragModel
+     * @param targetEditPart
+     */
+    private void createValidationRule(Object dragModel, EditPart targetEditPart) {
+        if (!(dragModel instanceof RepositoryNode && targetEditPart instanceof NodeContainerPart)) {
+            return;
+        }
+        RepositoryNode dragNode = (RepositoryNode) dragModel;
+        NodeContainerPart nodePart = (NodeContainerPart) targetEditPart;
+        if (dragNode.getObject().getProperty().getItem() instanceof ValidationRulesConnectionItem) {
+            Node node = (Node) nodePart.getNodePart().getModel();
+            List<IRepositoryViewObject> valRuleObjs = ValidationRulesUtil.getRelatedValidationRuleObjs(node);
+            IRepositoryViewObject valRuleObj = dragNode.getObject();
+            String schemaType = (String) node.getPropertyValue(EParameterName.SCHEMA_TYPE.getName());
+            if (EmfComponent.BUILTIN.equals(schemaType)
+                    || !ValidationRulesUtil.isCurrentValRuleObjInList(valRuleObjs, valRuleObj)) {
+                MessageDialog.openWarning(editor.getSite().getShell(),
+                        Messages.getString("SchemaTypeController.validationrule.title.warn"), //$NON-NLS-1$
+                        Messages.getString("SchemaTypeController.validationrule.cannotApplyValMsg")); //$NON-NLS-1$
+                return;
+            }
+            CompoundCommand cc = new CompoundCommand();
+            cc.add(new PropertyChangeCommand(node, EParameterName.VALIDATION_RULES.getName(), true));
+            cc.add(new ChangeValuesFromRepository(node, null, "VALIDATION_RULE_TYPE:VALIDATION_RULE_TYPE", //$NON-NLS-1$
+                    EmfComponent.REPOSITORY));
+            cc.add(new PropertyChangeCommand(node, EParameterName.REPOSITORY_VALIDATION_RULE_TYPE.getName(), valRuleObj
+                    .getProperty().getId()));
+            execCommandStack(cc);
+        }
+    }
+
+    /**
      * DOC qwei Comment method "createChildJob".
      */
     private void createChildJob(Object dragModel, EditPart targetEditPart) {
@@ -661,12 +707,39 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
         }
         RepositoryNode dragNode = (RepositoryNode) dragModel;
         NodeContainerPart nodePart = (NodeContainerPart) targetEditPart;
+        Node node = (Node) nodePart.getNodePart().getModel();
+        IRepositoryViewObject object = dragNode.getObject();
 
         if (dragNode.getObject().getProperty().getItem() instanceof ConnectionItem) {
+            CompoundCommand cc = new CompoundCommand();
+            boolean isValRulesLost = false;
+            if (dragNode.getProperties(EProperties.CONTENT_TYPE) == ERepositoryObjectType.METADATA_CON_TABLE) {
+                IRepositoryViewObject currentValRuleObj = ValidationRulesUtil.getCurrentValidationRuleObjs(node);
+                if (currentValRuleObj != null) {
+                    String schema = object.getProperty().getId() + " - " + object.getLabel(); //$NON-NLS-1$
+                    List<IRepositoryViewObject> valRuleObjs = ValidationRulesUtil.getRelatedValidationRuleObjs(schema);
+                    if (!ValidationRulesUtil.isCurrentValRuleObjInList(valRuleObjs, currentValRuleObj)) {
+                        if (!MessageDialog.openConfirm(editor.getSite().getShell(),
+                                Messages.getString("SchemaTypeController.validationrule.title.confirm"), //$NON-NLS-1$
+                                Messages.getString("SchemaTypeController.validationrule.selectMetadataMsg"))) { //$NON-NLS-1$
+                            isValRulesLost = false;
+                            return;
+                        } else {
+                            isValRulesLost = true;
+                        }
+                    }
+                }
+            }
             ConnectionItem connectionItem = (ConnectionItem) dragNode.getObject().getProperty().getItem();
-            Command command = getChangeMetadataCommand(dragNode, (Node) nodePart.getNodePart().getModel(), connectionItem);
+            Command command = getChangeMetadataCommand(dragNode, node, connectionItem);
             if (command != null) {
-                execCommandStack(command);
+                cc.add(command);
+            }
+            if (isValRulesLost) {
+                ValidationRulesUtil.appendRemoveValidationRuleCommands(cc, node);
+            }
+            if (cc.getCommands().size() > 0) {
+                execCommandStack(cc);
             }
         }
     }
@@ -726,7 +799,7 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
         // This is the element that user select in the repositoryView.
         RepositoryNode seletetedNode = null;
 
-        EDatabaseComponentName componentName = null;
+        IComponentName componentName = null;
 
         IComponent component;
 
@@ -983,9 +1056,22 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
             }
 
             // fore EBCDIC, by cli
-            if (selectedNode.getObjectType() == ERepositoryObjectType.METADATA_FILE_EBCDIC
-                    && PluginChecker.isEBCDICPluginLoaded()) {
-                for (MetadataTable table : (Set<MetadataTable>) ConnectionHelper.getTables(originalConnection)) {
+            if ((connectionItem instanceof EbcdicConnectionItem) && PluginChecker.isEBCDICPluginLoaded()) {
+                // TDI-20505:integration the drag/drop for EBCDIC connection and EBCDIC metadataTable
+                IRepositoryViewObject object = selectedNode.getObject();
+                if (selectedNode.getObjectType() == ERepositoryObjectType.METADATA_FILE_EBCDIC) {
+                    for (MetadataTable table : (Set<MetadataTable>) ConnectionHelper.getTables(originalConnection)) {
+                        Command ebcdicCmd = new RepositoryChangeMetadataForEBCDICCommand(node, IEbcdicConstant.TABLE_SCHEMAS,
+                                table.getLabel(), ConvertionHelper.convert(table));
+                        list.add(ebcdicCmd);
+                    }
+                }
+                if (selectedNode.getProperties(EProperties.CONTENT_TYPE) == ERepositoryObjectType.METADATA_CON_TABLE) {
+                    MetadataTable table = null;
+                    if (object instanceof MetadataTableRepositoryObject) {
+                        table = ((MetadataTableRepositoryObject) object).getTable();
+                    }
+
                     Command ebcdicCmd = new RepositoryChangeMetadataForEBCDICCommand(node, IEbcdicConstant.TABLE_SCHEMAS,
                             table.getLabel(), ConvertionHelper.convert(table));
                     list.add(ebcdicCmd);
@@ -1333,11 +1419,11 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
                 }
 
                 // for EBCDIC (bug 5860)
-                if (PluginChecker.isEBCDICPluginLoaded() && connectionItem instanceof EbcdicConnectionItem) {
-                    Command ebcdicCmd = new RepositoryChangeMetadataForEBCDICCommand(node, IEbcdicConstant.TABLE_SCHEMAS,
-                            table.getLabel(), ConvertionHelper.convert(table));
-                    return ebcdicCmd;
-                }
+                // if (PluginChecker.isEBCDICPluginLoaded() && connectionItem instanceof EbcdicConnectionItem) {
+                // Command ebcdicCmd = new RepositoryChangeMetadataForEBCDICCommand(node, IEbcdicConstant.TABLE_SCHEMAS,
+                // table.getLabel(), ConvertionHelper.convert(table));
+                // return ebcdicCmd;
+                // }
                 if (PluginChecker.isHL7PluginLoaded() && connectionItem instanceof HL7ConnectionItem) {
                     Command hl7Cmd = new RepositoryChangeMetadataForHL7Command(node, IEbcdicConstant.TABLE_SCHEMAS,
                             table.getLabel(), ConvertionHelper.convert(table));
@@ -1351,7 +1437,8 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
                 }
                 schemaParam.getChildParameters().get(EParameterName.SCHEMA_TYPE.getName()).setValue(EmfComponent.REPOSITORY);
                 RepositoryChangeMetadataCommand command2 = new RepositoryChangeMetadataCommand(node, schemaParam.getName() + ":" //$NON-NLS-1$
-                        + EParameterName.REPOSITORY_SCHEMA_TYPE.getName(), value, ConvertionHelper.convert(table), null);
+                        + EParameterName.REPOSITORY_SCHEMA_TYPE.getName(), value, ConvertionHelper.convert(table), null,
+                        connectionItem.getConnection());
                 return command2;
             }
         }
@@ -1423,6 +1510,10 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
                 node,
                 connectionItem.getConnection(),
                 param.getName() + ":" + EParameterName.REPOSITORY_PROPERTY_TYPE.getName(), selectedNode.getObject().getProperty().getId()); //$NON-NLS-1$
+        if (selectedNode.getObject() instanceof IMetadataTable) {
+            IMetadataTable metadataTable = (IMetadataTable) selectedNode.getObject();
+            command2.setTable(metadataTable);
+        }
         return command2;
 
     }
@@ -1446,28 +1537,38 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
 
     private void getAppropriateComponent(Item item, boolean quickCreateInput, boolean quickCreateOutput, TempStore store,
             ERepositoryObjectType type) {
-        EDatabaseComponentName name = EDatabaseComponentName.getCorrespondingComponentName(item, type);
-        String componentName = null;
-        if (item instanceof JobletProcessItem) { // joblet
-            componentName = item.getProperty().getLabel();
-        } else if (name == null) {
-            return;
-        } else { // tRunjob
-            componentName = name.getDefaultComponentName();
+        IComponentName rcSetting = RepositoryComponentManager.getSetting(item, type);
+
+        // IComponentName name = EDatabaseComponentName.getCorrespondingComponentName(item, type);
+        // For handler, need check for esb
+        if (rcSetting == null) {
+            for (IDragAndDropServiceHandler handler : DragAndDropManager.getHandlers()) {
+                rcSetting = handler.getCorrespondingComponentName(item, type);
+                if (rcSetting != null) {
+                    break;
+                }
+            }
+            if (rcSetting == null) {
+                return;
+            }
         }
 
-        // tRunJob is special from our rules
-        if (name == EDatabaseComponentName.RunJob || item instanceof JobletProcessItem) {
-            store.component = ComponentsFactoryProvider.getInstance().get(componentName);
-        } else {
+        List<IComponent> neededComponents = RepositoryComponentManager.filterNeededComponents(item, store.seletetedNode, type);
 
-            // for database, file, webservices, saleforce ...
-            List<IComponent> neededComponents = TalendDndHelper.filterNeededComponents(item, store.seletetedNode, type);
-
-            IComponent component = chooseOneComponent(neededComponents, name, quickCreateInput, quickCreateOutput);
-            store.component = component;
+        // for esb
+        for (IDragAndDropServiceHandler handler : DragAndDropManager.getHandlers()) {
+            List<IComponent> comList = handler.filterNeededComponents(item, store.seletetedNode, type);
+            if (comList != null) {
+                for (IComponent handlerComp : comList) {
+                    if (!neededComponents.contains(handlerComp)) {
+                        neededComponents.add(handlerComp);
+                    }
+                }
+            }
         }
-        store.componentName = name;
+        IComponent component = chooseOneComponent(neededComponents, rcSetting, quickCreateInput, quickCreateOutput);
+        store.component = component;
+        store.componentName = rcSetting;
     }
 
     /**
@@ -1478,8 +1579,8 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
      * @param quickCreateInput
      * @param quickCreateOutput
      */
-    private IComponent chooseOneComponent(List<IComponent> neededComponents, EDatabaseComponentName name,
-            boolean quickCreateInput, boolean quickCreateOutput) {
+    private IComponent chooseOneComponent(List<IComponent> neededComponents, IComponentName name, boolean quickCreateInput,
+            boolean quickCreateOutput) {
         if (neededComponents.isEmpty()) {
             return null;
         }
@@ -1542,7 +1643,6 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
             viewOriginalPosition = viewport.getViewLocation();
         }
         Point point = new Point(originalPoint.x + viewOriginalPosition.x, originalPoint.y + viewOriginalPosition.y);
-        CompoundCommand command = new CompoundCommand();
 
         org.talend.designer.core.ui.editor.connections.Connection targetConnection = CreateComponentOnLinkHelper
                 .getSelectedConnection();
@@ -1554,20 +1654,49 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
         if (targetConnection != null) {
             NodeContainer nodeContainer = new NodeContainer(node);
             IProcess2 p = editor.getProcess();
+            // TDI-21099
             if (p instanceof Process) {
-                Process process = (Process) p;
-                execCommandStack(new CreateNodeContainerCommand(process, nodeContainer, point));
+                CreateNodeContainerCommand createCmd = new CreateNodeContainerCommand((Process) p, nodeContainer, point);
+                execCommandStack(createCmd);
                 // reconnect the node
-                INode targetNode = targetConnection.getTarget();
-                updateConnectionCommand(targetConnection, node, command);
-                execCommandStack(command);
+                Node originalTarget = (Node) targetConnection.getTarget();
+                INodeConnector targetConnector = node.getConnectorFromType(EConnectionType.FLOW_MAIN);
+                for (INodeConnector connector : node.getConnectorsFromType(EConnectionType.FLOW_MAIN)) {
+                    if (connector.getMaxLinkOutput() != 0) {
+                        targetConnector = connector;
+                        break;
+                    }
+                }
+                ConnectionCreateCommand.setCreatingConnection(true);
+                // FIXME perhaps, this is not good fix, need check it later
+                // bug 21411
+                if (PluginChecker.isJobLetPluginLoaded()) {
+                    IJobletProviderService service = (IJobletProviderService) GlobalServiceRegister.getDefault().getService(
+                            IJobletProviderService.class);
+                    if (service != null && service.isJobletComponent(targetConnection.getTarget())) {
+                        if (targetConnection.getTarget() instanceof Node) {
+                            NodeContainer jobletContainer = ((Node) targetConnection.getTarget()).getNodeContainer();
+                            // remove the old connection in the container
+                            jobletContainer.getInputs().remove(targetConnection);
+                        }
+                    }
+                }
+                ConnectionReconnectCommand cmd2 = new ConnectionReconnectCommand(targetConnection);
+                cmd2.setNewTarget(node);
+                execCommandStack(cmd2);
+
+                List<Object> nodeArgs = CreateComponentOnLinkHelper.getTargetArgs(targetConnection, node);
+                ConnectionCreateCommand nodeCmd = new ConnectionCreateCommand(node, targetConnector.getName(), nodeArgs, false);
+                nodeCmd.setTarget(originalTarget);
+                execCommandStack(nodeCmd);
                 if (node.getComponent().getName().equals("tMap")) {
                     CreateComponentOnLinkHelper.setupTMap(node);
                 }
-                if (targetNode.getComponent().getName().equals("tMap")) {
-                    CreateComponentOnLinkHelper.updateTMap(targetNode, targetConnection, node.getOutgoingConnections().get(0));
+                if (originalTarget.getComponent().getName().equals("tMap")) {
+                    CreateComponentOnLinkHelper
+                            .updateTMap(originalTarget, targetConnection, node.getOutgoingConnections().get(0));
                 }
-                targetNode.renameData(targetConnection.getName(), node.getOutgoingConnections().get(0).getName());
+                originalTarget.renameData(targetConnection.getName(), node.getOutgoingConnections().get(0).getName());
                 executed = true;
             }
         }
@@ -1587,7 +1716,18 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
                 }
             }
             ConnectionCreateCommand.setCreatingConnection(true);
-            connection.reconnect(connection.getSource(), node, EConnectionType.FLOW_MAIN);
+            EConnectionType reconnectNewInputStyle = connection.getLineStyle();
+            if (ConnectionManager.canConnectToTarget(connection.getSource(), originalTarget, node, connection.getLineStyle(),
+                    connection.getName(), targetConnector.getName())) {
+                reconnectNewInputStyle = ConnectionManager.getNewConnectionType();
+            }
+            if (reconnectNewInputStyle.equals(EConnectionType.FLOW_MAIN)) {
+                connection.reconnect(connection.getSource(), node, EConnectionType.FLOW_MAIN);
+            } else if (reconnectNewInputStyle.equals(EConnectionType.FLOW_MERGE)) {
+                connection.reconnect(connection.getSource(), node, EConnectionType.FLOW_MERGE);
+            } else if (reconnectNewInputStyle.equals(EConnectionType.FLOW_REF)) {
+                connection.reconnect(connection.getSource(), node, EConnectionType.FLOW_REF);
+            }
             INodeConnector nodeConnector = node.getConnectorFromName(targetConnector.getName());
             nodeConnector.setCurLinkNbInput(nodeConnector.getCurLinkNbInput() + 1);
             List<Object> nodeArgs = CreateComponentOnLinkHelper.getTargetArgs(connection, node);
@@ -1607,7 +1747,7 @@ public class TalendEditorDropTargetListener extends TemplateTransferDropTargetLi
      * @param name
      * @param node
      */
-    private void processSpecificDBTypeIfSameProduct(EDatabaseComponentName name, Node node) {
+    private void processSpecificDBTypeIfSameProduct(IComponentName name, Node node) {
         // process "Oracle with service name"
         if (name == EDatabaseComponentName.DBORACLESN) {
             IElementParameter p = node.getElementParameter("CONNECTION_TYPE"); //$NON-NLS-1$

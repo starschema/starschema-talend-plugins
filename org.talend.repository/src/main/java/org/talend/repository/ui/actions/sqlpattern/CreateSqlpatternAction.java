@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -27,15 +27,14 @@ import org.talend.commons.ui.runtime.exception.MessageBoxExceptionHandler;
 import org.talend.commons.ui.runtime.image.ECoreImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.ui.images.OverlayImageProvider;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.model.IProxyRepositoryFactory;
+import org.talend.repository.model.IRepositoryNode.EProperties;
 import org.talend.repository.model.RepositoryConstants;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
-import org.talend.repository.model.IRepositoryNode.EProperties;
 import org.talend.repository.ui.wizards.sqlpattern.NewSqlpatternWizard;
 
 /**
@@ -116,6 +115,7 @@ public class CreateSqlpatternAction extends AbstractSqlpatternAction {
      * 
      * @see org.eclipse.jface.action.Action#run()
      */
+    @Override
     protected void doRun() {
         RepositoryNode sqlPatternNode = null;
         if (!isFromSqlPatternComposite) {
@@ -150,12 +150,6 @@ public class CreateSqlpatternAction extends AbstractSqlpatternAction {
         WizardDialog dlg = new WizardDialog(Display.getCurrent().getActiveShell(), routineWizard);
 
         if (dlg.open() == Window.OK) {
-            if (isFromSqlPatternComposite) {
-                // do nothing
-            } else {
-                RepositoryManager.refreshCreatedNode(ERepositoryObjectType.SQLPATTERNS);
-            }
-
             try {
                 openSQLPatternEditor(routineWizard.getSQLPattern(), false);
             } catch (PartInitException e) {

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,6 +13,7 @@
 package org.talend.core.model.components;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.talend.core.model.general.ModuleNeeded;
@@ -54,17 +55,13 @@ public interface IComponent {
 
     public String getTranslatedFamilyName();
 
-    public ImageDescriptor getIcon32();
+    public void setImageRegistry(Map<String, ImageDescriptor> imageRegistry);
 
-    public void setIcon32(ImageDescriptor icon32);
+    public ImageDescriptor getIcon32();
 
     public ImageDescriptor getIcon24();
 
-    public void setIcon24(ImageDescriptor icon24);
-
     public ImageDescriptor getIcon16();
-
-    public void setIcon16(ImageDescriptor icon16);
 
     public List<? extends IElementParameter> createElementParameters(INode node);
 
@@ -76,7 +73,12 @@ public interface IComponent {
 
     public boolean isMultiplyingOutputs();
 
-    public String getPluginFullName();
+    /**
+     * Should only be set for external components, for others should be null.
+     * 
+     * @return
+     */
+    public String getPluginExtension();
 
     public boolean isSchemaAutoPropagated();
 
@@ -137,4 +139,6 @@ public interface IComponent {
     public String getPaletteType();
 
     public void setPaletteType(String paletteType);
+
+    public String getRepositoryType();
 }

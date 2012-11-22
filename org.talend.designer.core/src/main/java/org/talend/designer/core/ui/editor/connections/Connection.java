@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -51,7 +51,7 @@ import org.talend.repository.model.ComponentsFactoryProvider;
 /**
  * Class that define the connection. It's the model part of the Gef element <br/>
  * 
- * $Id: Connection.java 62412 2011-06-14 17:52:37Z rdubois $
+ * $Id: Connection.java 84520 2012-06-01 10:33:18Z hcyi $
  * 
  */
 public class Connection extends Element implements IConnection, IPerformance {
@@ -223,8 +223,8 @@ public class Connection extends Element implements IConnection, IPerformance {
             param.setCategory(EComponentCategory.BASIC);
             param.setName(EParameterName.ROUTETYPE.getName());
             param.setDisplayName(EParameterName.ROUTETYPE.getDisplayName());
-            String[] strList = { "constant", "el", "groovy", "header", "javascript", "josql", "jxpath", "mvel", "ognl", "php", "property", "python", "ruby", "simple",
-                    "spel", "sql", "xpath", "xquery" };
+            String[] strList = { "constant", "el", "groovy", "header", "javaScript", "jxpath", "mvel", "ognl", "php", "property",
+                    "python", "ruby", "simple", "spel", "sql", "xpath", "xquery" };
             param.setListItemsValue(strList); //$NON-NLS-1$
             param.setListItemsDisplayName(strList);
             param.setListItemsDisplayCodeName(strList);
@@ -735,6 +735,21 @@ public class Connection extends Element implements IConnection, IPerformance {
                 labelText += " (order:" + outputId + ")"; //$NON-NLS-1$ //$NON-NLS-2$
             }
             updateName = true;
+        } else if (getLineStyle().equals(EConnectionType.ROUTE)/*
+                                                                * if there are more than one ROUTE connections exist
+                                                                * then show the orders of them &&
+                                                                * (!sourceNodeConnector.getLinkName().equals(name ))
+                                                                */) {
+            if (getUniqueName() != null) {
+                String linkName = getUniqueName();
+                labelText = linkName;
+                this.setName(linkName);
+            }
+            //labelText = labelText + " (" + name + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+            if (outputId >= 0) {
+                labelText += " (order:" + outputId + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+            }
+            updateName = true;
         } else if (getLineStyle().equals(EConnectionType.ITERATE)) {
             IElementParameter enableParam = this.getElementParameter(ENABLE_PARALLEL);
             IElementParameter numberParam = this.getElementParameter(NUMBER_PARALLEL);
@@ -754,9 +769,8 @@ public class Connection extends Element implements IConnection, IPerformance {
                 labelText = linkName + " (order:" + outputId + ")"; //$NON-NLS-1$ //$NON-NLS-2$
             }
             updateName = true;
-        } else if (getLineStyle().equals(EConnectionType.ROUTE) || getLineStyle().equals(EConnectionType.ROUTE_ENDBLOCK)
-                || getLineStyle().equals(EConnectionType.ROUTE_TRY) || getLineStyle().equals(EConnectionType.ROUTE_FINALLY)
-                || getLineStyle().equals(EConnectionType.ROUTE_OTHER)) {
+        } else if (getLineStyle().equals(EConnectionType.ROUTE_ENDBLOCK) || getLineStyle().equals(EConnectionType.ROUTE_TRY)
+                || getLineStyle().equals(EConnectionType.ROUTE_FINALLY) || getLineStyle().equals(EConnectionType.ROUTE_OTHER)) {
             String linkName = sourceNodeConnector.getLinkName();
             if (getUniqueName() != null) {
                 linkName = getUniqueName();
@@ -949,7 +963,9 @@ public class Connection extends Element implements IConnection, IPerformance {
                 if (lineStyle.hasConnectionCategory(IConnectionCategory.CUSTOM_NAME)
                         || isInTypes(lineStyle, EConnectionType.ITERATE, EConnectionType.ON_COMPONENT_OK,
                                 EConnectionType.ON_COMPONENT_ERROR, EConnectionType.ON_SUBJOB_OK,
-                                EConnectionType.ON_SUBJOB_ERROR, EConnectionType.RUN_IF)) {
+                                EConnectionType.ON_SUBJOB_ERROR, EConnectionType.RUN_IF, EConnectionType.ROUTE,
+                                EConnectionType.ROUTE_TRY, EConnectionType.ROUTE_CATCH, EConnectionType.ROUTE_FINALLY,
+                                EConnectionType.ROUTE_ENDBLOCK, EConnectionType.ROUTE_WHEN, EConnectionType.ROUTE_OTHER)) {
                     source.getProcess().removeUniqueConnectionName(uniqueName);
                 }
             }
@@ -966,6 +982,15 @@ public class Connection extends Element implements IConnection, IPerformance {
                 }
             }
         }
+    }
+
+    /**
+     * Sets the isConnected.
+     * 
+     * @param isConnected the isConnected to set
+     */
+    public void setConnected(boolean isConnected) {
+        this.isConnected = isConnected;
     }
 
     /**
@@ -1113,6 +1138,10 @@ public class Connection extends Element implements IConnection, IPerformance {
                         if (source.getMetadataList().size() > 0) {
                             table = source.getMetadataList().get(0);
                         }
+                        // MOD by zshen when call the TGenkeyViewAction from tMatchGroup node which have tMap node
+                        // before it there only case about one output then need get metadata as follow:
+                    } else if (table == null && source.getMetadataList() != null && source.getMetadataList().size() == 1) {
+                        table = source.getMetadataFromConnector(sourceNodeConnector.getName());
                     }
                     return table;
                 } else {

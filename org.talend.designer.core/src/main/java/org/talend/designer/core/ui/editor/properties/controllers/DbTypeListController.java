@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -39,7 +39,7 @@ import org.talend.core.model.metadata.ColumnNameChanged;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
 import org.talend.core.model.metadata.MetadataTalendType;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.process.EParameterFieldType;
@@ -119,6 +119,7 @@ public class DbTypeListController extends AbstractElementPropertySectionControll
 
     IControlCreator cbCtrl = new IControlCreator() {
 
+        @Override
         public Control createControl(final Composite parent, final int style) {
             CCombo cb = new CCombo(parent, style);
             return cb;
@@ -227,12 +228,14 @@ public class DbTypeListController extends AbstractElementPropertySectionControll
      * 
      * @see java.beans.PropertyChangeListener#propertyChange(java.beans.PropertyChangeEvent)
      */
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // TODO Auto-generated method stub
     }
 
     SelectionListener listenerSelection = new SelectionAdapter() {
 
+        @Override
         public void widgetSelected(SelectionEvent event) {
             // updateRepositoryList();
             // dynamicProperty.updateRepositoryList();
@@ -275,7 +278,7 @@ public class DbTypeListController extends AbstractElementPropertySectionControll
 
     public static void updateDbTypeList(INode node, List<ColumnNameChanged> columnsChanged) {
         String dbmsId = getCurrentDbms(node);
-        if (dbmsId == null) {
+        if (dbmsId == null || "".equals(dbmsId)) {
             return;
         }
         String[] columnNameList = MetadataTalendType.getDbTypes(dbmsId);
@@ -290,10 +293,10 @@ public class DbTypeListController extends AbstractElementPropertySectionControll
                 }
             }
             if (param.getFieldType() == EParameterFieldType.TABLE) {
-                Object[] itemsValue = (Object[]) param.getListItemsValue();
-                for (int j = 0; j < itemsValue.length; j++) {
-                    if (itemsValue[j] instanceof IElementParameter) {
-                        IElementParameter tmpParam = (IElementParameter) itemsValue[j];
+                Object[] itemsValue = param.getListItemsValue();
+                for (Object element : itemsValue) {
+                    if (element instanceof IElementParameter) {
+                        IElementParameter tmpParam = (IElementParameter) element;
                         if (tmpParam.getFieldType() == EParameterFieldType.DBTYPE_LIST) {
                             tmpParam.setListItemsDisplayCodeName(columnNameList);
                             tmpParam.setListItemsDisplayName(columnNameList);
@@ -331,7 +334,7 @@ public class DbTypeListController extends AbstractElementPropertySectionControll
             if (schemaType.equals("REPOSITORY")) { //$NON-NLS-1$
                 // repository mode
                 String metaRepositoryName = (String) node.getElementParameter("REPOSITORY_SCHEMA_TYPE").getValue(); //$NON-NLS-1$
-                Connection connection = MetadataTool.getConnectionFromRepository(metaRepositoryName);
+                Connection connection = MetadataToolHelper.getConnectionFromRepository(metaRepositoryName);
                 if (connection instanceof DatabaseConnection) {
                     // bug 13200
                     if (((DatabaseConnection) connection).getDatabaseType().equals(

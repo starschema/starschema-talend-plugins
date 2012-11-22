@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0">
 
-	<!-- Talend Job OSGi blueprint descriptor -->
+	<!-- Talend Route OSGi blueprint descriptor -->
 
 	<bean id="job" class="@JOBCLASSNAME@">
 		<property name="bundleContext" ref="blueprintBundleContext" />
+
+		<!-- ESB Features For CXF-->
+		@ESBSAMFeatureProperty@
 	</bean>
 
-	<service ref="job" interface="routines.system.api.TalendJob">
+	<!-- ESB Features Reference For CXF-->
+	@ESBSAMFeaturePropertyRef@
+
+	<service ref="job">
+		<interfaces>
+			<value>routines.system.api.TalendJob</value>
+			<value>routines.system.api.TalendESBRoute</value>
+		</interfaces>
 		<service-properties>
 			<entry key="name" value="@JOBNAME@" />
 			<entry key="type" value="@TYPE@" />

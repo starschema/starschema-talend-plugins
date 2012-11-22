@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -92,6 +92,11 @@ public class JobContext implements IContext, Cloneable {
         return true;
     }
 
+    /**
+     * Commented by Marvin Wang on Mar.2, 2012, the user who invokes the method should notice that if the
+     * <code>JobContext</code> has more than one <code>ContextParameter</code>s which names are same, this case will
+     * cause the wrong return value. Suggest use {@link #getContextParameter(String, String)}
+     */
     public IContextParameter getContextParameter(String parameterName) {
         for (IContextParameter contextParam : contextParameterList) {
             if (contextParam.getName() != null && contextParam.getName().equals(parameterName)) {
@@ -99,6 +104,59 @@ public class JobContext implements IContext, Cloneable {
             }
         }
         return null;
+    }
+
+    /**
+     * Added by Marvin Wang on Mar.2, 2012. To get an existing <code>ContextParameter</code>, do not suggest to use the
+     * method {@link #getContextParameter(String)} to get an existing <code>ContextParameter</code>. Note that the given
+     * parameters are not <code>null</code>.
+     * 
+     * @param sourceId Not <code>Null</code>
+     * @param paraName Not <code>Null</code>
+     * @return
+     */
+    public IContextParameter getContextParameter(String sourceId, String paraName) {
+        if (sourceId == null || paraName == null)
+            return null;
+        if (contextParameterList != null && contextParameterList.size() > 0) {
+            for (IContextParameter contextParam : contextParameterList) {
+                String tempSouceId = contextParam.getSource();
+                String tempParaName = contextParam.getName();
+                if (sourceId.equals(tempSouceId) && paraName.equals(tempParaName))
+                    return contextParam;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Thru the given name to get the <code>JobContextParameter</code>s which all have the same parameter name. Added by
+     * Marvin Wang on Mar.6, 2012.
+     * 
+     * @param paraName
+     * @return
+     */
+    public List<IContextParameter> getSameNameContextParameters(String paraName) {
+        List<IContextParameter> list = new ArrayList<IContextParameter>();
+        if (contextParameterList != null && contextParameterList.size() > 0) {
+            for (IContextParameter contextParam : contextParameterList) {
+                String tempParaName = contextParam.getName();
+                if (tempParaName.equals(paraName))
+                    list.add(contextParam);
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Returns the size of <code>JobContextParameter</code>s which all have the same parameter name. See
+     * {@link #getSameNameContextParameters(String)}. Added by Marvin Wang on Mar.6, 2012.
+     * 
+     * @param paraName
+     * @return
+     */
+    public int getSameNameContextParameterSize(String paraName) {
+        return getSameNameContextParameters(paraName).size();
     }
 
     @Override

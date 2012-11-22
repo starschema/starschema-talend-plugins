@@ -2,25 +2,32 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Designer Plug-in
 Bundle-SymbolicName: org.talend.designer.core;singleton:=true
-Bundle-Version: 2.2.0.qualifier
+Bundle-Version: 5.2.0.M1_r86684
 Bundle-Localization: plugin
 Bundle-ClassPath: .
 Bundle-Activator: org.talend.designer.core.DesignerPlugin
 Require-Bundle: org.talend.model,
  org.eclipse.core.runtime.compatibility,
+ org.eclipse.jface.text,
  org.eclipse.ui.ide,
+ org.eclipse.ui.editors,
+ org.eclipse.emf.common.ui,
+ org.eclipse.emf.edit,
+ org.eclipse.emf.ecore.xmi,
+ org.eclipse.ui.views.properties.tabbed,
+ org.eclipse.gef,
  org.talend.metadata.managment,
  org.talend.core,
  org.eclipse.jdt.ui,
  org.eclipse.jdt.core,
+ org.eclipse.jdt.debug,
+ org.eclipse.jdt.core.manipulation,
  org.eclipse.ltk.core.refactoring,
  org.talend.librariesmanager,
  com.ibm.icu,
  org.eclipse.debug.ui,
  org.apache.axis,
- org.eclipse.gmf.runtime.diagram.ui.properties,
- org.eclipse.jdt.debug,
- org.eclipse.gmf.runtime.diagram.ui.resources.editor.ide,
+ org.eclipse.ui.workbench,
  org.eclipse.ui.intro,
  org.eclipse.help,
  org.talend.core.repository,
@@ -30,8 +37,8 @@ Require-Bundle: org.talend.model,
  org.talend.libraries.apache,
  org.talend.libraries.dom4j-jaxen,
  org.talend.libraries.uniserv;resolution:=optional,
- org.eclipse.jdt.core.manipulation,
- org.eclipse.update.scheduler
+ org.eclipse.update.scheduler,
+ org.eclipse.ui.workbench.texteditor
 Eclipse-LazyStart: true
 Plugin-Class: org.talend.designer.core.DesignerPlugin
 Export-Package: org.talend.designer.core;
@@ -55,6 +62,7 @@ Export-Package: org.talend.designer.core;
  org.talend.designer.core.model.process,
  org.talend.designer.core.model.process.jobsettings,
  org.talend.designer.core.model.process.statsandlogs,
+ org.talend.designer.core.repository,
  org.talend.designer.core.runprocess,
  org.talend.designer.core.ui;
   uses:="org.eclipse.core.runtime,
@@ -201,5 +209,6 @@ Export-Package: org.talend.designer.core;
  org.talend.designer.core.ui.views.properties,
  org.talend.designer.core.ui.views.statsandlogs,
  org.talend.designer.core.ui.wizards,
- org.talend.designer.core.utils
+ org.talend.designer.core.utils,
+ org.talend.sqlbuilder.repository.utility
 Bundle-Vendor: .Talend SA.

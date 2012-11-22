@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -41,14 +41,9 @@ import org.talend.designer.core.model.components.EmfComponent;
 import org.talend.designer.core.model.process.jobsettings.JobSettingsConstants;
 import org.talend.designer.core.ui.AbstractMultiPageTalendEditor;
 import org.talend.designer.core.ui.editor.cmd.ChangeValuesFromRepository;
-import org.talend.designer.core.ui.preferences.ImplicitContextLoadPreferencePage;
+import org.talend.designer.core.ui.views.statsandlogs.StatsAndLogsViewHelper;
 import org.talend.repository.UpdateRepositoryUtils;
 import org.talend.repository.model.IProxyRepositoryFactory;
-import org.talend.repository.model.IRepositoryNode;
-import org.talend.repository.model.IRepositoryNode.ENodeType;
-import org.talend.repository.model.RepositoryNode;
-import org.talend.repository.ui.views.RepositoryContentProvider;
-import org.talend.repository.ui.views.RepositoryView;
 
 /**
  * DOC hcw class global comment. Detailled comment
@@ -56,37 +51,6 @@ import org.talend.repository.ui.views.RepositoryView;
 public class ImplicitContextLoadHelper {
 
     private static final IPreferenceStore PREFERENCE_STORE = DesignerPlugin.getDefault().getPreferenceStore();
-
-    public static ConnectionItem findConnectionItemByLabel(String connectionLabel) {
-        RepositoryContentProvider contentProvider = (RepositoryContentProvider) RepositoryView.show().getViewer()
-                .getContentProvider();
-        RepositoryNode repositoryNode = contentProvider.getMetadataConNode();
-
-        return findConnectionItemByLabel(contentProvider, repositoryNode, connectionLabel);
-    }
-
-    public static ConnectionItem findConnectionItemByLabel(RepositoryContentProvider contentProvider,
-            RepositoryNode repositoryNode, String connectionLabel) {
-
-        ConnectionItem connectionItem = null;
-
-        if ((repositoryNode.getType() == ENodeType.SYSTEM_FOLDER || repositoryNode.getType() == ENodeType.SIMPLE_FOLDER)
-                && contentProvider.getChildren(repositoryNode).length > 0) {
-            for (IRepositoryNode node : repositoryNode.getChildren()) {
-                connectionItem = findConnectionItemByLabel(contentProvider, (RepositoryNode) node, connectionLabel);
-                if (connectionItem != null) {
-                    return connectionItem;
-                }
-            }
-        }
-
-        if (repositoryNode.getObject() != null && repositoryNode.getObject().getLabel().equals(connectionLabel)) {
-            return (ConnectionItem) repositoryNode.getObject().getProperty().getItem();
-        }
-
-        return connectionItem;
-
-    }
 
     public static String getRepositoryTypeLabel(ConnectionItem connectionItem) {
         if (connectionItem == null) {
@@ -320,7 +284,7 @@ public class ImplicitContextLoadHelper {
         PREFERENCE_STORE.setValue(languagePrefix + getExtraParameterName(EParameterName.REPOSITORY_PROPERTY_TYPE), itemId);
         if (item != null) {
             PREFERENCE_STORE.setValue(languagePrefix + getExtraParameterName(EParameterName.REPOSITORY_PROPERTY_TYPE)
-                    + ImplicitContextLoadPreferencePage.CONNECTION_ITEM_LABEL, item.getProperty().getLabel());
+                    + StatsAndLogsViewHelper.CONNECTION_ITEM_LABEL, item.getProperty().getLabel());
         }
     }
 

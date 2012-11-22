@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,8 +19,9 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.utils.RepositoryManagerHelper;
 import org.talend.repository.i18n.Messages;
-import org.talend.repository.ui.views.RepositoryView;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * A job selection dialog used for opening jobs.
@@ -65,11 +66,14 @@ public class OpenJobSelectionDialog extends RepositoryReviewDialog {
     @Override
     protected void buttonPressed(int buttonId) {
         if (SELECTINREPOSITORY == buttonId) {
-            IStructuredSelection selection = (IStructuredSelection) getRepositoryView().getViewer().getSelection();
+            IStructuredSelection selection = (IStructuredSelection) getRepositoryTreeViewer().getSelection();
             // RepositoryNode node = (RepositoryNode) selection.getFirstElement();
             //
             // RepositoryView.show().expand(node);
-            RepositoryView.show().getViewer().setSelection(selection, true);
+            final IRepositoryView repositoryView = RepositoryManagerHelper.findRepositoryView();
+            if (repositoryView != null) {
+                repositoryView.getViewer().setSelection(selection, true);
+            }
         } else {
             super.buttonPressed(buttonId);
         }
@@ -83,7 +87,7 @@ public class OpenJobSelectionDialog extends RepositoryReviewDialog {
     @Override
     protected Control createDialogArea(Composite parent) {
         Control control = super.createDialogArea(parent);
-        getRepositoryView().getViewer().addSelectionChangedListener(new ISelectionChangedListener() {
+        getRepositoryTreeViewer().addSelectionChangedListener(new ISelectionChangedListener() {
 
             public void selectionChanged(SelectionChangedEvent event) {
                 boolean highlightOKButton = isSelectionValid(event);

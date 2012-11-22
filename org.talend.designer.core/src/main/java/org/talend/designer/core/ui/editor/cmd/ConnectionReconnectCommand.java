@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -21,7 +21,7 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.ui.PlatformUI;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.process.EConnectionType;
 import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IConnectionCategory;
@@ -37,7 +37,7 @@ import org.talend.designer.core.ui.editor.process.Process;
 /**
  * Command that allows to change a connection to a new source or a new target. <br/>
  * 
- * $Id: ConnectionReconnectCommand.java 60172 2011-05-10 09:58:38Z hwang $
+ * $Id: ConnectionReconnectCommand.java 86388 2012-06-27 10:08:36Z hwang $
  * 
  */
 public class ConnectionReconnectCommand extends Command {
@@ -109,6 +109,7 @@ public class ConnectionReconnectCommand extends Command {
         newTarget = nodeTarget;
     }
 
+    @Override
     public boolean canExecute() {
         boolean canExecute = false;
         if (!connection.isActivate()) {
@@ -172,7 +173,7 @@ public class ConnectionReconnectCommand extends Command {
                 if (connector.getBaseSchema().equals(baseConnector)) {
                     IMetadataTable meta = newNode.getMetadataFromConnector(connector.getName());
                     meta.setComment(newSchema.getComment());
-                    MetadataTool.copyTable(newSchema, meta);
+                    MetadataToolHelper.copyTable(newSchema, meta);
                 }
             }
         }
@@ -183,6 +184,7 @@ public class ConnectionReconnectCommand extends Command {
      * 
      * @see org.eclipse.gef.commands.Command#execute()
      */
+    @Override
     public void execute() {
         metadataChanges.clear();
         if (newSource != null) {
@@ -265,7 +267,6 @@ public class ConnectionReconnectCommand extends Command {
             connector.setCurLinkNbInput(connector.getCurLinkNbInput() - 1);
             connector = newTarget.getConnectorFromType(newLineStyle);
             connector.setCurLinkNbInput(connector.getCurLinkNbInput() + 1);
-
             connection.reconnect(oldSource, newTarget, newLineStyle);
             connection.updateName();
 
@@ -308,6 +309,7 @@ public class ConnectionReconnectCommand extends Command {
         }
     }
 
+    @Override
     public void undo() {
         if (newSource != null) {
             INodeConnector connector = oldSource.getConnectorFromName(connectorName);

@@ -47,7 +47,12 @@ String functionName = ElementParameterParser.getValue(node, "__SAP_FUNCTION__");
 String sapOutputDirectory = ElementParameterParser.getValue(node, "__SAP_OUTPUT_DIRECTORY__");
 String plsapInputDirectory = ElementParameterParser.getValue(node, "__PLSAP_INPUT_DIRECTORY__");
 String whereCondition = ElementParameterParser.getValue(node, "__WHERE_CONDITION__");
+String ftpUser = ElementParameterParser.getValue(node, "__FTP_USER__");
+String ftpPwd = ElementParameterParser.getValue(node, "__FTP_PWD__");
+String ftpAddr = ElementParameterParser.getValue(node, "__FTP_ADDR__");
 boolean useCompression = ("true").equals(ElementParameterParser.getValue(node,"__COMPRESSION__"));
+boolean ignoreErrors = ("true").equals(ElementParameterParser.getValue(node,"__IGNORE_ERRORS__"));
+boolean useFtp = ("true").equals(ElementParameterParser.getValue(node,"__USE_FTP__"));
 
 boolean useExistingConn = ("true").equals(ElementParameterParser.getValue(node,"__USE_EXISTING_CONNECTION__"));
 String connection = ElementParameterParser.getValue(node,"__CONNECTION__");
@@ -113,6 +118,17 @@ try {
 	function_<%=cid %>.getImportParameterList().setValue( "TARGET", <%=sapOutputDirectory %> );
 	function_<%=cid %>.getImportParameterList().setValue( "FILE_NAME", fileNameBase_<%=cid%> );
 
+<% if ( useFtp  && ! functionName.equals( "Z_PLSAP_RFC") )
+{ %>
+	// FTP mode was selected
+	function_<%=cid %>.getImportParameterList().setValue( "MODE", "FTP" );
+	function_<%=cid %>.getImportParameterList().setValue( "FTP_USER", <%= ftpUser %> );
+	function_<%=cid %>.getImportParameterList().setValue( "FTP_PWD", <%= ftpPwd %>  );
+	function_<%=cid %>.getImportParameterList().setValue( "FTP_ADDR", <%= ftpAddr %> );
+<%		
+} // useftp
+%> 	
+	
 	com.sap.conn.jco.JCoTable fields_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("TABLE_FIELD");
 <%
 }
@@ -154,7 +170,7 @@ for(IConnection conn : outConns){
 <% if ( whereCondition.length() > 2 ) { %>
 	com.sap.conn.jco.JCoTable where_<%=cid %> = function_<%=cid %>.getTableParameterList().getTable("OPTIONS");
 	
-	String [] whereTokens_<%=cid %> = <%=whereCondition%>.split("\\s");
+	String [] whereTokens_<%=cid %> = (<%=whereCondition%>).split("\\s");
 	String whereLine_<%=cid %> = ""; 
 		
 	for( int i = 0; i < whereTokens_<%=cid %>.length ; i++ ) {
@@ -251,6 +267,9 @@ for(IConnection conn : outConns){
 <%			
 			} else if ( javaType == JavaTypesManager.DATE) {
 %>
+			<% if ( ignoreErrors  ) { %>
+				try { 
+			<% } %>
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getDate(
 					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
 					, "yyyyMMdd"
@@ -262,19 +281,34 @@ for(IConnection conn : outConns){
 						<%=conn.getName() %>.<%=column.getLabel() %> = dateFormat.parse("01/01/1900");
 					}	
 					<% } %>
+			<% if (  ignoreErrors  ) { %>
+				} catch( Exception e) { continue; } 
+			<% } %>						
 
 <%
   			} else if ( javaType == JavaTypesManager.INTEGER) {
 %>
+			<% if ( ignoreErrors  ) { %>
+				try { 
+			<% } %>
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getInt(
 					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
 					);
+			<% if ( ignoreErrors  ) { %>
+				} catch( Exception e) { continue; } 
+			<% } %>						
 <%
 			} else if ( javaType == JavaTypesManager.DOUBLE) {
 %>
+			<% if ( ignoreErrors  ) { %>
+				try { 
+			<% } %>
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getDouble(
 					fieldToCol<%=cid%>.get( "<%= tableName.replace("\"","") + "_" + column.getLabel()%>" )
 					);
+			<% if ( ignoreErrors  ) { %>
+				} catch( Exception e) { continue; } 
+			<% } %>					
 <%			} else {  %>
 				System.out.println( "Unknown type: " + <%= javaType.toString() %> );
 				<%=conn.getName() %>.<%=column.getLabel() %> = row.getString(

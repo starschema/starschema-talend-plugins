@@ -2,19 +2,24 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Sap
 Bundle-SymbolicName: org.talend.repository.sapwizard;singleton:=true
-Bundle-Version: 1.0.0.qualifier
+Bundle-Version: 5.2.0.M1_r86684
 Bundle-Activator: org.talend.repository.sapwizard.SAPPlugin
 Require-Bundle: org.eclipse.ui.workbench,
+ org.eclipse.ui.navigator,
  org.eclipse.xsd,
  org.talend.model,
  org.talend.commons.ui,
  org.talend.core.runtime,
  org.talend.metadata.managment.ui,
  org.talend.commons.runtime,
- org.talend.core;bundle-version="2.2.0",
- org.talend.core.repository;bundle-version="1.0.0",
- org.talend.repository;bundle-version="2.2.0"
-Bundle-ActivationPolicy: lazy
+ org.talend.core,
+ org.talend.core.repository,
+ org.talend.repository,
+ org.talend.designer.core,
+ org.talend.repository.metadata,
+ org.eclipse.gef
+Eclipse-BundleShape: dir
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ClassPath: .,
  sapjco3.jar
+Bundle-ActivationPolicy: lazy

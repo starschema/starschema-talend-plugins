@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,10 +38,12 @@ import org.talend.commons.ui.swt.dialogs.ModelSelectionDialog;
 import org.talend.commons.ui.swt.dialogs.ModelSelectionDialog.EEditSelection;
 import org.talend.commons.ui.swt.dialogs.ModelSelectionDialog.ESelectionType;
 import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.IService;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.metadata.MetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.metadata.builder.ConvertionHelper;
 import org.talend.core.model.process.EConnectionType;
 import org.talend.core.model.process.EParameterFieldType;
@@ -60,6 +62,7 @@ import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.properties.tab.IDynamicProperty;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
+import org.talend.core.ui.ISAPProviderService;
 import org.talend.core.ui.metadata.dialog.MetadataDialog;
 import org.talend.core.ui.metadata.dialog.MetadataDialogForMerge;
 import org.talend.cwm.helper.ConnectionHelper;
@@ -75,13 +78,12 @@ import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.utils.SAPParametersUtils;
 import org.talend.designer.core.utils.ValidationRulesUtil;
 import org.talend.designer.runprocess.ItemCacheManager;
+import org.talend.repository.model.IMetadataService;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.IRepositoryNode.EProperties;
 import org.talend.repository.model.RepositoryNode;
 import org.talend.repository.model.RepositoryNodeUtilities;
-import org.talend.repository.ui.actions.metadata.AbstractCreateTableAction;
-import org.talend.repository.ui.actions.metadata.CreateTableAction;
 import org.talend.repository.ui.dialog.RepositoryReviewDialog;
 
 /**
@@ -254,7 +256,7 @@ public class SchemaTypeController extends AbstractRepositoryController {
 
             }
 
-            if (top == 0 && node.getComponent().getName().equals(TUNISERVBTGENERIC)) { //$NON-NLS-1$
+            if (top == 0 && node.getComponent().getName().equals(TUNISERVBTGENERIC)) {
                 Button newButton = null;
                 if (resetBtn != null) {
                     newButton = resetBtn;
@@ -262,7 +264,7 @@ public class SchemaTypeController extends AbstractRepositoryController {
                     newButton = btn;
                 }
                 Button retrieveSchemaButton = createAdditionalButton(subComposite, newButton, btnSize, param, RETRIEVE_SCHEMA,
-                        RETRIEVE_SCHEMA, top); //$NON-NLS-1$ //$NON-NLS-2$
+                        RETRIEVE_SCHEMA, top);
                 retrieveSchemaButton.setData(NAME, RETRIEVE_SCHEMA);
 
                 lastControlUsed = retrieveSchemaButton;
@@ -308,6 +310,7 @@ public class SchemaTypeController extends AbstractRepositoryController {
         } else {
             data.top = new FormAttachment(0, top);
         }
+
         data.height = STANDARD_HEIGHT - 2;
         btn.setLayoutData(data);
 
@@ -484,7 +487,7 @@ public class SchemaTypeController extends AbstractRepositoryController {
         String fullParamName = paramName + ":" + getRepositoryChoiceParamName(); //$NON-NLS-1$
         IElementParameter schemaParam = elem.getElementParameter(fullParamName);
         String schemaId = (String) schemaParam.getValue();
-        org.talend.core.model.metadata.builder.connection.Connection connection = MetadataTool
+        org.talend.core.model.metadata.builder.connection.Connection connection = MetadataToolHelper
                 .getConnectionFromRepository(schemaId);
         String[] names = schemaId.split(" - "); //$NON-NLS-1$
 
@@ -500,13 +503,18 @@ public class SchemaTypeController extends AbstractRepositoryController {
         RepositoryNode repositoryNode = RepositoryNodeUtilities.getRepositoryNode(node);
         RepositoryNode metadataNode = null;
 
-        metadataNode = findRepositoryNode(names[1], repositoryNode);
-        if (metadataNode != null) {
-            AbstractCreateTableAction action = new CreateTableAction(metadataNode);
-            action.setAvoidUnloadResources(true);
-            action.run();
-        }
-
+        metadataNode = findRepositoryNode(names[1], names[0], repositoryNode);     
+		if (metadataNode != null) {
+			final IMetadataService metadataService = CorePlugin.getDefault().getMetadataService();
+			if (metadataService != null) {
+				if (metadataNode.getObjectType() == ERepositoryObjectType.METADATA_SAP_FUNCTION) {
+					IService service = GlobalServiceRegister.getDefault().getService(ISAPProviderService.class);
+					((IMetadataService) service).runCreateTableAction(metadataNode);
+				} else {
+					metadataService.runCreateTableAction(metadataNode);
+				}
+			}
+		}
     }
 
     /**
@@ -516,14 +524,15 @@ public class SchemaTypeController extends AbstractRepositoryController {
      * @param root
      * @return
      */
-    private RepositoryNode findRepositoryNode(String label, RepositoryNode root) {
+    private RepositoryNode findRepositoryNode(String label, String id, RepositoryNode root) {
         String name = (String) root.getProperties(EProperties.LABEL);
+        String rootID = root.getId();
         RepositoryNode toReturn = null;
-        if (label.equals(name)) {
+        if (label.equals(name) && !id.equals(rootID)) {
             toReturn = root;
         } else {
             for (IRepositoryNode node : root.getChildren()) {
-                toReturn = findRepositoryNode(label, (RepositoryNode) node);
+                toReturn = findRepositoryNode(label, id, (RepositoryNode) node);
                 if (toReturn != null) {
                     break;
                 }
@@ -765,12 +774,11 @@ public class SchemaTypeController extends AbstractRepositoryController {
                                     Map<IMetadataTable, Boolean> oneInput = inputInfos.get(inputNode);
                                     inputMetaCopy = (IMetadataTable) oneInput.keySet().toArray()[0];
                                     if (count == 0) {
-                                        changeMetadataCommand = new ChangeMetadataCommand(node, param, (Node) inputNode,
-                                                inputNode.getMetadataList().get(0), inputMetaCopy, originaleOutputTable,
-                                                outputMetaCopy);
+                                        changeMetadataCommand = new ChangeMetadataCommand(node, param, inputNode, inputNode
+                                                .getMetadataList().get(0), inputMetaCopy, originaleOutputTable, outputMetaCopy);
                                     } else {
                                         changeMetadataCommand = changeMetadataCommand.chain(new ChangeMetadataCommand(node,
-                                                param, (Node) inputNode, inputNode.getMetadataList().get(0), inputMetaCopy,
+                                                param, inputNode, inputNode.getMetadataList().get(0), inputMetaCopy,
                                                 originaleOutputTable, outputMetaCopy));
                                     }
                                     count++;
@@ -869,20 +877,24 @@ public class SchemaTypeController extends AbstractRepositoryController {
             IElementParameter schemaParam = elem.getElementParameter(paramName);
 
             ERepositoryObjectType type = ERepositoryObjectType.METADATA_CON_TABLE;
+            String filter = schemaParam.getFilter();
             if (elem instanceof Node) {
                 Node sapNode = (Node) elem;
                 if (sapNode.getComponent().getName().startsWith("tSAP")) { //$NON-NLS-1$
                     type = ERepositoryObjectType.METADATA_SAP_FUNCTION;
+                } else if (sapNode.getComponent().getName().startsWith("tESB")) { //$NON-NLS-1$
+                    filter = ERepositoryObjectType.SERVICESOPERATION.getType();
                 }
             }
 
-            RepositoryReviewDialog dialog = new RepositoryReviewDialog(button.getShell(), type, schemaParam.getFilter());
+            RepositoryReviewDialog dialog = new RepositoryReviewDialog(button.getShell(), type, filter);
             if (dialog.open() == RepositoryReviewDialog.OK) {
                 RepositoryNode node = dialog.getResult();
                 while (node.getObject().getProperty().getItem() == null
                         || (!(node.getObject().getProperty().getItem() instanceof ConnectionItem))) {
                     node = node.getParent();
                 }
+
                 String id = dialog.getResult().getObject().getProperty().getId();
                 String name = dialog.getResult().getObject().getLabel();
                 String value = id + " - " + name; //$NON-NLS-1$
@@ -891,8 +903,8 @@ public class SchemaTypeController extends AbstractRepositoryController {
 
                 org.talend.core.model.metadata.builder.connection.Connection connection = null;
                 if (elem instanceof Node) {
-                    IMetadataTable repositoryMetadata = MetadataTool.getMetadataFromRepository(value);
-                    connection = MetadataTool.getConnectionFromRepository(value);
+                    IMetadataTable repositoryMetadata = MetadataToolHelper.getMetadataFromRepository(value);
+                    connection = MetadataToolHelper.getConnectionFromRepository(value);
 
                     // For SAP see bug 5423
                     if (((Node) elem).getUniqueName().startsWith("tSAP")) { //$NON-NLS-1$
@@ -909,8 +921,9 @@ public class SchemaTypeController extends AbstractRepositoryController {
                     if (currentValRuleObj != null) {
                         List<IRepositoryViewObject> valRuleObjs = ValidationRulesUtil.getRelatedValidationRuleObjs(value);
                         if (!ValidationRulesUtil.isCurrentValRuleObjInList(valRuleObjs, currentValRuleObj)) {
-                            if (!MessageDialog.openConfirm(button.getShell(), Messages.getString("SchemaTypeController.0"), //$NON-NLS-1$
-                                    Messages.getString("SchemaTypeController.3"))) { //$NON-NLS-1$
+                            if (!MessageDialog.openConfirm(button.getShell(),
+                                    Messages.getString("SchemaTypeController.validationrule.title.confirm"), //$NON-NLS-1$
+                                    Messages.getString("SchemaTypeController.validationrule.selectMetadataMsg"))) { //$NON-NLS-1$
                                 return null;
                             } else {
                                 isValRulesLost = true;
@@ -924,15 +937,15 @@ public class SchemaTypeController extends AbstractRepositoryController {
                     if (switchParam != null) {
                         switchParam.setValue(Boolean.FALSE);
                     }
+
                     CompoundCommand cc = new CompoundCommand();
                     RepositoryChangeMetadataCommand changeMetadataCommand = new RepositoryChangeMetadataCommand((Node) elem,
-                            fullParamName, value, repositoryMetadata, null);
+                            fullParamName, value, repositoryMetadata, null, null);
                     changeMetadataCommand.setConnection(connection);
                     cc.add(changeMetadataCommand);
 
                     if (isValRulesLost) {
-                        cc.add(new PropertyChangeCommand(elem, EParameterName.VALIDATION_RULES.getName(), false));
-                        cc.add(new PropertyChangeCommand(elem, EParameterName.REPOSITORY_VALIDATION_RULE_TYPE.getName(), "")); //$NON-NLS-1$
+                        ValidationRulesUtil.appendRemoveValidationRuleCommands(cc, elem);
                     }
 
                     return cc;
@@ -963,6 +976,14 @@ public class SchemaTypeController extends AbstractRepositoryController {
         }
 
         return null;
+    }
+
+    private RepositoryNode getTopParent(RepositoryNode node) {
+        node = node.getParent();
+        if (node.getObject() == null) {
+            node = getTopParent(node);
+        }
+        return node;
     }
 
     private IMetadataTable getMetadataTableFromXml(INode node) {
@@ -997,20 +1018,28 @@ public class SchemaTypeController extends AbstractRepositoryController {
             }
         }
 
+        // if change to build-in, unuse the validation rule if the component has.
+        boolean isValRulesLost = false;
+        IRepositoryViewObject currentValRuleObj = ValidationRulesUtil.getCurrentValidationRuleObjs(elem);
+        if (value.equals(EmfComponent.BUILTIN) && currentValRuleObj != null) {
+            if (!MessageDialog.openConfirm(combo.getShell(),
+                    Messages.getString("SchemaTypeController.validationrule.title.confirm"), //$NON-NLS-1$
+                    Messages.getString("SchemaTypeController.validationrule.selectBuildInMsg"))) { //$NON-NLS-1$
+                return null;
+            } else {
+                isValRulesLost = true;
+            }
+        }
+
         org.talend.core.model.metadata.builder.connection.Connection connection = null;
 
         if (elem instanceof Node) {
             Node node = (Node) elem;
             Command baseCommand = null;
             boolean isReadOnly = false;
-            boolean unuseValRule = false;
             String newRepositoryIdValue = null;
             if (node.getMetadataFromConnector(param.getContext()) != null) {
                 isReadOnly = node.getMetadataFromConnector(param.getContext()).isReadOnly();
-            }
-            // if change to build-in, unuse the validation rule if the component has.
-            if (value.equals(EmfComponent.BUILTIN)) {
-                unuseValRule = true;
             }
             if (value.equals(EmfComponent.BUILTIN) && isReadOnly && !"tLogCatcher".equals(node.getComponent().getName()) //$NON-NLS-1$
                     && !"tStatCatcher".equals(node.getComponent().getName())) { //$NON-NLS-1$
@@ -1066,10 +1095,10 @@ public class SchemaTypeController extends AbstractRepositoryController {
                 String schemaSelected = (String) repositorySchemaType.getValue();
 
                 /* value can be devided means the value like "connectionid - label" */
-                String[] keySplitValues = schemaSelected.toString().split(" - "); //$NON-NLS-N$ //$NON-NLS-1$
+                String[] keySplitValues = schemaSelected.toString().split(" - "); //$NON-NLS-1$
                 if (keySplitValues.length > 1) {
-                    String connectionId = keySplitValues[0]; //$NON-NLS-N$
-                    String tableLabel = keySplitValues[1]; //$NON-NLS-N$
+                    String connectionId = keySplitValues[0];
+                    String tableLabel = keySplitValues[1];
                     IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
                     Item item = null;
                     try {
@@ -1138,13 +1167,14 @@ public class SchemaTypeController extends AbstractRepositoryController {
                 cc.add(baseCommand);
             } else {
                 RepositoryChangeMetadataCommand changeMetadataCommand = new RepositoryChangeMetadataCommand((Node) elem,
-                        fullParamName, value, repositoryMetadata, newRepositoryIdValue);
+                        fullParamName, value, repositoryMetadata, newRepositoryIdValue, null);
                 changeMetadataCommand.setConnection(connection);
                 cc.add(changeMetadataCommand);
             }
-            if (unuseValRule) {
-                cc.add(new PropertyChangeCommand(elem, EParameterName.VALIDATION_RULES.getName(), false));
-                cc.add(new PropertyChangeCommand(elem, EParameterName.REPOSITORY_VALIDATION_RULE_TYPE.getName(), "")); //$NON-NLS-1$
+
+            // unuse the validation rules of the component.
+            if (isValRulesLost) {
+                ValidationRulesUtil.appendRemoveValidationRuleCommands(cc, elem);
             }
 
             return cc;

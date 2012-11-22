@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,23 +29,28 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IEditorReference;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.image.EImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.IESBService;
 import org.talend.core.database.EDatabaseTypeName;
 import org.talend.core.model.metadata.builder.connection.CDCConnection;
 import org.talend.core.model.metadata.builder.connection.CDCType;
 import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
+import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
 import org.talend.core.model.metadata.designerproperties.PropertyConstants.CDCTypeMode;
 import org.talend.core.model.param.ERepositoryCategoryType;
 import org.talend.core.model.process.EParameterFieldType;
-import org.talend.core.model.process.Element;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
+import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.DatabaseConnectionItem;
 import org.talend.core.model.properties.FileItem;
@@ -54,9 +59,9 @@ import org.talend.core.model.properties.LinkRulesItem;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.properties.tab.IDynamicProperty;
+import org.talend.core.repository.RepositoryComponentManager;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
@@ -65,10 +70,11 @@ import org.talend.designer.core.model.process.jobsettings.JobSettingsConstants;
 import org.talend.designer.core.ui.editor.cmd.ChangeValuesFromRepository;
 import org.talend.designer.core.ui.editor.cmd.PropertyChangeCommand;
 import org.talend.designer.core.ui.editor.nodes.Node;
-import org.talend.designer.core.ui.editor.process.EDatabaseComponentName;
 import org.talend.designer.core.ui.projectsetting.ImplicitContextLoadElement;
 import org.talend.designer.core.ui.projectsetting.StatsAndLogsElement;
 import org.talend.designer.core.ui.views.properties.MultipleThreadDynamicComposite;
+import org.talend.repository.RepositoryPlugin;
+import org.talend.repository.model.IMetadataService;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.IRepositoryService;
 import org.talend.repository.model.RepositoryNode;
@@ -117,24 +123,24 @@ public class PropertyTypeController extends AbstractRepositoryController {
     private boolean canSaveProperty(IElementParameter param) {
         INode node = (INode) param.getElement();
         //
-        boolean canSaved = false;
         String componentName = node.getComponent().getName();
-        for (EDatabaseComponentName eComponent : EDatabaseComponentName.values()) {
-            if (componentName.equals(eComponent.getInputComponentName())
-                    || componentName.equals(eComponent.getOutPutComponentName())) {
-                canSaved = true;
-                break;
-            }
-            // Teradata
-            /**
-             * @author wzhang. For the property in EdatabaseComponentName class is "tELTTeradataInput" and
-             * "tELTTeradataOutput". So define the String variable custom.
-             */
-            if (componentName.equals("tTeradataInput") || componentName.equals("tTeradataOutput")) { //$NON-NLS-1$ //$NON-NLS-2$
-                canSaved = true;
-            }
-        }
-        return canSaved;
+        return RepositoryComponentManager.validComponent(componentName);
+        // for (EDatabaseComponentName eComponent : EDatabaseComponentName.values()) {
+        // if (componentName.equals(eComponent.getInputComponentName())
+        // || componentName.equals(eComponent.getOutPutComponentName())) {
+        // canSaved = true;
+        // break;
+        // }
+        // // Teradata
+        // /**
+        // * @author wzhang. For the property in EdatabaseComponentName class is "tELTTeradataInput" and
+        // * "tELTTeradataOutput". So define the String variable custom.
+        // */
+        //            if (componentName.equals("tTeradataInput") || componentName.equals("tTeradataOutput")) { //$NON-NLS-1$ //$NON-NLS-2$
+        // canSaved = true;
+        // }
+        // }
+        // return canSaved;
     }
 
     /**
@@ -161,6 +167,9 @@ public class PropertyTypeController extends AbstractRepositoryController {
         button.setImage(ImageProvider.getImage(EImage.SAVE_ICON));
         button.setToolTipText(Messages.getString("PropertyTypeController.saveToMetadata")); //$NON-NLS-1$
         button.setData(PARAMETER_NAME, param.getName());
+        if (param.getFieldType() == EParameterFieldType.PROPERTY_TYPE) {
+            button.setEnabled(ExtractMetaDataUtils.haveLoadMetadataNode());
+        }
 
         lastControlUsed = button;
 
@@ -340,11 +349,33 @@ public class PropertyTypeController extends AbstractRepositoryController {
 
                 if (repositoryConnection != null) {
                     CompoundCommand compoundCommand = new CompoundCommand();
-
-                    ChangeValuesFromRepository changeValuesFromRepository = new ChangeValuesFromRepository(elem,
-                            repositoryConnection, fullParamName, id);
-
-                    compoundCommand.add(changeValuesFromRepository);
+                    RepositoryNode selectNode = dialog.getResult();
+                    ChangeValuesFromRepository changeValuesFromRepository = null;
+                    if (selectNode.getObjectType() == ERepositoryObjectType.SERVICESOPERATION) {
+                        String serviceId = item.getProperty().getId();
+                        String portId = selectNode.getParent().getObject().getId();
+                        String operationId = selectNode.getObject().getId();
+                        changeValuesFromRepository = new ChangeValuesFromRepository(
+                                elem,
+                                repositoryConnection,
+                                param.getName() + ":" + EParameterName.REPOSITORY_PROPERTY_TYPE.getName(), serviceId + " - " + portId + " - " + operationId); //$NON-NLS-1$
+                        if (GlobalServiceRegister.getDefault().isServiceRegistered(IESBService.class)) {
+                            IESBService service = (IESBService) GlobalServiceRegister.getDefault().getService(IESBService.class);
+                            boolean foundInOpen = false;
+                            IProcess2 process = null;
+                            IEditorReference[] reference = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
+                                    .getEditorReferences();
+                            process = (IProcess2) RepositoryPlugin.getDefault().getDesignerCoreService().getCurrentProcess();
+                            String jobID = process.getProperty().getId();
+                            service.deleteOldRelation(jobID);
+                            service.updateOperation((INode) elem, serviceId + " - " + portId + " - " + operationId, selectNode);
+                        }
+                    } else {
+                        changeValuesFromRepository = new ChangeValuesFromRepository(elem, repositoryConnection, fullParamName, id);
+                    }
+                    if (changeValuesFromRepository != null) {
+                        compoundCommand.add(changeValuesFromRepository);
+                    }
 
                     updateDBType(compoundCommand, repositoryConnection);
                     return compoundCommand;
@@ -496,25 +527,26 @@ public class PropertyTypeController extends AbstractRepositoryController {
                     }
 
                     if (realNode != null) {
-                        ConnectionItem connItem = repositoryService.openMetadataConnection(true, realNode, node);
-                        if (connItem != null) {
-                            // refresh
-                            RepositoryManager.refreshCreatedNode(ERepositoryObjectType.METADATA_CONNECTIONS);
+                        final IMetadataService metadataService = CorePlugin.getDefault().getMetadataService();
+                        if (metadataService != null) {
+                            ConnectionItem connItem = metadataService.openMetadataConnection(true, realNode, node);
+                            if (connItem != null) {
 
-                            IElementParameter propertyParam = elem
-                                    .getElementParameterFromField(EParameterFieldType.PROPERTY_TYPE);
-                            propertyParam.getChildParameters().get(EParameterName.PROPERTY_TYPE.getName())
-                                    .setValue(EmfComponent.REPOSITORY);
+                                IElementParameter propertyParam = elem
+                                        .getElementParameterFromField(EParameterFieldType.PROPERTY_TYPE);
+                                propertyParam.getChildParameters().get(EParameterName.PROPERTY_TYPE.getName())
+                                        .setValue(EmfComponent.REPOSITORY);
 
-                            // 2. commnd
-                            Command cmd = new ChangeValuesFromRepository(
-                                    (Element) node,
-                                    connItem.getConnection(),
-                                    propertyParam.getName() + ":" + EParameterName.REPOSITORY_PROPERTY_TYPE.getName(), connItem.getProperty().getId()); //$NON-NLS-1$
-                            executeCommand(cmd);
-                            // see bug in feature 5998.refresh repositoryList.
-                            if (dynamicProperty instanceof MultipleThreadDynamicComposite) {
-                                ((MultipleThreadDynamicComposite) dynamicProperty).updateRepositoryList();
+                                // 2. commnd
+                                Command cmd = new ChangeValuesFromRepository(
+                                        node,
+                                        connItem.getConnection(),
+                                        propertyParam.getName() + ":" + EParameterName.REPOSITORY_PROPERTY_TYPE.getName(), connItem.getProperty().getId()); //$NON-NLS-1$
+                                executeCommand(cmd);
+                                // see bug in feature 5998.refresh repositoryList.
+                                if (dynamicProperty instanceof MultipleThreadDynamicComposite) {
+                                    ((MultipleThreadDynamicComposite) dynamicProperty).updateRepositoryList();
+                                }
                             }
                         }
                     }

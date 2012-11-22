@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,6 +38,7 @@ import org.talend.core.CorePlugin;
 import org.talend.core.model.components.ComponentUtilities;
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.components.IComponentsFactory;
+import org.talend.core.model.general.ModuleNeeded;
 import org.talend.core.model.general.Project;
 import org.talend.core.model.genhtml.IJobSettingConstants;
 import org.talend.core.model.metadata.IMetadataTable;
@@ -62,6 +63,7 @@ import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.DummyComponent;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
+import org.talend.designer.core.model.components.Expression;
 import org.talend.designer.core.model.process.AbstractProcessProvider;
 import org.talend.designer.core.model.process.DataNode;
 import org.talend.designer.core.model.utils.emf.talendfile.ParametersType;
@@ -646,8 +648,8 @@ public class DesignerCoreService implements IDesignerCoreService {
      * org.talend.designer.core.IDesignerCoreService#getNeededLibrariesForProcess(org.talend.core.model.process.IProcess
      * , boolean)
      */
-    public Set<String> getNeededLibrariesForProcess(IProcess process, boolean withChildrens) {
-        return JavaProcessUtil.getNeededLibraries(process, withChildrens);
+    public Set<ModuleNeeded> getNeededLibrariesForProcess(IProcess process, boolean withChildrens) {
+        return JavaProcessUtil.getNeededModules(process, withChildrens);
     }
 
     /*
@@ -658,4 +660,9 @@ public class DesignerCoreService implements IDesignerCoreService {
     public PaletteRoot createEmptyPalette() {
         return TalendEditorPaletteFactory.createEmptyPalette();
     }
+
+    public boolean evaluate(final String string, List<? extends IElementParameter> listParam) {
+        return Expression.evaluate(string, listParam);
+    }
+
 }

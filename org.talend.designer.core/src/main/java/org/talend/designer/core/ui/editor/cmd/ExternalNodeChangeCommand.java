@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -23,12 +23,13 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
+import org.talend.core.GlobalServiceRegister;
 import org.talend.core.model.components.IODataComponent;
 import org.talend.core.model.components.IODataComponentContainer;
 import org.talend.core.model.metadata.ColumnNameChanged;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.process.EConnectionType;
 import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IConnection;
@@ -38,6 +39,7 @@ import org.talend.core.model.process.IExternalData;
 import org.talend.core.model.process.IExternalNode;
 import org.talend.core.model.process.INode;
 import org.talend.core.model.process.INodeConnector;
+import org.talend.core.service.IXmlMapService;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
@@ -51,7 +53,7 @@ import org.talend.designer.core.ui.views.properties.ComponentSettings;
 /**
  * Command that will change the datas stored for an external node.
  * 
- * $Id: ExternalNodeChangeCommand.java 59934 2011-05-06 08:15:42Z hcyi $
+ * $Id: ExternalNodeChangeCommand.java 86388 2012-06-27 10:08:36Z hwang $
  * 
  */
 public class ExternalNodeChangeCommand extends Command {
@@ -66,7 +68,7 @@ public class ExternalNodeChangeCommand extends Command {
 
     private List<IMetadataTable> newMetaDataList;
 
-    private List<Connection> connectionsToDelete;
+    private Map<Connection, IODataComponent> connectionsToDelete;
 
     private List<ChangeMetadataCommand> metadataOutputChanges = new ArrayList<ChangeMetadataCommand>();
 
@@ -82,24 +84,47 @@ public class ExternalNodeChangeCommand extends Command {
 
     private boolean isMetaLanguage = false;
 
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     public ExternalNodeChangeCommand(Node node, IExternalNode externalNode, boolean... bs) {
-        if (bs.length > 0)
+        if (bs.length > 0) {
             this.isMetaLanguage = bs[0];
+        }
 
         this.node = node;
 
         this.inAndOut = externalNode.getIODataComponents();
 
-        oldExternalData = node.getExternalData();
+        this.oldExternalData = node.getExternalData();
         oldMetaDataList = node.getMetadataList();
 
         newExternalData = externalNode.getExternalData();
         newMetaDataList = externalNode.getMetadataList();
+        init();
+    }
 
-        connectionsToDelete = new ArrayList<Connection>();
+    @SuppressWarnings("unchecked")
+    public ExternalNodeChangeCommand(Node node, IExternalNode externalNode, IExternalData oldExternalData, boolean... bs) {
+        if (bs.length > 0) {
+            this.isMetaLanguage = bs[0];
+        }
 
-        for (IODataComponent dataComponent : (List<IODataComponent>) inAndOut.getOuputs()) {
+        this.node = node;
+
+        this.inAndOut = externalNode.getIODataComponents();
+
+        this.oldExternalData = oldExternalData;
+        oldMetaDataList = node.getMetadataList();
+
+        newExternalData = externalNode.getExternalData();
+        newMetaDataList = externalNode.getMetadataList();
+        init();
+    }
+
+    private void init() {
+
+        connectionsToDelete = new HashMap<Connection, IODataComponent>();
+
+        for (IODataComponent dataComponent : inAndOut.getOuputs()) {
             IConnection connection = dataComponent.getConnection();
             boolean metadataExists = false;
             for (IMetadataTable metadata : newMetaDataList) {
@@ -108,7 +133,7 @@ public class ExternalNodeChangeCommand extends Command {
                 }
             }
             if (!metadataExists && (connection instanceof Connection)) {
-                connectionsToDelete.add((Connection) connection);
+                connectionsToDelete.put((Connection) connection, dataComponent);
             }
         }
 
@@ -118,7 +143,7 @@ public class ExternalNodeChangeCommand extends Command {
                 if (schemaType.equals(EmfComponent.REPOSITORY)) {
                     String metaRepositoryName = (String) connection.getSource().getPropertyValue(
                             EParameterName.REPOSITORY_SCHEMA_TYPE.getName());
-                    IMetadataTable repositoryMetadata = MetadataTool.getMetadataFromRepository(metaRepositoryName);
+                    IMetadataTable repositoryMetadata = MetadataToolHelper.getMetadataFromRepository(metaRepositoryName);
                     if (repositoryMetadata == null) {
                         connection.getSource().setPropertyValue(EParameterName.SCHEMA_TYPE.getName(), EmfComponent.BUILTIN);
                     } else {
@@ -238,6 +263,9 @@ public class ExternalNodeChangeCommand extends Command {
                         IElementParameter schemaParam = null;
 
                         if (connection != null) {
+                            IMetadataTable connTable = connection.getMetadataTable();
+                            IMetadataTable dataTable = dataComponent.getTable();
+
                             for (IElementParameter param : ((Node) connection.getTarget()).getElementParameters()) {
                                 if (param.getFieldType().equals(EParameterFieldType.SCHEMA_TYPE)
                                         && param.getContext().equals(connection.getConnectorName())) {
@@ -246,24 +274,39 @@ public class ExternalNodeChangeCommand extends Command {
                                 }
                             }
                             if (schemaParam != null) {
-                                ChangeMetadataCommand cmd = new ChangeMetadataCommand((Node) connection.getTarget(), schemaParam,
-                                        connection.getMetadataTable(), dataComponent.getTable());
+                                ChangeMetadataCommand cmd = new ChangeMetadataCommand(connection.getTarget(), schemaParam,
+                                        connTable, dataTable);
+                                cmd.execute(true);
+                                metadataOutputChanges.add(cmd);
+                            }
+
+                            for (IElementParameter param : ((Node) connection.getSource()).getElementParameters()) {
+                                if (param.getFieldType().equals(EParameterFieldType.SCHEMA_TYPE)
+                                        && param.getContext().equals(connection.getConnectorName())) {
+                                    schemaParam = param;
+                                    break;
+                                }
+                            }
+                            if (schemaParam != null) {
+                                ChangeMetadataCommand cmd = new ChangeMetadataCommand(connection.getSource(), schemaParam,
+                                        connTable, dataTable);
                                 cmd.execute(true);
                                 metadataOutputChanges.add(cmd);
                             }
                         }
-                        for (IElementParameter param : ((Node) connection.getSource()).getElementParameters()) {
-                            if (param.getFieldType().equals(EParameterFieldType.SCHEMA_TYPE)
-                                    && param.getContext().equals(connection.getConnectorName())) {
-                                schemaParam = param;
-                                break;
+
+                    } else {
+                        // no matter propagate or not the metadata change will be propagate to xmlmap emf data
+                        final Node target = (Node) connection.getTarget();
+                        if (target != null && target.getExternalNode() != null) {
+                            if (GlobalServiceRegister.getDefault().isServiceRegistered(IXmlMapService.class)) {
+                                final IXmlMapService service = (IXmlMapService) GlobalServiceRegister.getDefault().getService(
+                                        IXmlMapService.class);
+                                if (service.isXmlMapComponent(target.getExternalNode())) {
+                                    IODataComponent output = new IODataComponent(connection, dataComponent.getTable());
+                                    target.metadataInputChanged(output, connection.getUniqueName());
+                                }
                             }
-                        }
-                        if (schemaParam != null) {
-                            ChangeMetadataCommand cmd = new ChangeMetadataCommand((Node) connection.getSource(), schemaParam,
-                                    connection.getMetadataTable(), dataComponent.getTable());
-                            cmd.execute(true);
-                            metadataOutputChanges.add(cmd);
                         }
                     }
                 }
@@ -292,7 +335,7 @@ public class ExternalNodeChangeCommand extends Command {
             }
         }
 
-        for (Connection connection : connectionsToDelete) {
+        for (Connection connection : connectionsToDelete.keySet()) {
             connection.disconnect();
             INode prevNode = connection.getSource();
             INodeConnector nodeConnectorSource, nodeConnectorTarget;
@@ -302,6 +345,8 @@ public class ExternalNodeChangeCommand extends Command {
             INode nextNode = connection.getTarget();
             nodeConnectorTarget = nextNode.getConnectorFromType(connection.getLineStyle());
             nodeConnectorTarget.setCurLinkNbInput(nodeConnectorTarget.getCurLinkNbInput() - 1);
+
+            inAndOut.getOuputs().remove(connectionsToDelete.get(connection));
         }
         ((Process) node.getProcess()).checkProcess();
         if (!isMetaLanguage) {
@@ -318,12 +363,16 @@ public class ExternalNodeChangeCommand extends Command {
                     || connection.getLineStyle().equals(EConnectionType.TABLE)) {
                 IODataComponent currentIO = inAndOut.getDataComponent(connection);
                 if (currentIO.hasChanged()) {
-                    IMetadataTable metadata = inAndOut.getTable(connection);
+                    // IMetadataTable metadata = inAndOut.getTable(connection);
                     INode sourceNode = currentIO.getSource();
                     sourceNode.metadataOutputChanged(currentIO, currentIO.getName());
-                    IMetadataTable oldMetadata = connection.getMetadataTable().clone();
-                    currentIO.setTable(oldMetadata);
-                    connection.getMetadataTable().setListColumns(metadata.getListColumns());
+                    // IMetadataTable oldMetadata = connection.getMetadataTable().clone();
+                    // currentIO.setTable(oldMetadata);
+                    // connection.getMetadataTable().setListColumns(metadata.getListColumns());
+
+                    IMetadataTable oldMetadata = currentIO.getConnMetadataTable();
+                    // currentIO.setTable(oldMetadata);
+                    connection.getMetadataTable().setListColumns(oldMetadata.getListColumns());
                     if (metadataInputWasRepository.get(connection) != null) {
                         connection.getSource().setPropertyValue(EParameterName.SCHEMA_TYPE.getName(), EmfComponent.REPOSITORY);
                     }
@@ -333,7 +382,7 @@ public class ExternalNodeChangeCommand extends Command {
         metadataInputWasRepository.clear();
         node.setExternalData(oldExternalData);
         node.setMetadataList(oldMetaDataList);
-        for (Connection connection : connectionsToDelete) {
+        for (Connection connection : connectionsToDelete.keySet()) {
             connection.reconnect();
             Node prevNode = (Node) connection.getSource();
             INodeConnector nodeConnectorSource, nodeConnectorTarget;
@@ -343,6 +392,10 @@ public class ExternalNodeChangeCommand extends Command {
             Node nextNode = (Node) connection.getTarget();
             nodeConnectorTarget = nextNode.getConnectorFromType(connection.getLineStyle());
             nodeConnectorTarget.setCurLinkNbInput(nodeConnectorTarget.getCurLinkNbInput() + 1);
+
+            if (connectionsToDelete.get(connection) != null) {
+                inAndOut.getOuputs().add(connectionsToDelete.get(connection));
+            }
         }
         for (ChangeMetadataCommand cmd : metadataOutputChanges) {
             cmd.undo();

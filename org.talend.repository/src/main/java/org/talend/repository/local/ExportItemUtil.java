@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -23,11 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.SystemUtils;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
@@ -39,25 +40,33 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.util.EcoreUtil.ExternalCrossReferencer;
+import org.talend.commons.CommonsPlugin;
 import org.talend.commons.emf.EmfHelper;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.utils.io.FilesUtils;
+import org.talend.commons.utils.time.TimeMeasure;
 import org.talend.core.CorePlugin;
+import org.talend.core.ILibraryManagerService;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.language.LanguageManager;
 import org.talend.core.model.metadata.MetadataManager;
+import org.talend.core.model.properties.ByteArray;
 import org.talend.core.model.properties.FolderItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.Project;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.PropertiesPackage;
+import org.talend.core.model.properties.ReferenceFileItem;
 import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.properties.User;
 import org.talend.core.model.properties.helper.ByteArrayResource;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.repository.IRepositoryContentHandler;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.model.repository.RepositoryContentManager;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
+import org.talend.core.repository.utils.ResourceFilenameHelper;
 import org.talend.designer.core.model.utils.emf.component.impl.IMPORTTypeImpl;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.constants.FileConstants;
@@ -66,6 +75,7 @@ import org.talend.repository.documentation.TarFileExporterFullPath;
 import org.talend.repository.documentation.ZipFileExporterFullPath;
 import org.talend.repository.i18n.Messages;
 import org.talend.repository.model.ERepositoryStatus;
+import org.talend.repository.model.ResourceModelUtils;
 
 /***/
 public class ExportItemUtil {
@@ -84,13 +94,21 @@ public class ExportItemUtil {
 
     private File itemFile;
 
+    private File screenshotFile;
+
     private IPath projectPath;
 
     private IPath propertyPath;
 
+    private IPath screenshotPath;
+
     private IPath itemPath;
 
     private Project project;
+
+    private Map<File, IPath> refereneceFilesToBeExport;
+
+    private Map<File, ReferenceFileItem> referenceFilesMapping;
 
     private Map<String, User> login2user = new HashMap<String, User>();
 
@@ -118,9 +136,10 @@ public class ExportItemUtil {
     public void exportItems(File destination, Collection<Item> items, boolean exportAllVersions, IProgressMonitor progressMonitor)
             throws Exception {
         // bug 11301 :export 0 items
-        if (items == null || items.size() == 0) {
-            return;
+        if (items == null) {
+            items = new ArrayList<Item>();
         }
+
         Collection<Item> otherVersions = new ArrayList<Item>();
         // get all versions of the exported items if wanted
         if (exportAllVersions) {
@@ -179,6 +198,7 @@ public class ExportItemUtil {
                     ExceptionHandler.process(e);
                 }
             }
+
         }
     }
 
@@ -255,6 +275,12 @@ public class ExportItemUtil {
         progressMonitor.beginTask("Export Items", items.size() + 1); //$NON-NLS-1$
         ResourceSetImpl resourceSet = new ResourceSetImpl();
 
+        TimeMeasure.display = CommonsPlugin.isDebugMode();
+        TimeMeasure.displaySteps = CommonsPlugin.isDebugMode();
+        TimeMeasure.measureActive = CommonsPlugin.isDebugMode();
+
+        TimeMeasure.begin("exportItems");
+
         try {
             // store item and its corresponding project
             Map<Item, Project> itemProjectMap = new HashMap<Item, Project>();
@@ -263,20 +289,33 @@ public class ExportItemUtil {
 
             items.clear();
 
+            if (allItems.isEmpty()) {
+                computeProjectFileAndPath(destinationDirectory);
+                if (!toExport.containsKey(projectFile)) {
+                    createProjectResource(resourceSet, allItems);
+                    saveResources(resourceSet);
+                    toExport.put(projectFile, projectPath);
+
+                    return toExport;
+                }
+            }
+
             allItems = sortItemsByProject(allItems, itemProjectMap);
 
             itemProjectMap.clear();
+            Set<String> jarNameList = new HashSet<String>();
 
             Iterator<Item> iterator = allItems.iterator();
             while (iterator.hasNext()) {
                 Item item = iterator.next();
                 project = pManager.getProject(item);
 
+                String label = item.getProperty().getLabel();
+
                 computeProjectFileAndPath(destinationDirectory);
                 if (!toExport.containsKey(projectFile)) {
                     createProjectResource(resourceSet, allItems);
                     toExport.put(projectFile, projectPath);
-
                 }
                 if (ERepositoryObjectType.getItemType(item).isResourceItem()) {
                     Collection<EObject> copiedObjects = copyObjects(item);
@@ -285,18 +324,24 @@ public class ExportItemUtil {
                     fixItem(copiedItem);
                     computeItemFilesAndPaths(destinationDirectory, copiedItem, projectFolderStructure);
                     createItemResources(copiedItem, copiedObjects, resourceSet);
+                    createReferenceFileItemReources(resourceSet);
                     fixItemUserReferences(copiedItem);
                     fixItemLockState();
                     toExport.put(propertyFile, propertyPath);
                     toExport.put(itemFile, itemPath);
-
-                    // ProxyRepositoryFactory.getInstance().unloadResources(copiedItem.getProperty());
-                    // copiedItem.setParent(null);
+                    int id = item.eClass().getClassifierID();
+                    if (id == PropertiesPackage.PROCESS_ITEM || id == PropertiesPackage.JOBLET_PROCESS_ITEM) {
+                        toExport.put(screenshotFile, screenshotPath);
+                    }
+                    if (refereneceFilesToBeExport != null && !refereneceFilesToBeExport.isEmpty()) {
+                        for (File rfFile : refereneceFilesToBeExport.keySet()) {
+                            IPath rFPath = refereneceFilesToBeExport.get(rfFile);
+                            toExport.put(rfFile, rFPath);
+                        }
+                    }
                 }
 
                 if (LanguageManager.getCurrentLanguage().equals(ECodeLanguage.JAVA)) {
-                    List jarNameList = new ArrayList();
-
                     if (item instanceof RoutineItem) {
                         List list = ((RoutineItem) item).getImports();
                         for (int i = 0; i < list.size(); i++) {
@@ -304,16 +349,6 @@ public class ExportItemUtil {
                             jarNameList.add(jarName.toString());
                         }
 
-                    }
-
-                    String path = CorePlugin.getDefault().getLibrariesService().getJavaLibrariesPath();
-
-                    for (int j = 0; j < jarNameList.size(); j++) {
-                        String jarName = (String) jarNameList.get(j);
-                        IPath jarPath = new Path(getNeedProjectPath()).append("lib").append(jarName);//$NON-NLS-1$ 
-                        String filePath = new Path(destinationDirectory.toString()).append(jarPath.toString()).toString();
-                        copyJarToDestination(new Path(path).append(jarName).toString(), filePath);
-                        toExport.put(new File(filePath), jarPath);
                     }
                 }
                 progressMonitor.worked(1);
@@ -327,10 +362,30 @@ public class ExportItemUtil {
                         ((FolderItem) item.getParent()).getChildren().remove(item);
                         item.setParent(null);
                     }
+                } else {
+                    List<ReferenceFileItem> referenceFiles = (List<ReferenceFileItem>) item.getReferenceResources();
+                    if (referenceFiles != null && !referenceFiles.isEmpty()) {
+                        ProxyRepositoryFactory.getInstance().unloadResources(item.getProperty());
+                    }
                 }
+
                 iterator.remove();
 
                 cleanResources(resourceSet);
+
+                TimeMeasure.step("exportItems", "export item: " + label);
+            }
+
+            ILibraryManagerService repositoryBundleService = CorePlugin.getDefault().getRepositoryBundleService();
+
+            // add the routines of the jars at the end, to at them only once in the export.
+            for (String jarName : jarNameList) {
+                IPath jarPath = new Path(getNeedProjectPath()).append("lib");//$NON-NLS-1$ 
+                String filePath = new Path(destinationDirectory.toString()).append(jarPath.toString()).toPortableString();
+                if (repositoryBundleService.contains(jarName)) {
+                    repositoryBundleService.retrieve(jarName, filePath, new NullProgressMonitor());
+                    toExport.put(new File(new Path(filePath).append(jarName).toPortableString()), jarPath.append(jarName));
+                }
             }
 
             progressMonitor.worked(1);
@@ -339,6 +394,11 @@ public class ExportItemUtil {
             throw e;
         } finally {
             cleanResources(resourceSet);
+
+            TimeMeasure.end("exportItems");
+            TimeMeasure.display = false;
+            TimeMeasure.displaySteps = false;
+            TimeMeasure.measureActive = false;
         }
 
         return toExport;
@@ -347,8 +407,17 @@ public class ExportItemUtil {
     private File createTmpDirectory() throws IOException {
         File tmpDirectory = null;
         int suffix = 0;
+        org.talend.core.model.general.Project project = ProjectManager.getInstance().getCurrentProject();
+        IProject physProject;
+        String tmpFolder = System.getProperty("user.dir"); //$NON-NLS-1$
+        try {
+            physProject = ResourceModelUtils.getProject(project);
+            tmpFolder = physProject.getFolder("temp").getLocation().toPortableString(); //$NON-NLS-1$
+        } catch (Exception e) {
+            ExceptionHandler.process(e);
+        }
         while (tmpDirectory == null || tmpDirectory.exists()) {
-            tmpDirectory = new File(SystemUtils.getJavaIoTmpDir(), "talendExportItems" + suffix); //$NON-NLS-1$
+            tmpDirectory = new File(tmpFolder + File.separatorChar + "talendExportItems" + suffix); //$NON-NLS-1$
             suffix++;
         }
 
@@ -402,7 +471,40 @@ public class ExportItemUtil {
         itemPath = fileNamePath.addFileExtension(FileConstants.ITEM_EXTENSION);
 
         itemFile = new File(destinationFile, itemPath.toOSString());
+        // added by dlin :to copy the .screenshot file in to the to be exported files
+        int id = item.eClass().getClassifierID();
+        if (id == PropertiesPackage.PROCESS_ITEM || id == PropertiesPackage.JOBLET_PROCESS_ITEM) {
+            String screenshotFileName = fileNamePath.addFileExtension(FileConstants.SCREENSHOT_EXTENSION).toOSString();
+            String sourceFilePath = Platform.getInstanceLocation().getURL().getPath() + Path.SEPARATOR + screenshotFileName;
+            screenshotPath = fileNamePath.addFileExtension(FileConstants.SCREENSHOT_EXTENSION);
+            screenshotFile = new File(destinationFile, screenshotPath.toOSString());
 
+            copyJarToDestination(sourceFilePath, screenshotFile.getAbsolutePath());
+        }
+        /* for all the referenceFileItems */
+        computeReferenceFilesAndPaths(destinationFile, item, fileNamePath);
+    }
+
+    private void computeReferenceFilesAndPaths(File destinationFile, Item item, IPath fileNamePath) {
+        List<ReferenceFileItem> referenceFiles = (List<ReferenceFileItem>) item.getReferenceResources();
+        if (referenceFiles != null && !referenceFiles.isEmpty()) {
+            for (ReferenceFileItem ri : referenceFiles) {
+                IPath rfPath = fileNamePath.addFileExtension(ri.getExtension());
+                File rfFile = new File(destinationFile, rfPath.toOSString());
+                if (refereneceFilesToBeExport != null) {
+                    refereneceFilesToBeExport.put(rfFile, rfPath);
+                } else {
+                    refereneceFilesToBeExport = new HashMap<File, IPath>();
+                    refereneceFilesToBeExport.put(rfFile, rfPath);
+                }
+                if (referenceFilesMapping != null) {
+                    referenceFilesMapping.put(rfFile, ri);
+                } else {
+                    referenceFilesMapping = new HashMap<File, ReferenceFileItem>();
+                    referenceFilesMapping.put(rfFile, ri);
+                }
+            }
+        }
     }
 
     // private void init() {
@@ -438,10 +540,32 @@ public class ExportItemUtil {
         moveObjectsToResource(propertyResource, copiedObjects, PropertiesPackage.eINSTANCE.getProperty());
         moveObjectsToResource(propertyResource, copiedObjects, PropertiesPackage.eINSTANCE.getItemState());
         moveObjectsToResource(propertyResource, copiedObjects, PropertiesPackage.eINSTANCE.getItem());
+        moveObjectsToResource(propertyResource, copiedObjects, PropertiesPackage.eINSTANCE.getReferenceFileItem());
 
         boolean isFileItem = PropertiesPackage.eINSTANCE.getFileItem().isSuperTypeOf(item.eClass());
         itemResource = createResource(itemFile, isFileItem, resourceSet);
         moveObjectsToResource(itemResource, copiedObjects, null);
+    }
+
+    /**
+     * DOC hywang Comment method "createReferenceFileItemReources". create resources for every reference file when
+     * export the item
+     */
+    private void createReferenceFileItemReources(ResourceSetImpl resourceSet) {
+        if (refereneceFilesToBeExport != null) {
+            for (File rfFile : refereneceFilesToBeExport.keySet()) {
+                Resource rfResrouce = createResource(rfFile, true, resourceSet);
+                ReferenceFileItem mappedItem = referenceFilesMapping.get(rfFile);
+                ByteArray byteContent = null;
+                if (mappedItem != null) {
+                    byteContent = mappedItem.getContent();
+                }
+                if (byteContent != null) {
+                    rfResrouce.getContents().add(byteContent);
+                }
+            }
+        }
+
     }
 
     private void fixItem(Item item) {
@@ -488,6 +612,16 @@ public class ExportItemUtil {
                     for (Iterator iterator = referencedEList.iterator(); iterator.hasNext();) {
                         EObject referenceEObject = (EObject) iterator.next();
                         if (referenceEObject != null && !objects.contains(referenceEObject)) {
+                            // need to load all reference files when copy the item
+                            if (referenceEObject instanceof ReferenceFileItem) {
+                                EList subRef = referenceEObject.eClass().getEAllReferences();
+                                for (Iterator subiter = subRef.iterator(); subiter.hasNext();) {
+                                    EReference subReference = (EReference) subiter.next();
+                                    if (!subReference.isMany()) {
+                                        referenceEObject.eGet(subReference);
+                                    }
+                                }
+                            }
                             objects.add(referenceEObject);
                         }
                     }
@@ -511,6 +645,9 @@ public class ExportItemUtil {
             objectsToTransfer = EcoreUtil.getObjectsByType(objects, type);
         } else {
             objectsToTransfer = objects;
+        }
+        for (IRepositoryContentHandler handler : RepositoryContentManager.getHandlers()) {
+            handler.addContents(objectsToTransfer, resource);
         }
         resource.getContents().addAll(objectsToTransfer);
         objects.removeAll(objectsToTransfer);

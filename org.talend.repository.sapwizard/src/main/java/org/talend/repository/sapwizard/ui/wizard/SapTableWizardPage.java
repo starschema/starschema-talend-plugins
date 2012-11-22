@@ -52,26 +52,32 @@ public class SapTableWizardPage extends WizardPage {
 	 */
 	private SAPFunctionUnit functionUnit;
 
+	private String[] existingNames;
+
+
 	/**
 	 * @param connectionItem
 	 * @param functionUnit
 	 * @param metadataTable
 	 * @param creation
 	 */
-	protected SapTableWizardPage(ConnectionItem connectionItem, SAPFunctionUnit functionUnit,
-			MetadataTable metadataTable, boolean creation) {
+	protected SapTableWizardPage(ConnectionItem connectionItem, SAPFunctionUnit functionUnit, MetadataTable metadataTable, boolean creation, String[] existingNames) {
 		super("wizardPage");//$NON-NLS-1$
 		this.connectionItem = connectionItem;
 		this.metadataTable = metadataTable;
 		this.functionUnit = functionUnit;
 		this.isRepositoryObjectEditable = creation;
+		this.existingNames = existingNames;
 	}
 
-	/* (non-Javadoc)
+
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see org.eclipse.jface.dialogs.IDialogPage#createControl(org.eclipse.swt.widgets.Composite)
 	 */
 	public void createControl(Composite composite) {
-		this.sapTableForm = new SapTableForm(composite, this.connectionItem, this.functionUnit, this.metadataTable);
+		this.sapTableForm = new SapTableForm(composite, this.connectionItem, this.functionUnit, this.metadataTable, this.existingNames);
 		this.sapTableForm.setReadOnly(!this.isRepositoryObjectEditable);
 		ICheckListener listener = new AbstractForm.ICheckListener() {
 			public void checkPerformed(AbstractForm abstractForm) {
@@ -81,8 +87,7 @@ public class SapTableWizardPage extends WizardPage {
 				} else {
 					SapTableWizardPage.this.setPageComplete(isRepositoryObjectEditable);
 					SapTableWizardPage.this.setErrorMessage(null);
-					SapTableWizardPage.this.setMessage(abstractForm.getStatus(), abstractForm
-							.getStatusLevel());
+					SapTableWizardPage.this.setMessage(abstractForm.getStatus(), abstractForm.getStatusLevel());
 				}
 			}
 		};
@@ -94,12 +99,14 @@ public class SapTableWizardPage extends WizardPage {
 
 	}
 
+
 	/**
 	 * @return
 	 */
 	public SAPFunctionUnit getFunctionUnit() {
 		return sapTableForm.getFunctionUnit();
 	}
+
 
 	/**
 	 * 

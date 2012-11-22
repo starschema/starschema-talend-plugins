@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -61,7 +61,6 @@ import org.talend.core.model.properties.RoutineItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryObject;
 import org.talend.core.model.repository.IRepositoryViewObject;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.service.IDesignerPerlService;
 import org.talend.designer.codegen.ICodeGeneratorService;
 import org.talend.designer.codegen.ITalendSynchronizer;
@@ -71,11 +70,12 @@ import org.talend.designer.core.ui.AbstractMultiPageTalendEditor;
 import org.talend.designer.core.ui.views.problems.Problems.Group;
 import org.talend.repository.documentation.ERepositoryActionName;
 import org.talend.repository.ui.actions.routines.AbstractRoutineAction;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC nrousseau class global comment. Detailled comment <br/>
  * 
- * $Id: ProblemsView.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: ProblemsView.java 81310 2012-04-10 07:03:44Z cli $
  * 
  */
 public class ProblemsView extends ViewPart implements PropertyChangeListener {
@@ -307,7 +307,10 @@ public class ProblemsView extends ViewPart implements PropertyChangeListener {
                     RoutineItem routine = getRoutineItem();
                     IEditorPart editor = openRoutineEditor(routine, false);
                     focusMarkerForRoutineEditor(editor);
-                    RepositoryManager.getRepositoryView().refresh(ERepositoryObjectType.ROUTINES);
+                    IRepositoryView view = getViewPart();
+                    if (view != null) {
+                        view.refresh(ERepositoryObjectType.ROUTINES);
+                    }
                 } catch (SystemException e) {
                     MessageBoxExceptionHandler.process(e);
                 } catch (PartInitException e) {

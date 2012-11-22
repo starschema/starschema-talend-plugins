@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,7 +38,10 @@ public enum ERepositoryImages implements IImage {
     DEFAULT_PROCESS_ICON("/icons/process_icon.gif"), //$NON-NLS-N$
     MODIFIED_ICON("/icons/refresh.gif"), //$NON-NLS-N$
     SCHEMA_ICON("/icons/table.gif"), //$NON-NLS-N$
-    CONNECTOR_ICON("/icons/connection.gif"); //$NON-NLS-N$
+    CONNECTOR_ICON("/icons/connection.gif"), //$NON-NLS-N$
+    TALENDFORGE_ICON("/icons/talendforge.jpg"), //$NON-NLS-N$
+    OPEN_ICON("/icons/open.gif"), //$NON-NLS-N$
+    DOT_ICON("/icons/dot.jpg");//$NON-NLS-N$
 
     private String path;
 

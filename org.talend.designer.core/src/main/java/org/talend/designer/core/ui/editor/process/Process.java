@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -39,6 +39,8 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.common.util.EMap;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.gef.SnapToGeometry;
 import org.eclipse.gef.SnapToGrid;
@@ -72,7 +74,7 @@ import org.talend.core.model.general.Project;
 import org.talend.core.model.metadata.IEbcdicConstant;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.process.EComponentCategory;
 import org.talend.core.model.process.EConnectionType;
 import org.talend.core.model.process.EParameterFieldType;
@@ -83,15 +85,13 @@ import org.talend.core.model.process.IContext;
 import org.talend.core.model.process.IContextManager;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.model.process.IElementParameter;
-import org.talend.core.model.process.IExternalData;
+import org.talend.core.model.process.IExternalNode;
 import org.talend.core.model.process.INode;
 import org.talend.core.model.process.INodeConnector;
 import org.talend.core.model.process.IProcess;
 import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.process.ISubjobContainer;
 import org.talend.core.model.process.UniqueNodeNameGenerator;
-import org.talend.core.model.process.node.IExternalMapEntry;
-import org.talend.core.model.process.node.IExternalMapTable;
 import org.talend.core.model.properties.ContextItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.ItemState;
@@ -106,7 +106,7 @@ import org.talend.core.model.routines.RoutinesUtil;
 import org.talend.core.model.update.IUpdateManager;
 import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
-import org.talend.core.service.IDesignerMapperService;
+import org.talend.core.repository.utils.XmiResourceManager;
 import org.talend.core.ui.IJobletProviderService;
 import org.talend.core.ui.ILastVersionChecker;
 import org.talend.core.utils.KeywordsValidator;
@@ -165,7 +165,7 @@ import org.talend.repository.model.migration.UpdateTheJobsActionsOnTable;
  * The diagram will contain all elements (nodes, connections) The xml that describes the diagram will be saved from the
  * information of this class. <br/>
  * 
- * $Id: Process.java 62885 2011-06-20 11:13:09Z hywang $
+ * $Id: Process.java 86388 2012-06-27 10:08:36Z hwang $
  * 
  */
 public class Process extends Element implements IProcess2, ILastVersionChecker {
@@ -222,6 +222,8 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
     protected byte[] screenshot = null;
 
+    protected EMap<?, ?> screenshots = null;
+
     private List<byte[]> externalInnerContents = new ArrayList<byte[]>();
 
     private Set<String> neededRoutines;
@@ -235,6 +237,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         //
     }
 
+    @Override
     public void updateProperties() {
         try {
             setId(property.getId());
@@ -301,13 +304,26 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
     private void createProcessParameters() {
         createMainParameters();
         createJobSettingsParameters();
+        // TDI-8323:if we select "Add all user routines to job dependencies" in windows preference, when creating a new
+        // job",we need to set its routineParameters for process
+        createRoutineDependecnes();
+    }
+
+    /**
+     * Add all routineParameters for a process.
+     */
+    private void createRoutineDependecnes() {
+        ProcessType processType = getProcessType();
+        if (processType != null && processType.getParameters() != null) {
+            routinesDependencies = new ArrayList<RoutinesParameterType>(processType.getParameters().getRoutinesParameter());
+        }
     }
 
     /**
      * create parameters for tabbed page 'Job Settings'.
      */
-    private void createJobSettingsParameters() {
-        JobSettingsManager.createJobSettingsParemeters(this);
+    protected void createJobSettingsParameters() {
+        ((List<IElementParameter>) this.getElementParameters()).addAll(JobSettingsManager.getJobSettingsParameters(this));
     }
 
     /**
@@ -318,7 +334,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
         param = new ElementParameter(this);
         param.setName(EParameterName.COMP_DEFAULT_FILE_DIR.getName());
-        param.setCategory(EComponentCategory.MAIN);
+        param.setCategory(EComponentCategory.TECHNICAL);
         param.setFieldType(EParameterFieldType.DIRECTORY);
         param.setDisplayName(EParameterName.COMP_DEFAULT_FILE_DIR.getDisplayName());
         param.setNumRow(99);
@@ -331,7 +347,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         // MOD by zshen for TDQ_INSTALL_DIR bug 17622
         param = new ElementParameter(this);
         param.setName(EParameterName.PRODUCT_ROOT_DIR.getName());
-        param.setCategory(EComponentCategory.MAIN);
+        param.setCategory(EComponentCategory.TECHNICAL);
         param.setFieldType(EParameterFieldType.DIRECTORY);
         param.setDisplayName(EParameterName.PRODUCT_ROOT_DIR.getDisplayName());
         param.setNumRow(99);
@@ -342,7 +358,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
         param = new ElementParameter(this);
         param.setName(EParameterName.COMP_DEFAULT_PROJECT_DIR.getName());
-        param.setCategory(EComponentCategory.MAIN);
+        param.setCategory(EComponentCategory.TECHNICAL);
         param.setFieldType(EParameterFieldType.DIRECTORY);
         param.setDisplayName(EParameterName.COMP_DEFAULT_PROJECT_DIR.getDisplayName());
         param.setNumRow(99);
@@ -454,6 +470,33 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         param.setValue(DesignerPlugin.getDefault().getPluginPreferences().getString(TalendDesignerPrefConstants.SCHEMA_OPTIONS));
         param.setReadOnly(true);
         addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName("OEM_CUSTOM_ATTRIBUTE");
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setShow(false);
+        param.setValue("");
+        param.setReadOnly(false);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName("HADOOP_APP_PATH");
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setShow(false);
+        param.setValue("");
+        param.setReadOnly(false);
+        addElementParameter(param);
+
+        param = new ElementParameter(this);
+        param.setName("JOBID_FOR_OOZIE");
+        param.setCategory(EComponentCategory.TECHNICAL);
+        param.setFieldType(EParameterFieldType.TEXT);
+        param.setShow(false);
+        param.setValue("");
+        param.setReadOnly(false);
+        addElementParameter(param);
     }
 
     /**
@@ -503,16 +546,19 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @return
      */
+    @Override
     public List getElements() {
         return this.elem;
     }
 
+    @Override
     public List<? extends INode> getGraphicalNodes() {
         return this.nodes;
     }
 
     DataProcess generatingProcess = null;
 
+    @Override
     public List<? extends INode> getGeneratingNodes() {
         if (generatingProcess == null) {
             generatingProcess = new DataProcess(this);
@@ -634,6 +680,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
     private boolean loadScreenshots;
 
+    @Override
     public boolean isProcessModified() {
         if (generatingProcess == null) {
             return true;
@@ -664,6 +711,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @return
      */
+    @Override
     public boolean isGridEnabled() {
         if (viewer == null) {
             retrieveAttachedViewer();
@@ -724,11 +772,6 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                 }
             }
             listParamType.add(pType);
-            // saveElementParameter(param, process, fileFact, paramList, listParamType);
-            // for (String key : param.getChildParameters().keySet()) {
-            // saveElementParameter(param.getChildParameters().get(key), process, fileFact, paramList, listParamType);
-            // }
-            // accept only one level of child parameters.
         }
     }
 
@@ -777,16 +820,20 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         }
 
         if (param.getElement() instanceof Process) {
-            // achen modify to fix bug 0006107
-            // Process tempProcess = new Process(this.property);
-            // IElementParameter tmpParam = tempProcess.getElementParameter(param.getName());
-            // IElementParameter tmpParam = param.getElement().getElementParameter(param.getName());
-            // if (tmpParam != null && tmpParam.getValue() != null && tmpParam.getValue().equals(param.getValue())) {
-            // return;
-            // }
+            if (param.isReadOnly() && param.getCategory() == EComponentCategory.TECHNICAL) {
+                return;
+            }
             if (isJoblet) {
                 if (param != null && !(param.getName().equals(EParameterName.STARTABLE.getName()))) {
                     return;
+                }
+            }
+            for (IElementParameter currentParam : JobSettingsManager.getJobSettingsParameters(this)) {
+                if (currentParam.getName().equals(param.getName())) {
+                    if (currentParam.getValue() != null && currentParam.getValue().equals(param.getValue())) {
+                        // don't save parameter if the value is default one.
+                        return;
+                    }
                 }
             }
         }
@@ -900,7 +947,22 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         for (int j = 0; j < listParamType.size(); j++) {
             pType = (ElementParameterType) listParamType.get(j);
             if (pType != null) {
-                IElementParameter param = elemParam.getElementParameter(pType.getName());
+                IElementParameter param = null;
+                if ("SURVIVOR_RELATION".equals(pType.getName())) {
+                    param = new ElementParameter(elemParam);
+                    param.setValue(pType.getValue());
+                    param.setName("SURVIVOR_RELATION");
+                    param.setCategory(EComponentCategory.TECHNICAL);
+                    param.setFieldType(EParameterFieldType.SURVIVOR_RELATION);
+                    param.setNumRow(99);
+                    param.setShow(false);
+                    param.setReadOnly(true);
+                    elemParam.addElementParameter(param);
+                    param = null;
+                    continue;
+                }
+
+                param = elemParam.getElementParameter(pType.getName());
                 if (param != null) {
                     if (pType.isSetContextMode()) {
                         param.setContextMode(pType.isContextMode());
@@ -910,7 +972,8 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                     if (param.isReadOnly()
                             && !(param.getName().equals(EParameterName.UNIQUE_NAME.getName()) || param.getName().equals(
                                     EParameterName.VERSION.getName()))) {
-                        continue; // if the parameter is read only, don't load
+                        continue;
+                        // if the parameter is read only, don't load
                         // it (this will prevent to overwrite the
                         // value)
                     }
@@ -1084,6 +1147,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * @return
      * @throws IOException
      */
+    @Override
     public ProcessType saveXmlFile() throws IOException {
         init();
 
@@ -1109,7 +1173,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                 for (NodeContainer container : ((SubjobContainer) element).getNodeContainers()) {
                     if (container instanceof JobletContainer) {
                         JobletContainer jobletCon = (JobletContainer) container;
-                        saveNode(fileFact, processType, nList, cList, ((NodeContainer) container).getNode(), factory);
+                        saveNode(fileFact, processType, nList, cList, container.getNode(), factory);
                         // IJobletProviderService service = (IJobletProviderService)
                         // GlobalServiceRegister.getDefault().getService(
                         // IJobletProviderService.class);
@@ -1181,6 +1245,9 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
          */
         processType.setDefaultContext(contextManager.getDefaultContext().getName());
         processType.setScreenshot(getScreenshot());
+        if (getScreenshot() != null) {
+            processType.getScreenshots().put("process", getScreenshot());
+        }
         setScreenshot(null); // once be saved, set the screenshot to null to free memory
         contextManager.saveToEmf(processType.getContext());
         return processType;
@@ -1297,7 +1364,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
         if (node.getExternalNode() != null && node.getExternalNode().getScreenshot() != null) {
             byte[] saveImageToData = ImageUtils.saveImageToData(node.getExternalNode().getScreenshot());
-            nType.setScreenshot(saveImageToData);
+            process.getScreenshots().put(node.getUniqueName(), saveImageToData);
         }
     }
 
@@ -1332,8 +1399,15 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
             }
             // always add the system, others must be checked
             for (IRepositoryViewObject object : routines) {
-                if (((RoutineItem) object.getProperty().getItem()).isBuiltIn() && routinesDependencies.isEmpty()) {
-                    routinesToAdd.add(object.getLabel());
+                if (((RoutineItem) object.getProperty().getItem()).isBuiltIn()) {
+                    if (routinesDependencies.isEmpty()) {
+                        routinesToAdd.add(object.getLabel());
+                    }
+                    // TDI-8323:since we "Add all user routines to job dependencies" in windows preference,the
+                    // routinesDependencies will not empty.
+                    else if (!routinesAlreadySetup.contains(object.getLabel())) {
+                        routinesToAdd.add(object.getLabel());
+                    }
                 } else if (!routinesAlreadySetup.contains(object.getLabel())) {
                     possibleRoutines.add(object.getLabel());
                 }
@@ -1363,62 +1437,11 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
             // check possible routines to setup in nodes
             for (INode node : ((List<INode>) getGraphicalNodes())) {
-                String componentName = node.getComponent().getName();
-                if (componentName.equals("tMap")) {//$NON-NLS-N$
-                    IExternalData data = node.getExternalData();
-                    for (String routine : possibleRoutines) {
-                        List<IExternalMapTable> listOutput = (List<IExternalMapTable>) data.getOutputTables();
-                        if (listOutput != null && !listOutput.isEmpty()) {
-                            for (IExternalMapTable outTable : listOutput) {
-                                List<IExternalMapEntry> listOutEntry = (List<IExternalMapEntry>) outTable.returnTableEntries();
-                                for (IExternalMapEntry outEntry : listOutEntry) {
-                                    String expression = outEntry.getExpression();
-                                    if (expression != null && !routinesToAdd.contains(routine)
-                                            && expression.contains(routine + additionalString)) {
-                                        routinesToAdd.add(routine);
-                                    }
-                                }
-                            }
-                        }
-                        List<IExternalMapTable> listInput = (List<IExternalMapTable>) data.getInputTables();
-                        for (IExternalMapTable inputTable : listInput) {
-                            List<IExternalMapEntry> listInEntry = (List<IExternalMapEntry>) inputTable.returnTableEntries();
-                            if (listInEntry != null && !listInEntry.isEmpty()) {
-                                for (IExternalMapEntry inEntry : listInEntry) {
-                                    String expression = inEntry.getExpression();
-                                    if (expression != null && !routinesToAdd.contains(routine)
-                                            && expression.contains(routine + additionalString)) {
-                                        routinesToAdd.add(routine);
-                                    }
-                                }
-                            }
-                        }
-                        List<IExternalMapTable> listVar = (List<IExternalMapTable>) data.getVarsTables();
-                        for (IExternalMapTable varTable : listVar) {
-                            List<IExternalMapEntry> listVarEntry = (List<IExternalMapEntry>) varTable.returnTableEntries();
-                            if (listVarEntry != null && !listVarEntry.isEmpty()) {
-                                for (IExternalMapEntry varEntry : listVarEntry) {
-                                    String expression = varEntry.getExpression();
-                                    if (expression != null && !routinesToAdd.contains(routine)
-                                            && expression.contains(routine + additionalString)) {
-                                        routinesToAdd.add(routine);
-                                    }
-                                }
-                            }
-                        }
-                        if (GlobalServiceRegister.getDefault().isServiceRegistered(IDesignerMapperService.class)) {
-                            IDesignerMapperService service = (IDesignerMapperService) GlobalServiceRegister.getDefault()
-                                    .getService(IDesignerMapperService.class);
-                            List<String> ExperssionFilters = service.getExpressionFilter(data);
-                            if (!ExperssionFilters.isEmpty()) {
-                                for (String experssion : ExperssionFilters) {
-                                    if (experssion != null && !routinesToAdd.contains(routine)
-                                            && experssion.contains(routine + additionalString)) {
-                                        routinesToAdd.add(routine);
-                                    }
-                                }
-                            }
-                        }
+                if (node.isExternalNode()) {
+                    IExternalNode eNode = node.getExternalNode();
+                    List<String> needToadd = eNode.checkNeededRoutines(possibleRoutines, additionalString);
+                    if (needToadd != null) {
+                        routinesToAdd.addAll(needToadd);
                     }
                 }
                 for (IElementParameter param : (List<IElementParameter>) node.getElementParametersWithChildrens()) {
@@ -1446,7 +1469,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
             }
 
             for (IRepositoryViewObject object : routines) {
-                if (routinesToAdd.contains(object.getLabel())) {
+                if (routinesToAdd.contains(object.getLabel()) && !routinesAlreadySetup.contains(object.getLabel())) {
                     RoutinesParameterType routinesParameterType = TalendFileFactory.eINSTANCE.createRoutinesParameterType();
                     routinesParameterType.setId(object.getId());
                     routinesParameterType.setName(object.getLabel());
@@ -1562,10 +1585,12 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @param process
      */
+    @Override
     public void loadXmlFile() {
         loadXmlFile(false);
     }
 
+    @Override
     public void loadXmlFile(boolean loadScreenshots) {
         this.loadScreenshots = loadScreenshots;
         init();
@@ -1605,6 +1630,14 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         checkStartNodes();
         // (bug 5365)
         checkNodeTableParameters();
+        XmiResourceManager resourceManager = new XmiResourceManager();
+        if (this.loadScreenshots) {
+            // if it is expanding the joblet in job,the property's eResource is null,no need to loadScreenShots
+            if (property.eResource() != null) {
+                resourceManager.loadScreenshots(property, processType);
+            }
+
+        }
 
         // this fix caused another problem 14736 , project settings should be reload in
         // ImportItemUtil.importItemRecord()
@@ -1614,6 +1647,9 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         // loadNodeContainer(processType);
         // bug 6158
         this.updateManager.retrieveRefInformation();
+
+        // force a routine dependencies check, in case some dependencies are lost before.
+        checkRoutineDependencies();
     }
 
     private void loadRejectConnector(Hashtable<String, Node> nodesHashtable) {
@@ -1633,9 +1669,9 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                     Object[] itemsValue = param.getListItemsValue();
                     if (itemsValue != null && param.getValue() != null && param.getValue() instanceof List) {
                         List<Map<String, Object>> values = (List<Map<String, Object>>) param.getValue();
-                        for (int i = 0; i < itemsValue.length; i++) {
-                            if (itemsValue[i] instanceof IElementParameter) {
-                                IElementParameter columnParam = (IElementParameter) itemsValue[i];
+                        for (Object element : itemsValue) {
+                            if (element instanceof IElementParameter) {
+                                IElementParameter columnParam = (IElementParameter) element;
                                 if (columnParam.getFieldType() == EParameterFieldType.COLUMN_LIST
                                         || columnParam.getFieldType() == EParameterFieldType.PREV_COLUMN_LIST
                                         || columnParam.getFieldType() == EParameterFieldType.LOOKUP_COLUMN_LIST) {
@@ -1807,7 +1843,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         }
         // nc.setData(nType.getBinaryData(), nType.getStringData());
         if (nc.getExternalNode() != null && nType.getNodeData() != null) {
-            nc.getExternalNode().buildExternalData(nType.getNodeData());
+            nc.getExternalNode().buildExternalData(EcoreUtil.copy(nType.getNodeData()));
             nc.setExternalData(nc.getExternalNode().getExternalData());
         }
 
@@ -1827,14 +1863,6 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         addNodeContainer(nodeContainer);
         nodesHashtable.put(nc.getUniqueName(), nc);
         updateAllMappingTypes();
-
-        if (loadScreenshots) {
-            byte[] innerContent = nType.getScreenshot();
-            if (nc.getExternalNode() != null && !CommonsPlugin.isHeadless()) {
-                nc.getExternalNode().setScreenshot(ImageUtils.createImageFromData(innerContent));
-            }
-            externalInnerContents.add(innerContent);
-        }
         nc.setNeedLoadLib(false);
         //
         return nc;
@@ -1897,7 +1925,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                     listItemsDisplayCodeValue[i] = column.getLabel();
                     listItemsDisplayValue[i] = column.getLabel();
                     newParam = new ElementParameter(nc);
-                    newParam.setName(column.getLabel()); //$NON-NLS-1$
+                    newParam.setName(column.getLabel());
                     newParam.setDisplayName(""); //$NON-NLS-1$
                     newParam.setFieldType(EParameterFieldType.TEXT);
                     newParam.setValue(""); //$NON-NLS-1$
@@ -1975,6 +2003,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @throws PersistenceException PersistenceException
      */
+    @Override
     public void checkLoadNodes() throws PersistenceException {
         if (unloadedNode == null || unloadedNode.isEmpty()) {
             return;
@@ -2034,7 +2063,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                         metadataTable.setTableName(nc.getUniqueName());
                     }
                 }
-                MetadataTool.initilializeSchemaFromElementParameters(metadataTable,
+                MetadataToolHelper.initilializeSchemaFromElementParameters(metadataTable,
                         (List<IElementParameter>) nc.getElementParameters());
             }
         }
@@ -2050,7 +2079,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                     String baseSchema = nc.getConnectorFromName(table.getAttachedConnector()).getBaseSchema();
                     IMetadataTable metadataFromConnector = nc.getMetadataFromConnector(baseSchema);
                     if (!table.getAttachedConnector().equals(baseSchema) && metadataFromConnector != null) {
-                        MetadataTool.copyTable(metadataFromConnector, table);
+                        MetadataToolHelper.copyTable(metadataFromConnector, table);
                     }
                 }
                 nc.getMetadataList().add(table);
@@ -2068,6 +2097,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return getUpdateManager().updateAll();
     }
 
+    @Override
     public CommandStack getCommandStack() {
         if (getEditor() != null) {
             Object adapter = ((AbstractMultiPageTalendEditor) getEditor()).getTalendEditor().getAdapter(CommandStack.class);
@@ -2198,6 +2228,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                 final Display display = PlatformUI.getWorkbench().getDisplay();
                 display.syncExec(new Runnable() {
 
+                    @Override
                     public void run() {
                         MessageBox mb = new MessageBox(new Shell(display), SWT.ICON_ERROR);
                         mb.setText(getLabel() + ":" + Messages.getString("Process.errorLoadingConnectionTitle")); //$NON-NLS-1$
@@ -2277,10 +2308,12 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
     }
 
+    @Override
     public boolean isReadOnly() {
         return readOnly;
     }
 
+    @Override
     public boolean checkReadOnly() {
         IProxyRepositoryFactory repFactory = DesignerPlugin.getDefault().getProxyRepositoryFactory();
         boolean readOnlyLocal = !repFactory.isEditableAndLockIfPossible(property.getItem()) || !isLastVersion(property.getItem());
@@ -2288,6 +2321,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return readOnlyLocal;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public void setReadOnly(boolean readOnly) {
         this.readOnly = readOnly;
@@ -2314,6 +2348,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return name;
     }
 
+    @Override
     public String getName() {
         return this.getProperty().getLabel();
     }
@@ -2323,6 +2358,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#getAuthor()
      */
+    @Override
     public User getAuthor() {
         return getProperty().getAuthor();
     }
@@ -2332,6 +2368,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#getId()
      */
+    @Override
     public String getId() {
         return getProperty().getId();
     }
@@ -2341,6 +2378,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#getLabel()
      */
+    @Override
     public String getLabel() {
         return getProperty().getLabel();
     }
@@ -2350,6 +2388,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#getStatus()
      */
+    @Override
     public String getStatusCode() {
         return getProperty().getStatusCode();
     }
@@ -2359,6 +2398,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#getVersion()
      */
+    @Override
     public String getVersion() {
         return getProperty().getVersion();
     }
@@ -2368,11 +2408,15 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#setAuthor(org.talend.core.model.temp.User)
      */
+    @Override
     public void setAuthor(User author) {
-        if (!getProperty().getAuthor().equals(author)) {
+        if (getProperty().getAuthor() == null && author != null || getProperty().getAuthor() != null
+                && !getProperty().getAuthor().equals(author)) {
             getProperty().setAuthor(author);
         }
-        setPropertyValue(EParameterName.AUTHOR.getName(), author.toString());
+        if (author != null) {
+            setPropertyValue(EParameterName.AUTHOR.getName(), author.toString());
+        }
     }
 
     /*
@@ -2380,8 +2424,9 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#setId(int)
      */
+    @Override
     public void setId(String id) {
-        if (!getProperty().getId().equals(id)) {
+        if (getProperty().getId() == null && id != null || getProperty().getId() != null && !getProperty().getId().equals(id)) {
             getProperty().setId(id);
         }
     }
@@ -2391,8 +2436,10 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#setLabel(java.lang.String)
      */
+    @Override
     public void setLabel(String label) {
-        if (!getProperty().getLabel().equals(label)) {
+        if (getProperty().getLabel() == null && label != null || getProperty().getLabel() != null
+                && !getProperty().getLabel().equals(label)) {
             getProperty().setLabel(label);
         }
         setPropertyValue(EParameterName.NAME.getName(), label);
@@ -2403,6 +2450,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#setStatus(org.talend.core.model.process.EProcessStatus)
      */
+    @Override
     public void setStatusCode(String statusCode) {
         if (getProperty().getStatusCode() == null && statusCode != null || getProperty().getStatusCode() != null
                 && !getProperty().getStatusCode().equals(statusCode)) {
@@ -2416,8 +2464,10 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IRepositoryProcess#setVersion(int)
      */
+    @Override
     public void setVersion(String version) {
-        if (!getProperty().getVersion().equals(version)) {
+        if (getProperty().getVersion() == null && version != null || getProperty().getVersion() != null
+                && !getProperty().getVersion().equals(version)) {
             getProperty().setVersion(version);
         }
         setPropertyValue(EParameterName.VERSION.getName(), version);
@@ -2442,6 +2492,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.temp.IXmlSerializable#setXmlStream(java.io.InputStream)
      */
+    @Override
     public void setXmlStream(InputStream xmlStream) {
         ByteArrayOutputStream st = new ByteArrayOutputStream();
 
@@ -2468,6 +2519,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return activate;
     }
 
+    @Override
     public void setActivate(boolean activate) {
         this.activate = activate;
     }
@@ -2480,6 +2532,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * @param checkEsists
      * @return true if the name is unique
      */
+    @Override
     public boolean checkValidConnectionName(String connectionName, boolean checkExists) {
         // test if name already exist but with ignore case (contains test only with same case)
 
@@ -2526,6 +2579,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * @param uniqueName
      * @return true if the name is unique
      */
+    @Override
     public boolean checkValidConnectionName(String connectionName) {
         return checkValidConnectionName(connectionName, true);
     }
@@ -2535,6 +2589,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @param titleName
      */
+    @Override
     public String generateUniqueConnectionName(String baseName) {
         if (baseName == null) {
             throw new IllegalArgumentException("baseName can't be null"); //$NON-NLS-1$
@@ -2553,6 +2608,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return uniqueName;
     }
 
+    @Override
     public String generateUniqueConnectionName(String baseName, String tableName) {
         if (baseName == null || tableName == null) {
             throw new IllegalArgumentException("baseName or tableName can't be null"); //$NON-NLS-1$
@@ -2573,6 +2629,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return fullName;
     }
 
+    @Override
     public void addUniqueConnectionName(String uniqueConnectionName) {
         if (uniqueConnectionName != null) {
             if (checkValidConnectionName(uniqueConnectionName)) {
@@ -2583,6 +2640,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         }
     }
 
+    @Override
     public void removeUniqueConnectionName(String uniqueConnectionName) {
         if (uniqueConnectionName != null) {
             uniqueConnectionNameList.remove(uniqueConnectionName);
@@ -2600,12 +2658,14 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @param uniqueName
      */
+    @Override
     public void addUniqueNodeName(final String uniqueName) {
         if (!uniqueNodeNameList.contains(uniqueName)) {
             uniqueNodeNameList.add(uniqueName);
         }
     }
 
+    @Override
     public void removeUniqueNodeName(final String uniqueName) {
         if (uniqueName != null && !uniqueName.equals("")) { //$NON-NLS-1$
             uniqueNodeNameList.remove(uniqueName);
@@ -2680,6 +2740,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         setActivate(true);
     }
 
+    @Override
     public void checkStartNodes() {
         for (INode node : nodes) {
             if ((Boolean) node.getPropertyValue(EParameterName.STARTABLE.getName())) {
@@ -2695,6 +2756,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         }
     }
 
+    @Override
     public int getMergelinkOrder(final INode node) {
         return getMergelinkOrder(node, new HashSet<INode>());
     }
@@ -2727,6 +2789,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return returnValue;
     }
 
+    @Override
     public boolean isThereLinkWithHash(final INode node) {
         return isThereLinkWithHash(node, new HashSet<INode>());
     }
@@ -2774,6 +2837,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @param propagate
      */
+    @Override
     public void checkProcess() {
         if (isActivate()) {
             checkProblems();
@@ -2812,34 +2876,42 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return "Process:" + getLabel(); //$NON-NLS-1$
     }
 
+    @Override
     public ERepositoryObjectType getRepositoryObjectType() {
         return ERepositoryObjectType.PROCESS;
     }
 
+    @Override
     public IContextManager getContextManager() {
         return contextManager;
     }
 
     // PTODO mhelleboid remove
+    @Override
     public Date getCreationDate() {
         return getProperty().getCreationDate();
     }
 
+    @Override
     public String getDescription() {
         return getProperty().getDescription();
     }
 
+    @Override
     public Date getModificationDate() {
         return getProperty().getModificationDate();
     }
 
+    @Override
     public String getPurpose() {
         return getProperty().getPurpose();
     }
 
+    @Override
     public void setCreationDate(Date value) {
     }
 
+    @Override
     public void setDescription(String value) {
         if (getProperty().getDescription() == null) {
             if (value != null) {
@@ -2853,9 +2925,11 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         setPropertyValue(EParameterName.DESCRIPTION.getName(), value);
     }
 
+    @Override
     public void setModificationDate(Date value) {
     }
 
+    @Override
     public void setPurpose(String value) {
         if (getProperty().getPurpose() == null) {
             if (value != null) {
@@ -2888,10 +2962,12 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         super.setPropertyValue(id, value);
     }
 
+    @Override
     public Property getProperty() {
         return property;
     }
 
+    @Override
     public void setProperty(Property property) {
         this.property = property;
     }
@@ -2901,29 +2977,35 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.repository.IRepositoryObject#getChildren()
      */
+    @Override
     public List<IRepositoryViewObject> getChildren() {
         // TODO Auto-generated method stub
         return null;
     }
 
+    @Override
     public List<INode> getNodesOfType(String componentName) {
         List<INode> matchingNodes = new ArrayList<INode>();
         List<INode> generatingNodes = new ArrayList<INode>();
-        // wzhang added to fix bug 11621
-        // if (flag) {
-        // generatingNodes = (List<INode>) getGraphicalNodes();
-        // } else {
+
         generatingNodes = (List<INode>) getGeneratingNodes();
-        // }
+        getMatchingNodes(componentName, matchingNodes, generatingNodes);
+
+        generatingNodes = (List<INode>) getGraphicalNodes();
+        getMatchingNodes(componentName, matchingNodes, generatingNodes);
+        return matchingNodes;
+    }
+
+    private void getMatchingNodes(String componentName, List<INode> matchingNodes, List<INode> generatingNodes) {
         for (INode node : generatingNodes) {
             if (node.isActivate()) {
                 if (componentName == null) { // means all nodes will be
                     // returned
-                    matchingNodes.add(node);
+                    addNodeIfNotInTheList(matchingNodes, node);
                 } else if (componentName.startsWith("FAMILY:")) { //$NON-NLS-1$
                     String familly = componentName.substring("FAMILY:".length()); //$NON-NLS-1$
                     if (node.getComponent().getOriginalFamilyName().startsWith(familly)) {
-                        matchingNodes.add(node);
+                        addNodeIfNotInTheList(matchingNodes, node);
                     }
                 } else if (componentName.startsWith("REGEXP:")) { //$NON-NLS-1$
                     Perl5Matcher matcher = new Perl5Matcher();
@@ -2934,29 +3016,27 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
                     try {
                         pattern = compiler.compile(regexp);
                         if (matcher.matches(node.getComponent().getName(), pattern)) {
-                            matchingNodes.add(node);
+                            addNodeIfNotInTheList(matchingNodes, node);
                         }
                     } catch (MalformedPatternException e) {
                         throw new RuntimeException(e);
                     }
                 } else if ((node.getComponent().getName() != null)
                         && (node.getComponent().getName().compareTo(componentName)) == 0) {
-                    matchingNodes.add(node);
+                    addNodeIfNotInTheList(matchingNodes, node);
                 }
             }
         }
-        return matchingNodes;
     }
 
-    // /**
-    // * Return all Nodes of Component type componentName.
-    // *
-    // * @param componentName the component name
-    // * @return all the activated matching nodes in the process
-    // */
-    // public List<INode> getNodesOfType(String componentName) {
-    // return getNodesOfType(componentName, false);
-    // }
+    private void addNodeIfNotInTheList(List<INode> matchingNodes, INode node) {
+        for (INode currentNode : matchingNodes) {
+            if (currentNode.getUniqueName().equals(node.getUniqueName())) {
+                return; // don't add
+            }
+        }
+        matchingNodes.add(node);
+    }
 
     /**
      * Comment method "getAllConnections".
@@ -2964,6 +3044,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * @param filter only return the filter matched connections
      * @return
      */
+    @Override
     public IConnection[] getAllConnections(String filter) {
         List<? extends INode> nodes = getGraphicalNodes();
         Set<IConnection> conns = new HashSet<IConnection>();
@@ -2979,8 +3060,8 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
             // construct filter array
             String[] f = filter.substring("TYPE:".length()).split("\\|"); //$NON-NLS-1$ //$NON-NLS-2$
             List<String> filterArray = new ArrayList<String>(f.length);
-            for (int i = 0; i < f.length; i++) {
-                filterArray.add(f[i].trim());
+            for (String element : f) {
+                filterArray.add(element.trim());
             }
 
             for (Iterator<IConnection> iter = conns.iterator(); iter.hasNext();) {
@@ -3040,6 +3121,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         fireStructureChange(NEED_UPDATE_JOB, elem);
     }
 
+    @Override
     public Set<String> getNeededLibraries(boolean withChildrens) {
         return JavaProcessUtil.getNeededLibraries(this, withChildrens);
     }
@@ -3058,6 +3140,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @return the editor
      */
+    @Override
     public IEditorPart getEditor() {
         if (this.editor instanceof AbstractMultiPageTalendEditor) {
             return this.editor;
@@ -3067,6 +3150,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
     CommandStackEventListener commandStackEventListener = new CommandStackEventListener() {
 
+        @Override
         public void stackChanged(CommandStackEvent event) {
             processModified = true;
             setNeedRegenerateCode(true);
@@ -3096,6 +3180,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         }
     }
 
+    @Override
     public void dispose() {
         if (editor != null && !duplicate) {
             CommandStack commandStack = (CommandStack) editor.getTalendEditor().getAdapter(CommandStack.class);
@@ -3114,6 +3199,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess2#disableRunJobView()
      */
+    @Override
     public boolean disableRunJobView() {
         return false;
     }
@@ -3123,6 +3209,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @param processModified the processModified to set
      */
+    @Override
     public void setProcessModified(boolean processModified) {
         this.processModified = processModified;
     }
@@ -3132,6 +3219,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @param contextManager the contextManager to set
      */
+    @Override
     public void setContextManager(IContextManager contextManager) {
         this.contextManager = contextManager;
     }
@@ -3150,6 +3238,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess#getNodesWithImport()
      */
+    @Override
     public List<INode> getNodesWithImport() {
         List<INode> nodesWithImport = new ArrayList<INode>();
         for (INode node : getGeneratingNodes()) {
@@ -3160,6 +3249,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return nodesWithImport;
     }
 
+    @Override
     public void updateSubjobContainers() {
         // check all old subjobStart to see if their status changed (to remove the subjob if needed)
         Set<SubjobContainer> updatedSubjobContainers = new HashSet<SubjobContainer>();
@@ -3277,6 +3367,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess#getLastRunContext()
      */
+    @Override
     public IContext getLastRunContext() {
         return lastRunContext;
     }
@@ -3286,6 +3377,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess#setLastRunContext(org.talend.core.model.process.IContext)
      */
+    @Override
     public void setLastRunContext(IContext context) {
         this.lastRunContext = context;
 
@@ -3296,6 +3388,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @return the duplicate
      */
+    @Override
     public boolean isDuplicate() {
         return this.duplicate;
     }
@@ -3305,6 +3398,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @param duplicate the duplicate to set
      */
+    @Override
     public void setDuplicate(boolean duplicate) {
         this.duplicate = duplicate;
     }
@@ -3314,6 +3408,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @return the subjobContainers
      */
+    @Override
     public List<? extends ISubjobContainer> getSubjobContainers() {
         return this.subjobContainers;
     }
@@ -3323,6 +3418,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess2#getUpdateManager()
      */
+    @Override
     public IUpdateManager getUpdateManager() {
         return this.updateManager;
     }
@@ -3332,6 +3428,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess2#isNeedRegenerateCode()
      */
+    @Override
     public boolean isNeedRegenerateCode() {
         if (editor == null) {
             // if no editor linked, we just consider same as if there was all the time a modification
@@ -3345,6 +3442,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess2#setNeedRegenerateCode(boolean)
      */
+    @Override
     public void setNeedRegenerateCode(boolean regenerateCode) {
         this.needRegenerateCode = regenerateCode;
     }
@@ -3354,6 +3452,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.repository.IRepositoryObject#getRepositoryNode()
      */
+    @Override
     public RepositoryNode getRepositoryNode() {
         // TODO Auto-generated method stub
         return null;
@@ -3365,6 +3464,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * @see
      * org.talend.core.model.repository.IRepositoryObject#setRepositoryNode(org.talend.repository.model.RepositoryNode)
      */
+    @Override
     public void setRepositoryNode(IRepositoryNode node) {
         // TODO Auto-generated method stub
 
@@ -3387,6 +3487,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      */
 
     // this function is create for feature 0006265
+    @Override
     public IMetadataTable getOutputMetadataTable() {
         List<? extends Node> nodes = (List<? extends Node>) this.getGeneratingNodes();
         for (Node node : nodes) {
@@ -3399,12 +3500,22 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
     }
 
+    @Override
     public byte[] getScreenshot() {
         return this.screenshot;
     }
 
+    public EMap getScreenshots() {
+        return this.screenshots;
+    }
+
+    @Override
     public void setScreenshot(byte[] imagedata) {
         this.screenshot = imagedata;
+    }
+
+    public void setScreenshots(EMap screenshots) {
+        this.screenshots = screenshots;
     }
 
     /*
@@ -3412,6 +3523,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.ui.ILastVersionChecker#isLastVersion(org.talend.core.model.properties.Item)
      */
+    @Override
     public boolean isLastVersion(Item item) {
         if (lastVersion != null) { // status can be known without check below, to continue to optimize later.
             return lastVersion;
@@ -3461,6 +3573,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         return false;
     }
 
+    @Override
     public List<NodeType> getUnloadedNode() {
         return this.unloadedNode;
     }
@@ -3470,6 +3583,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.ui.ILastVersionChecker#setLastVersion(java.lang.Boolean)
      */
+    @Override
     public void setLastVersion(Boolean lastVersion) {
         this.lastVersion = lastVersion;
     }
@@ -3479,6 +3593,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.repository.IRepositoryViewObject#getInformationStatus()
      */
+    @Override
     public ERepositoryStatus getInformationStatus() {
         // TODO Auto-generated method stub
         return null;
@@ -3489,6 +3604,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.repository.IRepositoryViewObject#getPath()
      */
+    @Override
     public String getPath() {
         // TODO Auto-generated method stub
         return null;
@@ -3499,6 +3615,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.repository.IRepositoryViewObject#getProjectLabel()
      */
+    @Override
     public String getProjectLabel() {
         // TODO Auto-generated method stub
         return null;
@@ -3509,6 +3626,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.repository.IRepositoryViewObject#getRepositoryStatus()
      */
+    @Override
     public ERepositoryStatus getRepositoryStatus() {
         // TODO Auto-generated method stub
         return null;
@@ -3519,6 +3637,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.repository.IRepositoryViewObject#isDeleted()
      */
+    @Override
     public boolean isDeleted() {
         return false;
     }
@@ -3528,6 +3647,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
      * 
      * @see org.talend.core.model.process.IProcess2#checkTableParameters()
      */
+    @Override
     public void checkTableParameters() {
         checkNodeTableParameters();
     }
@@ -3651,6 +3771,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
 
     }
 
+    @Override
     public Set<String> getNeededRoutines() {
         // this value is initialized only for a duplicate process (for code generation)
         if (neededRoutines != null && duplicate) {
@@ -3756,6 +3877,7 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         this.routinesDependencies = routinesDependencies;
     }
 
+    @Override
     public boolean isSubjobEnabled() {
         if (GlobalServiceRegister.getDefault().isServiceRegistered(ICamelDesignerCoreService.class)) {
             ICamelDesignerCoreService camelService = (ICamelDesignerCoreService) GlobalServiceRegister.getDefault().getService(
@@ -3766,4 +3888,9 @@ public class Process extends Element implements IProcess2, ILastVersionChecker {
         }
         return true;
     }
+
+    public String getBaseHelpLink() {
+        return "org.talend.help.";
+    }
+
 }

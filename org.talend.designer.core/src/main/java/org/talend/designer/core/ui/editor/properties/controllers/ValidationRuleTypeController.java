@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -197,14 +197,20 @@ public class ValidationRuleTypeController extends AbstractRepositoryController {
         @Override
         public boolean select(Viewer viewer, Object parentElement, Object element) {
             RepositoryNode node = (RepositoryNode) element;
-            List<IRepositoryViewObject> objs = ValidationRulesUtil.getRelatedValidationRuleObjs(elem);
-            for (IRepositoryViewObject obj : objs) {
-                IRepositoryViewObject repObj = node.getObject();
-                if (repObj != null && repObj.getId() != null && repObj.getId().equals(obj.getId())) {
-                    return true;
+            if (node.getObjectType() == ERepositoryObjectType.METADATA_VALIDATION_RULES) {
+                List<IRepositoryViewObject> objs = ValidationRulesUtil.getRelatedValidationRuleObjs(elem);
+                if (objs == null || objs.size() < 1) {
+                    return false;
                 }
+                for (IRepositoryViewObject obj : objs) {
+                    IRepositoryViewObject repObj = node.getObject();
+                    if (repObj != null && repObj.getId() != null && repObj.getId().equals(obj.getId())) {
+                        return true;
+                    }
+                }
+                return false;
             }
-            return false;
+            return true;
         }
     }
 

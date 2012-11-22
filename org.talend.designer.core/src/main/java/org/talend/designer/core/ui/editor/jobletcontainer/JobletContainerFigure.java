@@ -1,10 +1,13 @@
 package org.talend.designer.core.ui.editor.jobletcontainer;
 
+import java.util.List;
+
 import org.eclipse.draw2d.ActionEvent;
 import org.eclipse.draw2d.ActionListener;
 import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.FreeformLayout;
 import org.eclipse.draw2d.Graphics;
+import org.eclipse.draw2d.ImageFigure;
 import org.eclipse.draw2d.RoundedRectangle;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
@@ -12,17 +15,26 @@ import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
+import org.talend.commons.ui.runtime.image.EImage;
+import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.commons.ui.utils.image.ColorUtils;
 import org.talend.commons.ui.utils.workbench.gef.SimpleHtmlFigure;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.IProcess;
 import org.talend.core.model.process.IProcess2;
+import org.talend.core.model.process.Problem.ProblemStatus;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.ui.AbstractMultiPageTalendEditor;
 import org.talend.designer.core.ui.editor.cmd.PropertyChangeCommand;
 import org.talend.designer.core.ui.editor.nodes.Node;
+import org.talend.designer.core.ui.editor.process.Process;
+import org.talend.designer.core.ui.views.problems.Problems;
 
 public class JobletContainerFigure extends Figure {
+
+    private ImageFigure errorFigure;
+
+    private SimpleHtmlFigure htmlStatusHint;
 
     private JobletContainer jobletContainer;
 
@@ -63,6 +75,12 @@ public class JobletContainerFigure extends Figure {
                 doCollapse();
             }
         });
+        errorFigure = new ImageFigure();
+        errorFigure.setImage(ImageProvider.getImage(EImage.ERROR_SMALL));
+        errorFigure.setVisible(false);
+        errorFigure.setSize(errorFigure.getPreferredSize());
+        this.add(errorFigure);
+        htmlStatusHint = new SimpleHtmlFigure();
 
         initSubJobTitleColor();
 
@@ -125,6 +143,7 @@ public class JobletContainerFigure extends Figure {
     @Override
     public void paint(Graphics graphics) {
         graphics.setAlpha(100);
+        errorFigure.setLocation(jobletContainer.getErrorLocation());
         super.paint(graphics);
     }
 
@@ -210,6 +229,36 @@ public class JobletContainerFigure extends Figure {
             rectFig.add(collapseFigure);
             add(outlineFigure, null, 0);
             add(rectFig, null, 1);
+        }
+    }
+
+    public void updateStatus(int status) {
+        if ((status & Process.ERROR_STATUS) != 0) {
+            List<String> problemsList;
+
+            String text = "<b>" + jobletContainer.getNode().getUniqueName() + "</b><br><br>"; //$NON-NLS-1$ //$NON-NLS-2$
+
+            if ((status & Process.WARNING_STATUS) != 0) {
+                text += "<i>Warnings:</i><br>"; //$NON-NLS-1$
+
+                problemsList = Problems.getStatusList(ProblemStatus.WARNING, jobletContainer.getNode());
+                for (String str : problemsList) {
+                    text += "\t- " + str + "<br>"; //$NON-NLS-1$ //$NON-NLS-2$
+                }
+            }
+            if ((status & Process.ERROR_STATUS) != 0) {
+                text += "<i>Errors:</i><br>"; //$NON-NLS-1$
+                problemsList = Problems.getStatusList(ProblemStatus.ERROR, jobletContainer.getNode());
+                for (String str : problemsList) {
+                    text += "\t- " + str + "<br>"; //$NON-NLS-1$ //$NON-NLS-2$
+                }
+            }
+            htmlStatusHint.setText(text);
+            errorFigure.setToolTip(htmlStatusHint);
+            errorFigure.setVisible(true);
+        } else {
+            errorFigure.setVisible(false);
+            errorFigure.setToolTip(null);
         }
     }
 }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -26,12 +26,12 @@ import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.Property;
 import org.talend.core.model.properties.SQLPatternItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
-import org.talend.core.model.repository.RepositoryManager;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.model.ERepositoryStatus;
 import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.model.RepositoryNode;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * Action that will edit routines.
@@ -75,7 +75,7 @@ public class EditSqlpatternAction extends AbstractSqlpatternAction {
         }
         if (canWork) {
             canWork = (factory.getStatus(node.getObject()) != ERepositoryStatus.DELETED);
-        }        
+        }
         setEnabled(canWork);
     }
 
@@ -89,8 +89,9 @@ public class EditSqlpatternAction extends AbstractSqlpatternAction {
         Property property = (Property) node.getObject().getProperty();
         Property updatedProperty = null;
         try {
-            updatedProperty = ProxyRepositoryFactory.getInstance().getLastVersion(
-                    new Project(ProjectManager.getInstance().getProject(property.getItem())), property.getId()).getProperty();
+            updatedProperty = ProxyRepositoryFactory.getInstance()
+                    .getLastVersion(new Project(ProjectManager.getInstance().getProject(property.getItem())), property.getId())
+                    .getProperty();
         } catch (PersistenceException e) {
             ExceptionHandler.process(e);
         }
@@ -101,7 +102,10 @@ public class EditSqlpatternAction extends AbstractSqlpatternAction {
         boolean readonly = factory.getStatus(sqlPatternItem) == ERepositoryStatus.LOCK_BY_OTHER;
         try {
             openSQLPatternEditor(sqlPatternItem, readonly);
-            RepositoryManager.getRepositoryView().refresh(node);
+            IRepositoryView view = getViewPart();
+            if (view != null) {
+                view.refresh(node);
+            }
         } catch (PartInitException e) {
             MessageBoxExceptionHandler.process(e);
         } catch (SystemException e) {

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -28,7 +28,7 @@ import org.talend.core.model.components.EComponentType;
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.metadata.IMetadataColumn;
 import org.talend.core.model.metadata.IMetadataTable;
-import org.talend.core.model.metadata.MetadataTool;
+import org.talend.core.model.metadata.MetadataToolHelper;
 import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IElementParameter;
@@ -61,7 +61,7 @@ public class UpdateJobletNodeCommand extends Command {
     /**
      * this function is moved from the method updateGraphicalNodes.
      */
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     @Override
     public void execute() {
         Object job = result.getJob();
@@ -123,7 +123,7 @@ public class UpdateJobletNodeCommand extends Command {
         }
     }
 
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     private void updateRenaming(Process process, final String oldName, final String newName) {
         if (process == null || oldName == null || newName == null) {
             return;
@@ -141,7 +141,7 @@ public class UpdateJobletNodeCommand extends Command {
         process.checkProcess();
     }
 
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     private void updateSchema(Process process, Node node) {
         if (process == null || node == null) {
             return;
@@ -205,7 +205,7 @@ public class UpdateJobletNodeCommand extends Command {
         return parameters;
     }
 
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     private void updatePropertyChangeEvents(Process process, PropertyChangeEvent evt) {
         if (process == null || evt == null) {
             return;
@@ -276,7 +276,7 @@ public class UpdateJobletNodeCommand extends Command {
      * 
      * @param evt
      */
-    @SuppressWarnings("unchecked")//$NON-NLS-1$
+    @SuppressWarnings("unchecked")
     private void updateGraphicalNodesSchema(Process process, PropertyChangeEvent evt) {
         if (!(evt.getSource() instanceof INode)) {
             return;
@@ -380,13 +380,13 @@ public class UpdateJobletNodeCommand extends Command {
                                 newInputMetadataTable);
                         command.execute(Boolean.FALSE);
                         IMetadataTable metadataFromConnector = node.getMetadataFromConnector(outputElemParam.getContext());
-                        MetadataTool.copyTable(newInputMetadataTable, metadataFromConnector);
+                        MetadataToolHelper.copyTable(newInputMetadataTable, metadataFromConnector);
                     } else if (outputElemParam != null && newOutputMetadataTable != null) {
                         command = new ChangeMetadataCommand(node, outputElemParam, (IMetadataTable) outputElemParam.getValue(),
                                 newOutputMetadataTable);
                         command.execute(Boolean.FALSE);
                         IMetadataTable metadataFromConnector = node.getMetadataFromConnector(outputElemParam.getContext());
-                        MetadataTool.copyTable(newOutputMetadataTable, metadataFromConnector);
+                        MetadataToolHelper.copyTable(newOutputMetadataTable, metadataFromConnector);
                     }
                 }
             }

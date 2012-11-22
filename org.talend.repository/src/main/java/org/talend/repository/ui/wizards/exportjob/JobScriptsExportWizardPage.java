@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -16,19 +16,15 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.emf.common.util.EList;
@@ -40,12 +36,13 @@ import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.viewers.CellEditor;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
-import org.eclipse.jface.viewers.CheckboxTreeViewer;
 import org.eclipse.jface.viewers.ICellModifier;
 import org.eclipse.jface.viewers.ICheckStateListener;
+import org.eclipse.jface.viewers.IContentProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITableLabelProvider;
+import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableLayout;
 import org.eclipse.jface.viewers.TableViewer;
@@ -65,7 +62,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
@@ -73,56 +69,35 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.internal.dialogs.EventLoopProgressMonitor;
-import org.eclipse.ui.internal.progress.ProgressMonitorJobsDialog;
 import org.eclipse.ui.internal.wizards.datatransfer.DataTransferMessages;
 import org.eclipse.ui.internal.wizards.datatransfer.WizardFileSystemResourceExportPage1;
-import org.eclipse.ui.progress.IProgressService;
-import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.ui.runtime.exception.MessageBoxExceptionHandler;
-import org.talend.core.CorePlugin;
-import org.talend.core.context.Context;
-import org.talend.core.context.RepositoryContext;
 import org.talend.core.language.ECodeLanguage;
 import org.talend.core.language.LanguageManager;
-import org.talend.core.model.process.JobInfo;
-import org.talend.core.model.process.ProcessUtils;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.ProcessItem;
-import org.talend.core.model.relationship.RelationshipItemBuilder;
-import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryPrefConstants;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.repository.RepositoryManager;
-import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextParameterType;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
 import org.talend.designer.core.model.utils.emf.talendfile.TalendFileFactory;
 import org.talend.designer.core.model.utils.emf.talendfile.impl.ProcessTypeImpl;
-import org.talend.designer.runprocess.IProcessor;
-import org.talend.designer.runprocess.ItemCacheManager;
-import org.talend.designer.runprocess.ProcessorException;
-import org.talend.designer.runprocess.ProcessorUtilities;
+import org.talend.repository.ProjectManager;
 import org.talend.repository.documentation.ArchiveFileExportOperationFullPath;
 import org.talend.repository.documentation.ExportFileResource;
 import org.talend.repository.documentation.FileSystemExporterFullPath;
 import org.talend.repository.i18n.Messages;
-import org.talend.repository.job.deletion.JobResource;
-import org.talend.repository.job.deletion.JobResourceManager;
-import org.talend.repository.model.IProxyRepositoryFactory;
+import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.IRepositoryNode.ENodeType;
 import org.talend.repository.model.IRepositoryNode.EProperties;
-import org.talend.repository.model.ProjectRepositoryNode;
 import org.talend.repository.model.RepositoryNode;
-import org.talend.repository.model.RepositoryNodeUtilities;
 import org.talend.repository.ui.utils.ZipToFile;
-import org.talend.repository.ui.views.RepositoryContentProvider;
-import org.talend.repository.ui.views.RepositoryView;
+import org.talend.repository.ui.wizards.exportjob.JavaJobScriptsExportWSWizardPage.JobExportType;
+import org.talend.repository.ui.wizards.exportjob.action.JobExportAction;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.JobScriptsManager.ExportChoice;
-import org.talend.repository.ui.wizards.exportjob.scriptsmanager.esb.JobJavaScriptOSGIForESBManager;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.petals.PetalsJobJavaScriptsManager;
 import org.talend.repository.ui.wizards.exportjob.scriptsmanager.petals.PetalsTemporaryOptionsKeeper;
 import org.talend.repository.utils.JobVersionUtils;
@@ -145,6 +120,10 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
     protected static final String QUERY_MESSAGE_NAME = "queryMessageName";//$NON-NLS-1$
 
+    public static final String ALL_VERSIONS = "Latest"; //$NON-NLS-1$
+
+    private static final String OUTPUT_FILE_SUFFIX = ".zip"; //$NON-NLS-1$
+
     // widgets
     protected Button shellLauncherButton;
 
@@ -160,7 +139,9 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
     protected Button jobScriptButton;
 
-    protected ExportFileResource[] process;
+    // protected ExportFileResource[] process;
+
+    protected ProcessItem processItem = null;
 
     protected Combo contextCombo;
 
@@ -168,43 +149,27 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
     protected JobScriptsManager manager;
 
-    private IWorkspace workspace;
-
     protected Button applyToChildrenButton;
 
     protected Button setParametersValueButton;
 
     protected Button setParametersValueButton2;
 
-    private RepositoryNode[] nodes;
+    protected RepositoryNode[] nodes;
 
     protected String zipOption;
 
     protected Button chkButton;
 
-    private String allVersions = "all"; //$NON-NLS-1$
-
-    private String outputFileSuffix = ".zip"; //$NON-NLS-1$
-
-    private String selectedJobVersion;
+    String selectedJobVersion = "0.1";
 
     private String originalRootFolderName;
 
     protected Button exportDependencies;
 
-    boolean ok;
-
-    private IStructuredSelection selection;
+    protected IStructuredSelection selection;
 
     private ExportTreeViewer treeViewer;
-
-    private String suDestinationFilePath;
-
-    private String initDestinationFilePath;
-
-    private static final int DIALOG_WIDTH = 600;
-
-    private static final int DIALOG_HEIGHT = 480;
 
     Collection<RepositoryNode> repositoryNodes = new ArrayList<RepositoryNode>();
 
@@ -212,20 +177,25 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
     Set<RepositoryNode> allNode = new HashSet<RepositoryNode>();
 
-    private String getInitDestinationFilePath() {
-        return this.initDestinationFilePath;
-    }
-
-    private void setInitDestinationFilePath(String initDestinationFilePath) {
-        this.initDestinationFilePath = initDestinationFilePath;
-    }
-
-    public String getSuDestinationFilePath() {
-        return this.suDestinationFilePath;
-    }
-
-    public void setSuDestinationFilePath(String suDestinationFilePath) {
-        this.suDestinationFilePath = suDestinationFilePath;
+    /**
+     * 
+     * Gets the set of current job's context.
+     * 
+     * @return a List of context names.
+     * 
+     */
+    public static List<String> getJobContexts(ProcessItem processItem) {
+        List<String> contextNameList = new ArrayList<String>();
+        for (Object o : ((ProcessTypeImpl) processItem.getProcess()).getContext()) {
+            if (o instanceof ContextType) {
+                ContextType context = (ContextType) o;
+                if (contextNameList.contains(context.getName())) {
+                    continue;
+                }
+                contextNameList.add(context.getName());
+            }
+        }
+        return contextNameList;
     }
 
     /**
@@ -233,62 +203,39 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * 
      * @param name java.lang.String
      */
+    @SuppressWarnings("unchecked")
     public JobScriptsExportWizardPage(String name, IStructuredSelection selection) {
         super(name, null);
         this.selection = selection;
-        manager = createJobScriptsManager();
+        manager = null;
         nodes = (RepositoryNode[]) selection.toList().toArray(new RepositoryNode[selection.size()]);
-        setNodes(nodes);
     }
 
     protected RepositoryNode[] getCheckNodes() {
         return treeViewer.getCheckNodes();
     }
 
-    private void setNodes(RepositoryNode[] nodes) {
-
-        List<ExportFileResource> list = new ArrayList<ExportFileResource>();
-        int nodeSize = nodes.length;
-        if (nodeSize > 1) {
-            manager.setMultiNodes(true);
-        }
-        for (int i = 0; i < nodeSize; i++) {
-            RepositoryNode node = nodes[i];
-            if (node.getType() == ENodeType.SYSTEM_FOLDER || node.getType() == ENodeType.SIMPLE_FOLDER) {
-                addTreeNode(node, node.getProperties(EProperties.LABEL).toString(), list);
+    protected ProcessItem getProcessItem() {
+        if ((processItem == null) && (nodes != null) && (nodes.length >= 1)) {
+            IRepositoryViewObject repositoryObject = nodes[0].getObject();
+            // add for bug TDI-20132
+            List<IRepositoryNode> nodesChildren = nodes[0].getChildren();
+            IRepositoryViewObject childObject = null;
+            if ((nodesChildren != null) && (nodesChildren.size() >= 1)) {
+                childObject = nodesChildren.get(0).getObject();
             }
-            if (node.getType() == ENodeType.REPOSITORY_ELEMENT) {
-                IRepositoryViewObject repositoryObject = node.getObject();
-                if (repositoryObject.getProperty().getItem() instanceof ProcessItem) {
-                    ProcessItem processItem = (ProcessItem) repositoryObject.getProperty().getItem();
-                    ExportFileResource resource = new ExportFileResource(processItem, processItem.getProperty().getLabel());
-                    processItem.getProcess().getNode();
-                    resource.setNode(node);
-                    list.add(resource);
-                }
+            if (repositoryObject == null && childObject != null && childObject.getProperty().getItem() instanceof ProcessItem) {
+                processItem = (ProcessItem) childObject.getProperty().getItem();
+            }
+            if (repositoryObject != null && repositoryObject.getProperty().getItem() instanceof ProcessItem) {
+                processItem = (ProcessItem) repositoryObject.getProperty().getItem();
             }
         }
-        process = list.toArray(new ExportFileResource[list.size()]);
+        return processItem;
     }
 
-    private void addTreeNode(RepositoryNode node, String path, List<ExportFileResource> list) {
-        if (node != null && node.getType() == ENodeType.REPOSITORY_ELEMENT) {
-            IRepositoryViewObject repositoryObject = node.getObject();
-            if (repositoryObject.getProperty().getItem() instanceof ProcessItem) {
-                ProcessItem processItem = (ProcessItem) repositoryObject.getProperty().getItem();
-                ExportFileResource resource = new ExportFileResource(processItem, path);
-                resource.setNode(node);
-                list.add(resource);
-            }
-        }
-        Object[] nodes = node.getChildren().toArray();
-        if (nodes.length <= 0) {
-            return;
-        }
-        for (int i = 0; i < nodes.length; i++) {
-            addTreeNode((RepositoryNode) nodes[i], path + "/" //$NON-NLS-1$
-                    + ((RepositoryNode) nodes[i]).getProperties(EProperties.LABEL).toString(), list);
-        }
+    protected void setProcessItem(ProcessItem value) {
+        processItem = value;
     }
 
     public abstract JobScriptsManager createJobScriptsManager();
@@ -322,10 +269,10 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         if (destinationFile == null || "".equals(destinationFile)) { //$NON-NLS-1$
             if (length == 1) {
                 // TODOthis is changed by shenhaize first open ,it show contains in the combo
-                path = path.append(this.getDefaultFileName().get(0) + "_" + this.getDefaultFileName().get(1) + getOutputSuffix()); //$NON-NLS-1$
+                path = path.append(getDefaultFileNameWithType()); //$NON-NLS-1$
             } else if (length > 1) {
                 // i changed here ..
-                path = path.append(this.getDefaultFileName().get(0) + "_" + this.getDefaultFileName().get(1) + getOutputSuffix()); //$NON-NLS-1$
+                path = path.append(getDefaultFileNameWithType()); //$NON-NLS-1$
             }
         } else {
             // path = new Path(destinationFile);
@@ -333,59 +280,41 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
             if (store.getBoolean(IRepositoryPrefConstants.USE_EXPORT_SAVE)) {
                 path = new Path(destinationFile);
             } else {
-                path = path.append(this.getDefaultFileName().get(0) + "_" + this.getDefaultFileName().get(1) + getOutputSuffix()); //$NON-NLS-1$
+                path = path.append(getDefaultFileNameWithType()); //$NON-NLS-1$
             }
         }
-        setInitDestinationFilePath(path.toOSString());
         setDestinationValue(path.toOSString());
     }
 
-    /**
-     * yzhang Comment method "getDefaultFileName".
-     */
-    // protected String getDefaultFileVersion() {
-    // if (nodes.length >= 1) {
-    // String label = null;
-    // String version = null;
-    // RepositoryNode node = nodes[0];
-    // if (node.getType() == ENodeType.SYSTEM_FOLDER || node.getType() == ENodeType.SIMPLE_FOLDER) {
-    // label = node.getProperties(EProperties.LABEL).toString();
-    // } else if (node.getType() == ENodeType.REPOSITORY_ELEMENT) {
-    // IRepositoryObject repositoryObject = node.getObject();
-    // if (repositoryObject.getProperty().getItem() instanceof ProcessItem) {
-    // ProcessItem processItem = (ProcessItem) repositoryObject.getProperty().getItem();
-    // label = processItem.getProperty().getLabel();
-    // System.out.println(label);
-    // version = processItem.getProperty().getVersion();
-    // }
-    // }
-    //
-    // return label;
-    // }
-    // return "";
-    //
-    // }
+    protected void setDefaultDestinationForOSGI() {
+        String bundleName = getDefaultFileNameWithType();
+        String userDir = System.getProperty("user.dir"); //$NON-NLS-1$
+        IPath path = new Path(userDir).append(bundleName);
+        setDestinationValue(path.toOSString());
+    }
 
-    protected List getDefaultFileName() {
-        List list = null;
+    protected List<String> getDefaultFileName() {
+        List<String> list = new ArrayList<String>();
         if (nodes.length >= 1) {
-            String label = null;
-            String version = null;
-            RepositoryNode node = nodes[0];
-            if (node.getType() == ENodeType.SYSTEM_FOLDER || node.getType() == ENodeType.SIMPLE_FOLDER) {
-                label = node.getProperties(EProperties.LABEL).toString();
-            } else if (node.getType() == ENodeType.REPOSITORY_ELEMENT) {
-                IRepositoryViewObject repositoryObject = node.getObject();
-                if (repositoryObject.getProperty().getItem() instanceof ProcessItem) {
-                    ProcessItem processItem = (ProcessItem) repositoryObject.getProperty().getItem();
-                    label = processItem.getProperty().getLabel();
-                    version = processItem.getProperty().getVersion();
-                    list = new ArrayList();
-                    list.add(label);
-                    list.add(version);
+            String label = "";
+            String version = "";
+            if (nodes.length > 1) {
+                label = ProjectManager.getInstance().getCurrentProject().getLabel();
+            } else {
+                RepositoryNode node = nodes[0];
+                if (node.getType() == ENodeType.SYSTEM_FOLDER || node.getType() == ENodeType.SIMPLE_FOLDER) {
+                    label = node.getProperties(EProperties.LABEL).toString();
+                } else if (node.getType() == ENodeType.REPOSITORY_ELEMENT) {
+                    IRepositoryViewObject repositoryObject = node.getObject();
+                    if (repositoryObject.getProperty().getItem() instanceof ProcessItem) {
+                        ProcessItem processItem = (ProcessItem) repositoryObject.getProperty().getItem();
+                        label = processItem.getProperty().getLabel();
+                        version = processItem.getProperty().getVersion();
+                    }
                 }
             }
-
+            list.add(label);
+            list.add(version);
             // return label;
             return list;
         }
@@ -399,6 +328,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
     /**
      * (non-Javadoc) Method declared on IDialogPage.
      */
+    @Override
     public void createControl(Composite parent) {
 
         initializeDialogUnits(parent);
@@ -443,14 +373,34 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
     };
 
     public boolean checkExport() {
-        return true;
+        Map<ExportChoice, Object> exportChoiceMap = getExportChoiceMap();
+        boolean canExport = false;
+        for (ExportChoice choice : ExportChoice.values()) {
+            if (exportChoiceMap.get(choice) != null && exportChoiceMap.get(choice) instanceof Boolean
+                    && (Boolean) exportChoiceMap.get(choice)) {
+                canExport = true;
+                break;
+            }
+        }
+        if (!canExport) {
+            this.setErrorMessage(Messages.getString("JobScriptsExportWizardPage.chooseResource"));
+        }
+        return canExport;
     }
 
     protected SashForm createExportTree(Composite parent) {
-        treeViewer = new ExportTreeViewer(selection, this);
+        // Using a protected method to provide the tree. LiXiaopeng 2011-9-21
+        treeViewer = getExportTree();
         SashForm sashForm = treeViewer.createContents(parent);
         treeViewer.addCheckStateListener(checkStateListener);
         return sashForm;
+    }
+
+    /**
+     * get ExportTreeViewer, subclass may override.
+     */
+    protected ExportTreeViewer getExportTree() {
+        return new ExportTreeViewer(selection, this);
     }
 
     /**
@@ -463,7 +413,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         GridLayout layout = new GridLayout();
         versionGroup.setLayout(layout);
         versionGroup.setLayoutData(new GridData(GridData.HORIZONTAL_ALIGN_FILL | GridData.GRAB_HORIZONTAL));
-        versionGroup.setText(Messages.getString("JobScriptsExportWSWizardPage.JobVersion")); //$NON-NLS-1$
+        versionGroup.setText(Messages.getString("JobScriptsExportWSWizardPage.newJobVersion", getProcessType())); //$NON-NLS-1$
         versionGroup.setFont(parent.getFont());
 
         versionGroup.setLayout(new GridLayout(1, true));
@@ -473,7 +423,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         left.setLayout(new GridLayout(3, false));
 
         Label label = new Label(left, SWT.NONE);
-        label.setText(Messages.getString("JobScriptsExportWSWizardPage.JobVersion.Label")); //$NON-NLS-1$
+        label.setText(Messages.getString("JobScriptsExportWSWizardPage.newJobVersion.Label", getProcessType())); //$NON-NLS-1$
 
         final Combo versionCombo = new Combo(left, SWT.PUSH);
         GridData gd = new GridData();
@@ -484,7 +434,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         String currentVersion = JobVersionUtils.getCurrentVersion(nodes[0]);
         versionCombo.setItems(allVersions);
         if (allVersions.length > 1) {
-            versionCombo.add(this.allVersions);
+            versionCombo.add(JobScriptsExportWizardPage.ALL_VERSIONS);
         }
         versionCombo.setText(currentVersion);
         selectedJobVersion = currentVersion;
@@ -518,6 +468,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         chkButton.setSelection(false);
         chkButton.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 chkButton.setSelection(chkButton.getSelection());
                 zipOption = String.valueOf(chkButton.getSelection());
@@ -531,6 +482,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * 
      * @see org.eclipse.ui.internal.wizards.datatransfer.WizardFileSystemResourceExportPage1#validateSourceGroup()
      */
+    @Override
     public boolean validateSourceGroup() {
         return true;
     }
@@ -539,6 +491,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * Create the export options specification widgets.
      * 
      */
+    @Override
     public void createOptionsGroupButtons(Group optionsGroup) {
         Font font = optionsGroup.getFont();
         optionsGroup.setLayout(new GridLayout(1, true));
@@ -623,6 +576,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         gd.horizontalSpan = 2;
         jobItemButton.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
 
                 exportDependencies.setEnabled(jobItemButton.getSelection());
@@ -632,15 +586,15 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
             }
         });
         exportDependencies.setLayoutData(gd);
-        // feature 19312
-        exportDependencies.addSelectionListener(new SelectionAdapter() {
-
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                refreshExportDependNodes();
-                exportDependenciesSelected();
-            }
-        });
+        // // feature 19312
+        // exportDependencies.addSelectionListener(new SelectionAdapter() {
+        //
+        // @Override
+        // public void widgetSelected(SelectionEvent e) {
+        // refreshExportDependNodes();
+        // exportDependenciesSelected();
+        // }
+        // });
 
         contextButton = new Button(optionsGroup, SWT.CHECK | SWT.LEFT);
         contextButton.setText(Messages.getString("JobScriptsExportWizardPage.contextPerlScripts")); //$NON-NLS-1$
@@ -651,6 +605,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
         applyToChildrenButton = new Button(optionsGroup, SWT.CHECK | SWT.LEFT);
         applyToChildrenButton.setText(Messages.getString("JobScriptsExportWizardPage.ApplyToChildren")); //$NON-NLS-1$
+
         // genCodeButton = new Button(optionsGroup, SWT.CHECK | SWT.LEFT);
         // genCodeButton.setText(Messages.getString("JobScriptsExportWizardPage.generatePerlFiles")); //$NON-NLS-1$
         // genCodeButton.setSelection(true);
@@ -665,11 +620,15 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
         setParametersValueButton.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
+                if (manager == null) {
+                    manager = createJobScriptsManager();
+                }
                 List<ContextParameterType> contextEditableResultValuesList = manager.getContextEditableResultValuesList();
                 List<ContextParameterType> contextValueList = new ArrayList<ContextParameterType>();
                 if (contextEditableResultValuesList == null) {
-                    contextValueList = getJobContextValues((ProcessItem) process[0].getItem(), contextCombo.getText());
+                    contextValueList = getJobContextValues(getProcessItem(), contextCombo.getText());
                 }
                 ParametersValuesDialog dialog = new ParametersValuesDialog(getShell(), contextValueList,
                         contextEditableResultValuesList);
@@ -692,6 +651,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * @param contextName
      * @return
      */
+    @SuppressWarnings("rawtypes")
     public List<ContextParameterType> getJobContextValues(ProcessItem processItem, String contextName) {
         if (contextName == null) {
             return null;
@@ -718,139 +678,6 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         return null;
     }
 
-    /**
-     * 
-     * DOC yhch Comment method "exportDependenciesSelected".
-     */
-    private void exportDependenciesSelected() {
-        final Collection<Item> selectedItems = getSelectedItems();
-
-        IRunnableWithProgress runnable = new IRunnableWithProgress() {
-
-            public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-                monitor.beginTask("Dependencies", 100);//$NON-NLS-1$
-                monitor.setCanceled(false);
-                //
-                final List<IRepositoryViewObject> repositoryObjects = new ArrayList<IRepositoryViewObject>();
-
-                ProcessUtils.clearFakeProcesses();
-
-                // dependencies All
-                Display.getDefault().syncExec(new Runnable() {
-
-                    public void run() {
-                        IProxyRepositoryFactory factory = CorePlugin.getDefault().getProxyRepositoryFactory();
-                        RelationshipItemBuilder builder = RelationshipItemBuilder.getInstance();
-                        for (Item item : selectedItems) {
-                            if (item == null) {
-                                continue;
-                            }
-                            List<RelationshipItemBuilder.Relation> relations = builder.getItemsRelatedTo(item.getProperty()
-                                    .getId(), item.getProperty().getVersion(), RelationshipItemBuilder.JOB_RELATION);
-                            for (RelationshipItemBuilder.Relation relation : relations) {
-                                try {
-                                    IRepositoryViewObject obj = factory.getLastVersion(relation.getId());
-                                    if (obj != null) {
-                                        RepositoryNode repositoryNode = RepositoryNodeUtilities.getRepositoryNode(obj, false);
-                                        if (repositoryNode != null) {
-                                            if (!repositoryObjects.contains(obj)) {
-                                                repositoryObjects.add(obj);
-                                            }
-                                        }
-                                    }
-                                } catch (PersistenceException et) {
-                                    ExceptionHandler.process(et);
-                                }
-                            }
-
-                        }
-
-                    }
-                });
-                monitor.worked(60);
-                Display.getDefault().syncExec(new Runnable() {
-
-                    public void run() {
-                        if (exportDependencies.getSelection()) {
-                            for (IRepositoryViewObject repositoryObject : repositoryObjects) {
-                                RepositoryNode repositoryNode = RepositoryNodeUtilities
-                                        .getRepositoryNode(repositoryObject, false);
-                                if (repositoryNode != null && !repositoryNodes.contains(repositoryNode)) {
-                                    repositoryNodes.add(repositoryNode);
-                                    checkedNodes.add(repositoryNode);
-                                }
-
-                            }
-                        } else {
-                            for (IRepositoryViewObject repositoryObject : repositoryObjects) {
-                                RepositoryNode repositoryNode = RepositoryNodeUtilities
-                                        .getRepositoryNode(repositoryObject, false);
-                                if (repositoryNode != null && repositoryNodes.contains(repositoryNode)) {
-                                    repositoryNodes.remove(repositoryNode);
-                                    checkedNodes.remove(repositoryNode);
-                                }
-                            }
-                        }
-                    }
-                });
-                monitor.worked(90);
-                // selection
-                Display.getDefault().syncExec(new Runnable() {
-
-                    public void run() {
-                        CheckboxTreeViewer viewer = (CheckboxTreeViewer) treeViewer.getExportItemsTreeViewer().getViewer();
-                        Set<RepositoryNode> nodes = new HashSet<RepositoryNode>();
-                        nodes.addAll(repositoryNodes);
-                        nodes.addAll(checkedNodes);
-                        viewer.setCheckedElements(nodes.toArray());
-
-                    }
-                });
-                ProcessUtils.clearFakeProcesses();
-                monitor.done();
-            }
-
-        };
-        final ProgressMonitorJobsDialog dialog = new ProgressMonitorJobsDialog(getShell());
-        try {
-            dialog.run(true, false, runnable);
-        } catch (InvocationTargetException e) {
-            //
-        } catch (InterruptedException e) {
-            //
-        }
-
-    }
-
-    /**
-     * Get all selected items to export.
-     * 
-     * @return
-     */
-    @SuppressWarnings("unchecked")
-    private Collection<Item> getSelectedItems() {
-        // add this if user use filter
-        Set checkedElements = new HashSet();
-        for (Object obj : treeViewer.getFilteredCheckboxTree().getCheckedLeafNodes()) {
-            checkedElements.add(obj);
-        }
-
-        // add this if user does not use filter
-        for (Object obj : treeViewer.getFilteredCheckboxTree().getViewer().getCheckedElements()) {
-            RepositoryNode repositoryNode = (RepositoryNode) obj;
-            if (!isRepositoryFolder(repositoryNode) && !(repositoryNode instanceof ProjectRepositoryNode)) {
-                checkedElements.add(obj);
-            }
-        }
-
-        Object[] elements = checkedElements.toArray();
-
-        Map<String, Item> items = new HashMap<String, Item>();
-        collectNodes(items, elements);
-        return items.values();
-    }
-
-    @SuppressWarnings("unchecked")
     private void collectNodes(Map<String, Item> items, Object[] objects) {
         for (int i = 0; i < objects.length; i++) {
             RepositoryNode repositoryNode = (RepositoryNode) objects[i];
@@ -871,9 +698,13 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
                 items.put(item.getProperty().getId(), item);
             }
         }
-        RepositoryContentProvider repositoryContentProvider = (RepositoryContentProvider) RepositoryView.show().getViewer()
-                .getContentProvider();
-        collectNodes(items, repositoryContentProvider.getChildren(repositoryNode));
+        if (this.treeViewer != null) {
+            IContentProvider contentProvider = this.treeViewer.getFilteredCheckboxTree().getViewer().getContentProvider();
+            if (contentProvider instanceof ITreeContentProvider) {
+                Object[] children = ((ITreeContentProvider) contentProvider).getChildren(repositoryNode);
+                collectNodes(items, children);
+            }
+        }
     }
 
     private static boolean isRepositoryFolder(RepositoryNode node) {
@@ -884,35 +715,15 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         return false;
     }
 
-    private void refreshExportDependNodes() {
-        checkedNodes.clear();
-        if (nodes.length <= 0) {
-            return;
-        }
-        for (int i = 0; i < nodes.length; i++) {
-            if (nodes[i] instanceof RepositoryNode) {
-                RepositoryNode checkedNode = (RepositoryNode) nodes[i];
-                if (checkedNode != null && !RepositoryNode.NO_ID.equals(checkedNode.getId())) {
-                    if (checkedNode.getChildren().isEmpty()) {
-                        checkedNodes.add(checkedNode);
-                    }
-                }
-            }
-        }
-        allNode.clear();
-        allNode.addAll(repositoryNodes);
-        allNode.addAll(checkedNodes);
-    }
-
     /**
      * DOC zli JobScriptsExportWizardPage class global comment. Detailled comment
      */
     // for feature 11976
     class ParametersValuesDialog extends Dialog {
 
-        private String contextParameterName = Messages.getString("ParametersValuesDialog_Name"); //$NON-NLS-1$
+        private final String contextParameterName = Messages.getString("ParametersValuesDialog_Name"); //$NON-NLS-1$
 
-        private String contextParameterValue = Messages.getString("ParametersValuesDialog_Value"); //$NON-NLS-1$
+        private final String contextParameterValue = Messages.getString("ParametersValuesDialog_Value"); //$NON-NLS-1$
 
         private TableViewer tableViewer;
 
@@ -930,7 +741,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
         private Button removeButton;
 
-        private String addParameterName = "new";
+        private final String addParameterName = "new";
 
         /**
          * DOC zli ParametersValuesDialog constructor comment.
@@ -1089,6 +900,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
             setContextButton.setText("Values from selected context");//$NON-NLS-N$
             setContextButton.addSelectionListener(new SelectionAdapter() {
 
+                @Override
                 public void widgetSelected(SelectionEvent e) {
                     for (ContextParameterType contextType : contextEditableValuesList) {
                         for (ContextParameterType context : contextValueList) {
@@ -1103,7 +915,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
             addButton = new Button(buttonsComposite, SWT.PUSH);
             addButton.setLayoutData(new GridData());
-            addButton.setText("Add");//$NON-NLS-N$      
+            addButton.setText("Add");//$NON-NLS-N$
             addButton.addSelectionListener(new SelectionAdapter() {
 
                 @Override
@@ -1296,16 +1108,16 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
     protected boolean ensureTargetIsValid() {
         String targetPath = null;
         if (manager instanceof PetalsJobJavaScriptsManager) {
-            targetPath = getSuDestinationFilePath();
+            targetPath = manager.getDestinationPath();
         } else {
             targetPath = getDestinationValue();
         }
-        if (this.selectedJobVersion != null && this.selectedJobVersion.equals(this.allVersions)) {
+        if (this.selectedJobVersion != null && this.selectedJobVersion.equals(JobScriptsExportWizardPage.ALL_VERSIONS)) {
 
             if (this.originalRootFolderName == null) {
-                this.originalRootFolderName = getRootFolderName();
+                this.originalRootFolderName = manager.getRootFolderName(getDestinationValue());
             }
-            String newFileName = this.originalRootFolderName + manager.getSelectedJobVersion() + outputFileSuffix;
+            String newFileName = this.originalRootFolderName + manager.getSelectedJobVersion() + getOutputSuffix();
             targetPath = targetPath.substring(0, targetPath.lastIndexOf(File.separator) + 1) + newFileName;
             setDestinationValue(targetPath);
         }
@@ -1361,21 +1173,31 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * 
      * @returns boolean
      */
+    @Override
     public boolean finish() {
+        // TODO
         if (treeViewer != null) {
             treeViewer.removeCheckStateListener(checkStateListener);
-            // achen added
-            if (getCheckNodes() != null) {
-                setNodes(getCheckNodes());
-            }
         }
 
-        List<ContextParameterType> contextEditableResultValuesList = manager.getContextEditableResultValuesList();
-
+        List<ContextParameterType> contextEditableResultValuesList = null;
+        if (manager != null) {
+            contextEditableResultValuesList = manager.getContextEditableResultValuesList();
+        }
         manager = createJobScriptsManager();
+
+        // Save dirty editors if possible but do not stop if not all are saved
+        saveDirtyEditors();
+        // about to invoke the operation so save our state
+        saveWidgetValues();
+
+        if (!ensureTargetIsValid()) {
+            return false;
+        }
+
         // for feature:11976, recover back the old default manager value with ContextParameters
         if (contextEditableResultValuesList == null) {
-            manager.setContextEditableResultValuesList(new ArrayList());
+            manager.setContextEditableResultValuesList(new ArrayList<ContextParameterType>());
         } else {
             manager.setContextEditableResultValuesList(contextEditableResultValuesList);
         }
@@ -1385,303 +1207,40 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         }
         manager.setMultiNodes(isMultiNodes());
         // achen modify to fix bug 0006222
-        IRunnableWithProgress worker = new IRunnableWithProgress() {
 
-            public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-                final EventLoopProgressMonitor progressMonitor = new EventLoopProgressMonitor(monitor);
+        IRunnableWithProgress worker = new JobExportAction(Arrays.asList(getCheckNodes()), getSelectedJobVersion(), manager,
+                originalRootFolderName, getProcessType());
 
-                progressMonitor.beginTask(
-                        Messages.getString("JobScriptsExportWizardPage.exportJobScript"), IProgressMonitor.UNKNOWN); //$NON-NLS-1$
-                if (selectedJobVersion != null && selectedJobVersion.equals(allVersions)) {
-                    String[] allVersions = JobVersionUtils.getAllVersions(nodes[0]);
-                    for (String version : allVersions) {
-                        monitor.subTask(Messages.getString("JobScriptsExportWizardPage.exportJob0", nodes[0].getLabel(), version)); //$NON-NLS-1$
-                        ok = exportJobScript(version, progressMonitor);
-                        if (!ok) {
-                            return;
-                        }
-                    }
-                } else {
-                    monitor.subTask(Messages.getString(
-                            "JobScriptsExportWizardPage.exportJob1", nodes[0].getLabel(), selectedJobVersion)); //$NON-NLS-1$
-                    ok = exportJobScript(selectedJobVersion, progressMonitor);
-                    if (!ok) {
-                        return;
-                    }
-                }
-                monitor.subTask(Messages.getString(
-                        "JobScriptsExportWizardPage.exportJobSucessful", nodes[0].getLabel(), selectedJobVersion)); //$NON-NLS-1$
-                progressMonitor.done();
-            }
-        };
-        IProgressService progressService = PlatformUI.getWorkbench().getProgressService();
         try {
-            progressService.run(false, true, worker);
+            getContainer().run(false, true, worker);
         } catch (InvocationTargetException e) {
-            ExceptionHandler.process(e);
+            MessageBoxExceptionHandler.process(e.getCause(), getShell());
+            return false;
         } catch (InterruptedException e) {
-            ExceptionHandler.process(e);
+            return false;
+        }
+
+        // see bug 7181
+        if (zipOption != null && zipOption.equals("true")) { //$NON-NLS-1$
+            // unzip
+            try {
+                String zipFile = manager.getDestinationPath();
+                // Added by Marvin Wang on Feb.1, 2012 for bug TDI-18824
+                File file = new File(zipFile);
+                if (file.exists())
+                    ZipToFile.unZipFile(zipFile, file.getParentFile().getAbsolutePath());
+            } catch (Exception e) {
+                MessageBoxExceptionHandler.process(e, getShell());
+                return false;
+            }
         }
 
         if (treeViewer != null) {
             treeViewer.dispose();
         }
-        nodes = null;
-        process = null;
-        selection = null;
 
         // end
-        RepositoryManager.refreshCreatedNode(ERepositoryObjectType.PROCESS);
-        return ok;
-    }
-
-    /**
-     * ftang Comment method "exportJobScript".
-     * 
-     * @return
-     */
-    private boolean exportJobScript(String version, IProgressMonitor monitor) {
-        manager.setJobVersion(version);
-        // monitor.subTask("Init export choices...");
-        Map<ExportChoice, Object> exportChoiceMap = getExportChoiceMap();
-        boolean canExport = false;
-        for (ExportChoice choice : ExportChoice.values()) {
-            // if (choice.equals(ExportChoice.needGenerateCode)) {
-            // continue;
-            // }
-            if (exportChoiceMap.get(choice) != null && exportChoiceMap.get(choice) instanceof Boolean
-                    && (Boolean) exportChoiceMap.get(choice)) {
-                canExport = true;
-                break;
-            }
-        }
-        if (!canExport) {
-            MessageDialog.openInformation(getContainer().getShell(),
-                    Messages.getString("JobScriptsExportWizardPage.exportResourceError"), //$NON-NLS-1$
-                    Messages.getString("JobScriptsExportWizardPage.chooseResource")); //$NON-NLS-1$
-            return false;
-        }
-
-        if (!ensureTargetIsValid()) {
-            return false;
-        }
-        // String topFolder = getRootFolderName();
-
-        boolean isNotFirstTime = this.originalRootFolderName != null;
-        if (isNotFirstTime && process[0] != null) {
-            process[0].setDirectoryName(this.originalRootFolderName);
-
-        }
-        try {
-            ProxyRepositoryFactory.getInstance().initialize();
-        } catch (PersistenceException e) {
-            ExceptionHandler.process(e);
-        }
-        ItemCacheManager.clearCache();
-
-        if (!isMultiNodes()) {
-            for (int i = 0; i <= process.length - 1; i++) {
-                process[i].removeAllMap();
-                ProcessItem processItem = (ProcessItem) process[i].getItem();
-                if (!processItem.getProperty().getVersion().equals(version)) {
-                    processItem = ItemCacheManager.getProcessItem(processItem.getProperty().getId(), version);
-                    // update with the correct version.
-                    process[i].setProcess(processItem);
-                }
-            }
-
-        }
-
-        manager.setProgressMonitor(monitor);
-        List<ExportFileResource> resourcesToExport = null;
-        try {
-            resourcesToExport = getExportResources();
-            // if job has compile error, will not export to avoid problem if run jobscript
-            boolean hasErrors = CorePlugin.getDefault().getRunProcessService().checkExportProcess(selection, true);
-            if (hasErrors) {
-                manager.deleteTempFiles();
-                return false;
-            }
-        } catch (ProcessorException e) {
-            MessageBoxExceptionHandler.process(e);
-            return false;
-        }
-        if (manager instanceof PetalsJobJavaScriptsManager) {
-            setTopFolderForPetals();
-        } else if (manager instanceof JobJavaScriptOSGIForESBManager) {
-            // do nothing.
-        } else {
-            if (isNotFirstTime) {
-                setTopFolder(resourcesToExport, this.originalRootFolderName);
-            } else {
-                setTopFolder(resourcesToExport, this.getOriginalRootFolderName());// this.getOriginalRootFolderName()
-                // getRootFolderName()
-            }
-        }
-
-        // Save dirty editors if possible but do not stop if not all are saved
-        saveDirtyEditors();
-        // about to invoke the operation so save our state
-        saveWidgetValues();
-        // boolean ok =executeExportOperation(new ArchiveFileExportOperationFullPath(process));
-        ArchiveFileExportOperationFullPath exporterOperation = getExporterOperation(resourcesToExport);
-
-        ok = executeExportOperation(exporterOperation);
-
-        // path can like name/name
-        manager.deleteTempFiles();
-        ProcessorUtilities.resetExportConfig();
-
-        String projectName = ((RepositoryContext) CorePlugin.getContext().getProperty(Context.REPOSITORY_CONTEXT_KEY))
-                .getProject().getLabel();
-
-        List<JobResource> jobResources = new ArrayList<JobResource>();
-
-        for (int i = 0; i < process.length; i++) {
-            // don't update anymore, it should be done automatically in function getItem when needed.
-            // try {
-            // process[i].setProcess((ProcessItem) ProxyRepositoryFactory.getInstance().getUptodateProperty(
-            // process[i].getItem().getProperty()).getItem());
-            // } catch (PersistenceException e) {
-            // MessageBoxExceptionHandler.process(e);
-            // return false;
-            // }
-            ProcessItem processItem = (ProcessItem) process[i].getItem();
-            JobInfo jobInfo = new JobInfo(processItem, processItem.getProcess().getDefaultContext(), version);
-            jobResources.add(new JobResource(projectName, jobInfo));
-
-            Set<JobInfo> jobInfos = ProcessorUtilities.getChildrenJobInfo(processItem);
-            for (JobInfo subjobInfo : jobInfos) {
-                jobResources.add(new JobResource(projectName, subjobInfo));
-            }
-        }
-
-        JobResourceManager reManager = JobResourceManager.getInstance();
-        for (JobResource r : jobResources) {
-            if (reManager.isProtected(r)) {
-                try {
-                    ProcessorUtilities.generateCode(r.getJobInfo().getJobId(), r.getJobInfo().getContextName(), r.getJobInfo()
-                            .getJobVersion(), false, false, monitor);
-                } catch (ProcessorException e) {
-                    MessageBoxExceptionHandler.process(e);
-                    return false;
-                }
-            }
-            // else {
-            // try {
-            // reManager.deleteResource(r);
-            // } catch (Exception e) {
-            // ExceptionHandler.process(e);
-            // }
-            // }
-        }
-        monitor.subTask(Messages.getString("JobScriptsExportWizardPage.exportSuccess")); //$NON-NLS-1$
-        // achen modify to fix bug 0006108
-        // rearchieve the jobscript zip file
-        // if (curLanguage == ECodeLanguage.JAVA) {
-        reBuildJobZipFile();
-        // }
-        // see bug 7181
-        if (zipOption != null && zipOption.equals("true")) { //$NON-NLS-1$
-            // unzip
-            try {
-                String zipFile = getDestinationValue();
-                ZipToFile.unZipFile(getDestinationValue(), new File(zipFile).getParentFile().getAbsolutePath());
-            } catch (Exception e) {
-                MessageBoxExceptionHandler.process(e);
-                return false;
-            }
-        }
-        return ok;
-    }
-
-    /**
-     * 
-     * DOC aiming Comment method "reBuildJobZipFile".
-     */
-    private void reBuildJobZipFile() {
-        JavaJobExportReArchieveCreator creator = null;
-        String zipFile = getTempDestinationValue();
-        String destinationZipFile = null;
-        if (manager instanceof PetalsJobJavaScriptsManager) {
-            destinationZipFile = getSuDestinationFilePath();
-        } else {
-            destinationZipFile = getDestinationValue();
-        }
-
-        String tmpFolder = JavaJobExportReArchieveCreator.getTmpFolder();
-        try {
-            // unzip to tmpFolder
-            ZipToFile.unZipFile(zipFile, tmpFolder);
-            // build new jar
-            for (int i = 0; i < process.length; i++) {
-                if (process[i] != null) {
-                    String jobFolderName = process[i].getDirectoryName();
-                    int pos = jobFolderName.indexOf("/"); //$NON-NLS-1$
-                    if (pos != -1) {
-                        jobFolderName = jobFolderName.substring(pos + 1);
-                    }
-                    if (creator == null) {
-                        creator = new JavaJobExportReArchieveCreator(zipFile, jobFolderName);
-                    } else {
-                        creator.setJobFolerName(jobFolderName);
-                    }
-                    creator.buildNewJar();
-                }
-            }
-            // rezip the tmpFolder to zipFile
-            ZipToFile.zipFile(tmpFolder, destinationZipFile);
-        } catch (Exception e) {
-            ExceptionHandler.process(e);
-        } finally {
-            JavaJobExportReArchieveCreator.deleteTempFiles();
-            JavaJobExportReArchieveCreator.deleteTempDestinationFiles();
-        }
-    }
-
-    /**
-     * Get the export operation.
-     * 
-     * @param resourcesToExport
-     * @return
-     */
-    public ArchiveFileExportOperationFullPath getExporterOperation(List<ExportFileResource> resourcesToExport) {
-        ArchiveFileExportOperationFullPath exporterOperation = new ArchiveFileExportOperationFullPath(resourcesToExport,
-                getTempDestinationValue());
-        return exporterOperation;
-    }
-
-    /**
-     * DOC zli Comment method "getTempDestinationValue".
-     * 
-     * @return
-     */
-    protected String getTempDestinationValue() {
-        String idealSuffix = getOutputSuffix();
-        String destinationText = this.getInitDestinationFilePath();// getDestinationValue();//
-        String tempdestination = JavaJobExportReArchieveCreator.getTmpDestinationFolder();
-        if (destinationText.indexOf("\\") != -1) {
-            int lastIndexOf = destinationText.lastIndexOf("\\");
-            String substring = destinationText.substring(lastIndexOf + 1, destinationText.length());
-            tempdestination = tempdestination + "/" + substring;
-        }
-        if (tempdestination.length() != 0 && !tempdestination.endsWith(File.separator)) {
-            int dotIndex = tempdestination.lastIndexOf('.');
-            if (dotIndex != -1) {
-                // the last path seperator index
-                int pathSepIndex = tempdestination.lastIndexOf(File.separator);
-                if (pathSepIndex != -1 && dotIndex < pathSepIndex) {
-                    tempdestination += idealSuffix;
-                }
-            } else {
-                tempdestination += idealSuffix;
-            }
-        }
-        if (tempdestination.endsWith(this.getSelectedJobVersion() + this.getOutputSuffix())) {
-            return tempdestination;
-        }
-        return tempdestination;
-
+        return true;
     }
 
     /**
@@ -1705,47 +1264,6 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
     }
 
     /**
-     * Returns the root folder name.
-     * 
-     * @return
-     */
-    private String getRootFolderName() {
-        IPath path = null;
-        if (manager instanceof PetalsJobJavaScriptsManager) {
-            path = new Path(getSuDestinationFilePath());
-        } else {
-            path = new Path(this.getDestinationValue());// y
-        }
-
-        String subjectString = path.lastSegment();
-        Pattern regex = Pattern.compile("(.*)(?=(\\.(tar|zip))\\b)", Pattern.CANON_EQ | Pattern.CASE_INSENSITIVE //$NON-NLS-1$
-                | Pattern.UNICODE_CASE);
-        Matcher regexMatcher = regex.matcher(subjectString);
-        if (regexMatcher.find()) {
-            subjectString = regexMatcher.group(0);
-        }
-        return subjectString.trim();
-    }
-
-    private String getOriginalRootFolderName() {
-        IPath path = null;
-        if (manager instanceof PetalsJobJavaScriptsManager) {
-            path = new Path(getSuDestinationFilePath());
-        } else {
-            path = new Path(this.getInitDestinationFilePath());// y
-        }
-
-        String subjectString = path.lastSegment();
-        Pattern regex = Pattern.compile("(.*)(?=(\\.(tar|zip))\\b)", Pattern.CANON_EQ | Pattern.CASE_INSENSITIVE //$NON-NLS-1$
-                | Pattern.UNICODE_CASE);
-        Matcher regexMatcher = regex.matcher(subjectString);
-        if (regexMatcher.find()) {
-            subjectString = regexMatcher.group(0);
-        }
-        return subjectString.trim();
-    }
-
-    /**
      * Comment method "setTopFolder".
      * 
      * @param resourcesToExport
@@ -1758,28 +1276,14 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         }
     }
 
-    public void setTopFolderForPetals() {
-    }
-
     /**
      * Answer the string to display in self as the destination type.
      * 
      * @return java.lang.String
      */
+    @Override
     protected String getDestinationLabel() {
         return DataTransferMessages.ArchiveExport_destinationLabel;
-    }
-
-    /**
-     * Returns resources to be exported. This returns file - for just the files use getSelectedResources.
-     * 
-     * @return a collection of resources currently selected for export (element type: <code>IResource</code>)
-     * @throws ProcessorException
-     */
-    public List<ExportFileResource> getExportResources() throws ProcessorException {
-        Map<ExportChoice, Object> exportChoiceMap = getExportChoiceMap();
-        return manager.getExportResources(process, exportChoiceMap, contextCombo.getText(), launcherCombo.getText(),
-                IProcessor.NO_STATISTICS, IProcessor.NO_TRACES);
     }
 
     protected Map<ExportChoice, Object> getExportChoiceMap() {
@@ -1794,9 +1298,9 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
         exportChoiceMap.put(ExportChoice.needJobScript, jobScriptButton.getSelection());
         exportChoiceMap.put(ExportChoice.needContext, contextButton.getSelection());
         exportChoiceMap.put(ExportChoice.applyToChildren, applyToChildrenButton.getSelection());
-        exportChoiceMap.put(ExportChoice.needDependencies, exportDependencies.getSelection());
+        // exportChoice.put(ExportChoice.needDependencies, exportDependencies.getSelection());
         exportChoiceMap.put(ExportChoice.setParameterValues, setParametersValueButton2.getSelection());
-        // exportChoiceMap.put(ExportChoice.needGenerateCode, genCodeButton.getSelection());
+        // exportChoice.put(ExportChoice.needGenerateCode, genCodeButton.getSelection());
         return exportChoiceMap;
     }
 
@@ -1804,6 +1308,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * Answer the contents of self's destination specification widget. If this value does not have a suffix then add it
      * first.
      */
+    @Override
     protected String getDestinationValue() {
         String idealSuffix = getOutputSuffix();
         String destinationText = super.getDestinationValue();
@@ -1841,17 +1346,18 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * 
      */
     protected String getOutputSuffix() {
-        return outputFileSuffix; //$NON-NLS-1$
+        return OUTPUT_FILE_SUFFIX; //$NON-NLS-1$
     }
 
     /**
      * Open an appropriate destination browser so that the user can specify a source to import from.
      */
+    @Override
     protected void handleDestinationBrowseButtonPressed() {
         FileDialog dialog = new FileDialog(getContainer().getShell(), SWT.SAVE);
         dialog.setFilterExtensions(new String[] { "*.zip", "*.*" }); //$NON-NLS-1$ //$NON-NLS-2$
         dialog.setText(""); //$NON-NLS-1$
-        dialog.setFileName((String) this.getDefaultFileName().get(0));
+        dialog.setFileName(this.getDefaultFileName().get(0));
         String currentSourceString = getDestinationValue();
         int lastSeparatorIndex = currentSourceString.lastIndexOf(File.separator);
         if (lastSeparatorIndex != -1) {
@@ -1868,7 +1374,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
 
             String str = file.getName();
 
-            String s = (String) this.getDefaultFileName().get(0);
+            String s = this.getDefaultFileName().get(0);
 
             if (str.equals(s)) {
                 selectedFileName = b + "_" + this.getDefaultFileName().get(1) + this.getOutputSuffix(); //$NON-NLS-1$
@@ -1887,6 +1393,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
     /**
      * Hook method for saving widget values for restoration by the next instance of this class.
      */
+    @Override
     protected void internalSaveWidgetValues() {
     }
 
@@ -1894,6 +1401,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * Hook method for restoring widget values to the values that they held last time this wizard was used to
      * completion.
      */
+    @Override
     protected void restoreWidgetValues() {
     }
 
@@ -1902,6 +1410,7 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * 
      * @see org.eclipse.ui.wizards.datatransfer.WizardFileSystemResourceExportPage1#destinationEmptyMessage()
      */
+    @Override
     protected String destinationEmptyMessage() {
         return ""; //$NON-NLS-1$
     }
@@ -1924,11 +1433,35 @@ public abstract class JobScriptsExportWizardPage extends WizardFileSystemResourc
      * @return
      */
     public String getSelectedJobVersion() {
-        return this.selectedJobVersion;
+        return selectedJobVersion;
     }
 
     @Override
     protected boolean validateDestinationGroup() {
         return super.validateDestinationGroup() && this.checkExport();
     }
+
+    protected String getDefaultFileNameWithType() {
+        String version = "";
+        List<String> defaultFileName = getDefaultFileName();
+        if (defaultFileName.get(1) != null && !"".equals(defaultFileName.get(1))) {
+            version = ((JobExportType.OSGI.equals(getCurrentExportType1())) ? "-" : "_") + defaultFileName.get(1);
+        }
+        String fileName = defaultFileName.get(0) + version + getOutputSuffix();
+        return fileName;
+    }
+
+    public JobExportType getCurrentExportType1() {
+        return JobExportType.POJO;
+    }
+
+    /**
+     * GLIU add for fixing TESB-4975 default is "Job"
+     * 
+     * @return
+     */
+    protected String getProcessType() {
+        return "Job";
+    }
+
 }

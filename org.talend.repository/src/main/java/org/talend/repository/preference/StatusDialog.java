@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -33,7 +33,7 @@ import org.talend.repository.i18n.Messages;
 /**
  * DOC tguiu class global comment. Detailled comment <br/>
  * 
- * $Id: StatusDialog.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: StatusDialog.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class StatusDialog extends Dialog {

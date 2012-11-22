@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -19,6 +19,8 @@ import java.util.Map;
 
 import org.eclipse.emf.ecore.EClass;
 import org.talend.commons.exception.PersistenceException;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.IESBService;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.PropertiesPackage;
 import org.talend.core.model.properties.Property;
@@ -107,6 +109,17 @@ public class StatusHelper {
             case PropertiesPackage.DOCUMENTATION_ITEM:
                 status = repositoryFactory.getDocumentationStatus();
                 break;
+            }
+            if (status == null) {
+                if (GlobalServiceRegister.getDefault().isServiceRegistered(IESBService.class)) {
+                    IESBService service = (IESBService) GlobalServiceRegister.getDefault().getService(IESBService.class);
+                    if (service != null) {
+                        boolean flag = service.isServiceItem(i);
+                        if (flag) {
+                            status = repositoryFactory.getTechnicalStatus();
+                        }
+                    }
+                }
             }
         }
         if (status == null) {

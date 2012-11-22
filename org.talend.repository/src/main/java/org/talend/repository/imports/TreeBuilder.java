@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -31,6 +31,7 @@ import org.talend.commons.ui.runtime.image.ECoreImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
 import org.talend.commons.utils.VersionUtils;
 import org.talend.core.model.properties.Project;
+import org.talend.core.model.properties.Property;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.ui.images.CoreImageProvider;
 
@@ -151,7 +152,7 @@ public class TreeBuilder {
      * 
      * DOC hcw TreeBuilder class global comment. Detailled comment
      */
-    interface IContainerNode {
+    public interface IContainerNode {
 
         public String getLabel();
 
@@ -166,7 +167,7 @@ public class TreeBuilder {
      * 
      * DOC hcw ImportItemUtil class global comment. Detailled comment
      */
-    class ProjectNode implements IContainerNode {
+    public class ProjectNode implements IContainerNode {
 
         boolean sorted = false;
 
@@ -235,7 +236,7 @@ public class TreeBuilder {
      * 
      * DOC chuang TreeBuilder class global comment. Detailled comment
      */
-    class FolderNode implements IContainerNode {
+    public class FolderNode implements IContainerNode {
 
         private String label;
 
@@ -318,13 +319,18 @@ public class TreeBuilder {
                 Collections.sort(items, new Comparator<ItemRecord>() {
 
                     public int compare(ItemRecord o1, ItemRecord o2) {
-                        int res = o1.getProperty().getLabel().compareTo(o2.getProperty().getLabel());
-                        if (res == 0) {
-                            // item with same name, should compare version
-                            return VersionUtils.compareTo(o1.getProperty().getVersion(), o2.getProperty().getVersion());
-                        } else {
-                            return res;
+                        Property p1 = o1.getProperty();
+                        Property p2 = o2.getProperty();
+                        if (p1 != null && p2 != null && p1.getLabel() != null && p2.getLabel() != null) {
+                            int res = p1.getLabel().compareTo(p2.getLabel());
+                            if (res == 0) {
+                                // item with same name, should compare version
+                                return VersionUtils.compareTo(p1.getVersion(), p2.getVersion());
+                            } else {
+                                return res;
+                            }
                         }
+                        return 0;
                     }
                 });
 
@@ -345,7 +351,7 @@ public class TreeBuilder {
      * 
      * DOC hcw ImportItemUtil class global comment. Detailled comment
      */
-    class TypeNode extends FolderNode {
+    public class TypeNode extends FolderNode {
 
         ERepositoryObjectType type;
 

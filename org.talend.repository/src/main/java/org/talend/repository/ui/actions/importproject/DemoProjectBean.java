@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -29,6 +29,19 @@ public class DemoProjectBean {
     private String descriptionFilePath;
 
     private EDemoProjectFileType demoProjectFileType;
+
+    /**
+     * the plugin id where the demo src is
+     */
+    private String pluginId;
+           
+    public String getPluginId() {
+        return pluginId;
+    }
+   
+    public void setPluginId(String pluginId) {
+        this.pluginId = pluginId;
+    }
 
     /**
      * Getter for archiveFilePath.

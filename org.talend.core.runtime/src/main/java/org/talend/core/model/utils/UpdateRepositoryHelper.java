@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -45,6 +45,9 @@ public final class UpdateRepositoryHelper {
                     String currentDbType = (String) RepositoryToComponentProperty.getValue(connection, UpdatesConstants.TYPE,
                             null);
                     aliasName += " (" + currentDbType + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+                }
+                if (repositoryObjectType.getType().equals("SERVICES")) {
+                    aliasName = "SERVICES";
                 }
             } else if (item instanceof ContextItem) {
                 aliasName = UpdatesConstants.CONTEXT;

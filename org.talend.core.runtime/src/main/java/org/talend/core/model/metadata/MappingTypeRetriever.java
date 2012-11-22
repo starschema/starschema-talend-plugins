@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -21,8 +21,11 @@ import java.util.Set;
 import org.apache.commons.collections.MultiMap;
 import org.apache.commons.collections.map.MultiValueMap;
 import org.apache.log4j.Logger;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.talend.core.model.metadata.types.DBTypeUtil;
 import org.talend.core.model.metadata.types.JavaTypesManager;
+import org.talend.core.prefs.ITalendCorePrefConstants;
+import org.talend.core.runtime.CoreRuntimePlugin;
 
 /**
  * DOC amaumont class global comment. Detailled comment <br/>
@@ -174,7 +177,7 @@ public class MappingTypeRetriever {
         String ignore = new String(""); //$NON-NLS-1$
         for (int i = 0; i < ignoreLP.size(); i++) {
             DbIgnoreLengthAndPrecision dbIgnore = (DbIgnoreLengthAndPrecision) ignoreLP.get(i);
-            if (dbIgnore.getDbType().equals(dbType)) {
+            if (dbIgnore.getDbType().equalsIgnoreCase(dbType)) {
                 ignore = dbIgnore.getIgnoreLength();
                 if (ignore == null) {
                     return false;
@@ -215,7 +218,7 @@ public class MappingTypeRetriever {
         String ignore = new String(""); //$NON-NLS-1$
         for (int i = 0; i < ignoreLP.size(); i++) {
             DbIgnoreLengthAndPrecision dbIgnore = (DbIgnoreLengthAndPrecision) ignoreLP.get(i);
-            if (dbIgnore.getDbType().equals(dbType)) {
+            if (dbIgnore.getDbType().equalsIgnoreCase(dbType)) {
                 ignore = dbIgnore.getIgnorePrecision();
                 if (ignore == null) {
                     return false;
@@ -292,12 +295,15 @@ public class MappingTypeRetriever {
                 return MetadataTalendType.getDefaultTalendType();
             }
         }
-        TalendTypePreLenRetriever talendTypePre = new TalendTypePreLenRetriever(mappingTypeOrigin, length, precison);
-        String mappingType = talendTypePre.getMappingType();
-        if (listMappingtype.size() != 0) {
-            for (MappingType type : listMappingtype) {
-                if (type.getTalendType().equals(mappingType)) {
-                    return type.getTalendType();
+        IPreferenceStore preferenceStore = CoreRuntimePlugin.getInstance().getPreferenceStore();
+        if (preferenceStore != null && !preferenceStore.getBoolean(ITalendCorePrefConstants.FORBIDDEN_MAPPING_LENGTH_PREC_LOGIC)) {
+            TalendTypePreLenRetriever talendTypePre = new TalendTypePreLenRetriever(mappingTypeOrigin, length, precison);
+            String mappingType = talendTypePre.getMappingType();
+            if (listMappingtype.size() != 0) {
+                for (MappingType type : listMappingtype) {
+                    if (type.getTalendType().equals(mappingType)) {
+                        return type.getTalendType();
+                    }
                 }
             }
         }

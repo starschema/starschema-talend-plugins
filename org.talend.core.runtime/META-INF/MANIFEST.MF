@@ -2,7 +2,8 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Runtime Plug-in
 Bundle-SymbolicName: org.talend.core.runtime;singleton:=true
-Bundle-Version: 2.2.0.qualifier
+Bundle-Version: 5.2.0.M1_r86684
+Bundle-Localization: plugin
 Bundle-Vendor: .Talend SA.
 Export-Package: org.talend.core,
  org.talend.core.context,
@@ -10,6 +11,8 @@ Export-Package: org.talend.core,
  org.talend.core.database.conn,
  org.talend.core.database.conn.template,
  org.talend.core.database.conn.version,
+ org.talend.core.database.utils,
+ org.talend.core.exception,
  org.talend.core.language,
  org.talend.core.model.business,
  org.talend.core.model.components,
@@ -32,8 +35,10 @@ Export-Package: org.talend.core,
  org.talend.core.model.xml,
  org.talend.core.prefs,
  org.talend.core.prefs.ui,
+ org.talend.core.repository,
  org.talend.core.runtime,
  org.talend.core.service,
+ org.talend.core.token,
  org.talend.core.ui,
  org.talend.core.ui.branding,
  org.talend.core.ui.context,
@@ -44,9 +49,12 @@ Export-Package: org.talend.core,
  org.talend.core.ui.context.model.template,
  org.talend.core.ui.context.model.tree,
  org.talend.core.ui.images,
+ org.talend.core.ui.metadata.celleditor,
  org.talend.core.ui.proposal,
+ org.talend.core.ui.rule,
  org.talend.core.ui.targetschema.editor,
  org.talend.core.ui.webService,
+ org.talend.core.updatesite,
  org.talend.core.utils,
  org.talend.designer.business.diagram.custom,
  org.talend.designer.codegen,
@@ -61,7 +69,10 @@ Export-Package: org.talend.core,
  org.talend.repository.ui.actions,
  org.talend.repository.ui.login.connections,
  org.talend.repository.ui.properties,
- org.talend.repository.ui.views
+ org.talend.repository.ui.views,
+ us.monoid.json,
+ us.monoid.web,
+ us.monoid.web.mime
 Require-Bundle: org.eclipse.gef,
  org.eclipse.emf.ecore.xmi,
  org.eclipse.emf.edit.ui,
@@ -79,8 +90,10 @@ Require-Bundle: org.eclipse.gef,
  org.talend.libraries.dom4j-jaxen,
  org.eclipse.jface.text,
  org.eclipse.ui.editors,
- org.talend.libraries.javacsv;resolution:=optional
+ org.talend.libraries.csv,
+ org.eclipse.ui.views.properties.tabbed
 Import-Package: org.eclipse.debug.core
 Bundle-Activator: org.talend.core.runtime.CoreRuntimePlugin
 Bundle-ActivationPolicy: lazy
-Bundle-ClassPath: .
+Bundle-ClassPath: .,
+ lib/resty-0.2.0.jar

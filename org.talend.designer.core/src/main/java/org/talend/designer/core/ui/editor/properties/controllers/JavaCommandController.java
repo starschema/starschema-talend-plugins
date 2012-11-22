@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,6 +20,13 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.events.SelectionEvent;
@@ -34,7 +41,10 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertyConstants;
 import org.talend.commons.ui.runtime.exception.MessageBoxExceptionHandler;
 import org.talend.commons.ui.runtime.image.ImageProvider;
+import org.talend.commons.utils.generation.JavaUtils;
 import org.talend.core.CorePlugin;
+import org.talend.core.GlobalServiceRegister;
+import org.talend.core.ILibraryManagerService;
 import org.talend.core.model.process.ElementParameterParser;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.properties.tab.IDynamicProperty;
@@ -88,10 +98,17 @@ public class JavaCommandController extends AbstractElementPropertySectionControl
                 URL url;
                 try {
                     List<URL> listURL = new ArrayList<URL>();
+                    ILibraryManagerService libManager = (ILibraryManagerService) GlobalServiceRegister.getDefault().getService(
+                            ILibraryManagerService.class);
+
                     for (String jarString : fullParam.getJar().split(";")) {
-                        String curJarPath = CorePlugin.getDefault().getLibrariesService().getJavaLibrariesPath() + "/"
-                                + jarString;
-                        jar = new File(curJarPath).getCanonicalFile();
+                        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+                        IProject prj = root.getProject(JavaUtils.JAVA_PROJECT_NAME);
+                        IJavaProject project = JavaCore.create(prj);
+                        IPath libPath = project.getResource().getLocation().append(JavaUtils.JAVA_LIB_DIRECTORY);
+                        libManager.retrieve(jarString, libPath.toPortableString(), new NullProgressMonitor());
+
+                        jar = libPath.append(jarString).toFile();
                         url = jar.toURL();
                         listURL.add(url);
                     }

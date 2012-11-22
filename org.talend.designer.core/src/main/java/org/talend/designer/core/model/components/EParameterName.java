@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -17,7 +17,7 @@ import org.talend.designer.core.i18n.Messages;
 /**
  * Enumeration that describes all the standard name used in the properties.
  * 
- * $Id: EParameterName.java 62638 2011-06-16 10:12:17Z hywang $
+ * $Id: EParameterName.java 86269 2012-06-25 09:53:01Z xpli $
  * 
  */
 public enum EParameterName {
@@ -51,9 +51,11 @@ public enum EParameterName {
     LOG_TO_STDOUT(Messages.getString("EParameterName.Log.Stdout")), //$NON-NLS-1$
     SCHEMA_TYPE(Messages.getString("EParameterName.schemaType")), //$NON-NLS-1$
     REPOSITORY_SCHEMA_TYPE("Repository"), //$NON-NLS-1$  Hidden parameter so no translation needed
+    REPOSITORY_COPYBOOK_NOXC2JFILE("NO_X2CJ_FILE"), //$NON-NLS-1$
     QUERYSTORE_TYPE(Messages.getString("EParameterName.queryType")), //$NON-NLS-1$
     REPOSITORY_QUERYSTORE_TYPE("Repository"), //$NON-NLS-1$  Hidden parameter so no translation needed
     PROPERTY_TYPE(Messages.getString("EParameterName.propertyType")), //$NON-NLS-1$
+    SK_CREATION(Messages.getString("EParameterName.SK_CREATION")),
     REPOSITORY_PROPERTY_TYPE("Repository"), //$NON-NLS-1$  Hidden parameter so no translation needed
     CONDITION(Messages.getString("EParameterName.condition")), //$NON-NLS-1$
     ROUTETYPE(Messages.getString("EParameterName.routeType")),
@@ -299,10 +301,22 @@ public enum EParameterName {
     VALUES("VALUES"), //$NON-NLS-1$
     JAVA_LIBRARY_PATH("JAVA_LIBRARY_PATH"), //$NON-NLS-1$
 
+    // for tloop
+    FORLOOP("For"),
+
     // for validation rule
     VALIDATION_RULES(Messages.getString("EParameterName.validationRules")), //$NON-NLS-1$
     VALIDATION_RULE_TYPE(Messages.getString("EParameterName.validationRuleType")), //$NON-NLS-1$
-    REPOSITORY_VALIDATION_RULE_TYPE("Repository"); //$NON-NLS-1$ Hidden parameter so no translation needed
+    REPOSITORY_VALIDATION_RULE_TYPE("Repository"), //$NON-NLS-1$ Hidden parameter so no translation needed
+
+    // tAggregateRow
+    GROUPBYS("GROUPBYS"),
+    OPERATIONS("OPERATIONS"),
+
+    // Route Resource Type
+    ROUTE_RESOURCE_TYPE("ROUTE_RESOURCE_TYPE"),
+    ROUTE_RESOURCE_TYPE_RES_URI("ROUTE_RESOURCE_TYPE_RES_URI"),
+    ROUTE_RESOURCE_TYPE_ID("ROUTE_RESOURCE_TYPE_ID");
 
     private String displayName;
 

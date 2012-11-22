@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -33,6 +33,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.internal.wizards.datatransfer.WizardFileSystemResourceExportPage1;
 import org.osgi.framework.Bundle;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
@@ -53,6 +54,10 @@ public class ImportDemoProjectPage extends WizardFileSystemResourceExportPage1 i
 
     private Browser descriptionBrowser;
 
+    private Text descriptionText;
+
+    private boolean useBrowser = true;
+
     private List<DemoProjectBean> demoProjectList;
 
     private int selectedDemoProjectIndex = Integer.MAX_VALUE;
@@ -64,7 +69,7 @@ public class ImportDemoProjectPage extends WizardFileSystemResourceExportPage1 i
      */
     public ImportDemoProjectPage(IStructuredSelection selection) {
         super(selection);
-        this.setMessage(Messages.getString("ImportDemoProjectPage.message")); //$NON-NLS-1$
+        this.setMessage(Messages.getString("ImportDemoProjectPage.message1")); //$NON-NLS-1$
         this.setTitle(Messages.getString("ImportDemoProjectPage.title")); //$NON-NLS-1$
     }
 
@@ -106,11 +111,21 @@ public class ImportDemoProjectPage extends WizardFileSystemResourceExportPage1 i
      * @param composite
      */
     public void createDescriptionIn(Composite composite) {
-        descriptionBrowser = new Browser(composite, SWT.BORDER);
-        descriptionBrowser.setText(""); //$NON-NLS-1$
-        GridData gd = new GridData(GridData.FILL_BOTH);
-        gd.widthHint = 200;
-        descriptionBrowser.setLayoutData(gd);
+
+        if ("yes".equalsIgnoreCase(System.getProperty("USE_BROWSER"))) {
+            descriptionBrowser = new Browser(composite, SWT.BORDER);
+            descriptionBrowser.setText(""); //$NON-NLS-1$
+            GridData gd = new GridData(GridData.FILL_BOTH);
+            gd.widthHint = 200;
+            descriptionBrowser.setLayoutData(gd);
+        } else {
+            descriptionText = new Text(composite, SWT.BORDER | SWT.WRAP);
+            descriptionText.setText(""); //$NON-NLS-1$
+            GridData gd = new GridData(GridData.FILL_BOTH);
+            gd.widthHint = 200;
+            descriptionText.setLayoutData(gd);
+            useBrowser = false;
+        }
     }
 
     /**
@@ -158,7 +173,7 @@ public class ImportDemoProjectPage extends WizardFileSystemResourceExportPage1 i
         URL url = null;
         String pluginPath = null;
         try {
-            //url = FileLocator.resolve(bundle.getEntry(relatedImagePath));
+            // url = FileLocator.resolve(bundle.getEntry(relatedImagePath));
             url = FileLocator.toFileURL(FileLocator.find(bundle, new Path(relatedImagePath), null));
             pluginPath = new Path(url.getFile()).toOSString();
         } catch (IOException e1) {
@@ -195,7 +210,12 @@ public class ImportDemoProjectPage extends WizardFileSystemResourceExportPage1 i
         String demoDescription = CorePlugin.getDefault().getResourceService()
                 .getDemoDescription(demoLanguage, demoProjectBean.getProjectName());
         // ~21138
-        descriptionBrowser.setText(demoDescription);
+
+        if (useBrowser) {
+            descriptionBrowser.setText(demoDescription);
+        } else {
+            descriptionText.setText(demoDescription);
+        }
         // } catch (IOException e) {
         // ExceptionHandler.process(e);
         // }
@@ -208,6 +228,9 @@ public class ImportDemoProjectPage extends WizardFileSystemResourceExportPage1 i
      */
     public void setImportDemoProjectList(List<DemoProjectBean> demoProjectList) {
         this.demoProjectList = demoProjectList;
+        if (demoProjectList != null && demoProjectList.size() > 1) {
+            this.setMessage(Messages.getString("ImportDemoProjectPage.message")); //$NON-NLS-1$
+        }
     }
 
     /**

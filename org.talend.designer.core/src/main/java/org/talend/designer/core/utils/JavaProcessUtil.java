@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,8 +13,12 @@
 package org.talend.designer.core.utils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,7 +48,8 @@ import org.talend.librariesmanager.model.ModulesNeededProvider;
  */
 public class JavaProcessUtil {
 
-    public static Set<String> getNeededLibraries(final IProcess process, boolean withChildrens) {
+    public static Set<ModuleNeeded> getNeededModules(final IProcess process, boolean withChildrens) {
+        List<ModuleNeeded> modulesNeeded = new ArrayList<ModuleNeeded>();
         // see bug 4939: making tRunjobs work loop will cause a error of "out of memory"
         Set<ProcessItem> searchItems = new HashSet<ProcessItem>();
         if (withChildrens) {
@@ -58,11 +63,51 @@ public class JavaProcessUtil {
                 searchItems.add(processItem);
             }
         }
-        return getNeededLibraries(process, withChildrens, searchItems);
+
+        // call recursive function to get all dependencies from job & subjobs
+        getNeededModules(process, withChildrens, searchItems, modulesNeeded);
+
+        // remove duplicates, and keep by priority the one got bundle dependency setup
+        Collections.sort(modulesNeeded, new Comparator<ModuleNeeded>(){
+
+            @Override
+            public int compare(ModuleNeeded arg0, ModuleNeeded arg1) {
+                if (arg0.getBundleName() == null && arg1.getBundleName() != null) {
+                    return 1;
+                }
+                if (arg0.getBundleName() != null && arg1.getBundleName() != null
+                        && "".equals(arg0.getBundleName()) && !"".equals(arg1.getBundleName())) {
+                    return 1;
+                }
+                return 0;
+            }
+            
+        });
+        Set<String> dedupModulesList = new HashSet<String>();
+        Iterator<ModuleNeeded> it = modulesNeeded.iterator();
+        while (it.hasNext()) {
+            ModuleNeeded module = it.next();
+            if (dedupModulesList.contains(module.getModuleName())) {
+                it.remove();
+            } else {
+                dedupModulesList.add(module.getModuleName());
+            }
+        }
+        
+        return new HashSet<ModuleNeeded>(modulesNeeded);
     }
 
-    private static Set<String> getNeededLibraries(final IProcess process, boolean withChildrens, Set<ProcessItem> searchItems) {
-        Set<String> neededLibraries = new HashSet<String>();
+    public static Set<String> getNeededLibraries(final IProcess process, boolean withChildrens) {
+        Set<String> libsNeeded = new HashSet<String>();
+        for (ModuleNeeded module : getNeededModules(process, withChildrens)) {
+            libsNeeded.add(module.getModuleName());
+        }
+
+        return libsNeeded;
+    }
+
+    private static void getNeededModules(final IProcess process, boolean withChildrens, Set<ProcessItem> searchItems,
+            List<ModuleNeeded> modulesNeeded) {
         IElementParameter headerParameter = process.getElementParameter(EParameterName.HEADER_LIBRARY.getName());
         if (headerParameter != null) {
             Object value = headerParameter.getValue();
@@ -72,7 +117,7 @@ public class JavaProcessUtil {
                         && headerLibraries.length() > headerLibraries.lastIndexOf(File.separatorChar) + 2) {
                     String substring = headerLibraries.substring(headerLibraries.lastIndexOf(File.separatorChar) + 2);
                     if (!"".equals(substring)) {//$NON-NLS-1$
-                        neededLibraries.add(getModuleValue(process, substring));
+                        modulesNeeded.add(getModuleValue(process, substring));
                     }
                 }
             }
@@ -86,7 +131,7 @@ public class JavaProcessUtil {
                         && footerLibraries.length() > footerLibraries.lastIndexOf(File.separatorChar) + 2) {
                     String substring = footerLibraries.substring(footerLibraries.lastIndexOf(File.separatorChar) + 2);
                     if (!"".equals(substring)) {//$NON-NLS-1$
-                        neededLibraries.add(getModuleValue(process, substring));
+                        modulesNeeded.add(getModuleValue(process, substring));
                     }
                 }
             }
@@ -94,7 +139,7 @@ public class JavaProcessUtil {
 
         IElementParameter elementParameter = process.getElementParameter(EParameterName.DRIVER_JAR.getName());
         if (elementParameter != null && elementParameter.getFieldType() == EParameterFieldType.TABLE) {
-            getModulsInTable(process, elementParameter, neededLibraries);
+            getModulesInTable(process, elementParameter, modulesNeeded);
         }
 
         if (process instanceof IProcess2) {
@@ -103,19 +148,17 @@ public class JavaProcessUtil {
                 List<ModuleNeeded> modulesNeededForRoutines = ModulesNeededProvider
                         .getModulesNeededForRoutines((ProcessItem) item);
                 if (modulesNeededForRoutines != null) {
-                    for (ModuleNeeded moduleNeeded : modulesNeededForRoutines) {
-                        neededLibraries.add(moduleNeeded.getModuleName());
-                    }
+                    modulesNeeded.addAll(modulesNeededForRoutines);
                 }
             }
         }
 
         List<? extends INode> nodeList = process.getGeneratingNodes();
         for (INode node : nodeList) {
-            List<ModuleNeeded> moduleList = node.getComponent().getModulesNeeded();
+            List<ModuleNeeded> moduleList = node.getModulesNeeded();
             for (ModuleNeeded needed : moduleList) {
-                if (needed.isRequired()) {
-                    neededLibraries.add(needed.getModuleName());
+                if (needed.isRequired(node.getElementParameters())) {
+                    modulesNeeded.add(needed);
                 }
             }
             for (IElementParameter curParam : node.getElementParameters()) {
@@ -126,10 +169,10 @@ public class JavaProcessUtil {
                 if (curParam.getFieldType().equals(EParameterFieldType.MODULE_LIST)) {
                     if (curParam.getValue() != null && !"".equals(curParam.getValue())) { // if the parameter //$NON-NLS-1$
                         // is not empty.
-                        neededLibraries.add(getModuleValue(process, (String) curParam.getValue()));
+                        modulesNeeded.add(getModuleValue(process, (String) curParam.getValue()));
                     }
                 } else if (curParam.getFieldType() == EParameterFieldType.TABLE) {
-                    getModulsInTable(process, curParam, neededLibraries);
+                    getModulesInTable(process, curParam, modulesNeeded);
                 }
 
                 // see feature 4720 Add libraries for different version DB components and tMomInput components
@@ -137,9 +180,9 @@ public class JavaProcessUtil {
                 // if (elementParameter != null && elementParameter.isShow(node.getElementParameters())
                 // && Boolean.TRUE.equals(elementParameter.getValue())) {
                 if (curParam.isShow(node.getElementParameters())) {
-                    findMoreLibraries(neededLibraries, curParam, true);
+                    findMoreLibraries(process, modulesNeeded, curParam, true);
                 } else {
-                    findMoreLibraries(neededLibraries, curParam, false);
+                    findMoreLibraries(process, modulesNeeded, curParam, false);
                 }
             }
 
@@ -167,17 +210,14 @@ public class JavaProcessUtil {
                         IProcess child = service.getProcessFromItem(subJobInfo.getProcessItem());
                         // Process child = new Process(subJobInfo.getProcessItem().getProperty());
                         // child.loadXmlFile();
-                        neededLibraries.addAll(JavaProcessUtil.getNeededLibraries(child, true, searchItems));
+                        JavaProcessUtil.getNeededModules(child, true, searchItems, modulesNeeded);
                     }
                 }
             }
         }
-        // return the jars needed for the job.
-        return neededLibraries;
-
     }
 
-    private static void getModulsInTable(final IProcess process, IElementParameter curParam, Set<String> neededLibraries) {
+    private static void getModulesInTable(final IProcess process, IElementParameter curParam, List<ModuleNeeded> modulesNeeded) {
 
         if (!(curParam.getValue() instanceof List)) {
             return;
@@ -202,19 +242,27 @@ public class JavaProcessUtil {
                                             String var = ContextParameterUtils.getVariableFromCode(moduleName);
                                             if (var.equals(contextPara.getName())) {
                                                 String value = context.getContextParameter(contextPara.getName()).getValue();
-                                                value = value.substring(value.lastIndexOf("\\") + 1);
-                                                if (!neededLibraries.contains(value)) {
-                                                    neededLibraries.add(value);
+
+                                                if (curParam.getName().equals(EParameterName.DRIVER_JAR.getName())
+                                                        && value.contains(";")) {
+                                                    String[] jars = value.split(";");
+                                                    for (int i = 0; i < jars.length; i++) {
+                                                        String jar = jars[i];
+                                                        jar = jar.substring(jar.lastIndexOf("\\") + 1);
+                                                        ModuleNeeded module = new ModuleNeeded(null, jar, null, true);
+                                                        modulesNeeded.add(module);
+                                                    }
+                                                } else {
+                                                    value = value.substring(value.lastIndexOf("\\") + 1);
+                                                    ModuleNeeded module = new ModuleNeeded(null, value, null, true);
+                                                    modulesNeeded.add(module);
                                                 }
                                             }
                                         }
                                     }
 
                                 } else {
-                                    moduleName = getModuleValue(process, moduleName);
-                                    if (!neededLibraries.contains(moduleName)) {
-                                        neededLibraries.add(moduleName);
-                                    }
+                                    modulesNeeded.add(getModuleValue(process, moduleName));
                                 }
                             }
                         }
@@ -225,7 +273,7 @@ public class JavaProcessUtil {
 
     }
 
-    private static String getModuleValue(final IProcess process, String moduleValue) {
+    private static ModuleNeeded getModuleValue(final IProcess process, String moduleValue) {
         if (ContextParameterUtils.isContainContextParam(moduleValue)) {
             String var = ContextParameterUtils.getVariableFromCode(moduleValue);
             if (var != null) {
@@ -239,11 +287,11 @@ public class JavaProcessUtil {
                     String paramvalue = param.getValue();
                     int a = paramvalue.lastIndexOf("\\"); //$NON-NLS-1$
                     String filename = paramvalue.substring(a + 1, paramvalue.length());
-                    return filename;
+                    return new ModuleNeeded(null, filename, null, true);
                 }
             }
         }
-        return TalendTextUtils.removeQuotes(moduleValue);
+        return new ModuleNeeded(null, TalendTextUtils.removeQuotes(moduleValue), null, true);
     }
 
     /**
@@ -252,7 +300,8 @@ public class JavaProcessUtil {
      * @param neededLibraries
      * @param curParam
      */
-    public static void findMoreLibraries(Set<String> neededLibraries, IElementParameter curParam, boolean flag) {
+    public static void findMoreLibraries(final IProcess process, List<ModuleNeeded> modulesNeeded, IElementParameter curParam,
+            boolean flag) {
 
         Object value = curParam.getValue();
         if (curParam.getName().equals("DRIVER_JAR")) {//$NON-NLS-N$
@@ -265,8 +314,17 @@ public class JavaProcessUtil {
                         Object object = map.get("JAR_NAME");//$NON-NLS-N$
                         if (object != null && object instanceof String) {
                             String driverName = (String) object;
-                            neededLibraries.add((driverName).replaceAll(TalendTextUtils.QUOTATION_MARK, "").replaceAll( //$NON-NLS-1$
-                                    TalendTextUtils.SINGLE_QUOTE, ""));//$NON-NLS-1$
+                            if (driverName != null && !"".equals(driverName)) {
+                                boolean isContextMode = ContextParameterUtils.containContextVariables(driverName);
+                                if (isContextMode) {
+                                    getModulesInTable(process, curParam, modulesNeeded);
+                                } else {
+                                    ModuleNeeded module = new ModuleNeeded(null, (driverName).replaceAll(
+                                            TalendTextUtils.QUOTATION_MARK, "").replaceAll( //$NON-NLS-1$
+                                            TalendTextUtils.SINGLE_QUOTE, ""), null, true);//$NON-NLS-1$
+                                    modulesNeeded.add(module);
+                                }
+                            }
                         }
                     }
                 }
@@ -275,7 +333,8 @@ public class JavaProcessUtil {
 
         if (curParam.getName().equals("DB_VERSION")) { //$NON-NLS-1$
             String jdbcName = (String) value;
-            if (jdbcName != null) {
+            //
+            if (jdbcName != null && !jdbcName.equals("Access_2003") && !jdbcName.equals("Access_2007")) {
                 if (jdbcName.contains("11g")) { //$NON-NLS-1$
                     if (System.getProperty("java.version").startsWith("1.6")) { //$NON-NLS-1$ //$NON-NLS-2$
                         jdbcName = jdbcName.replace('5', '6');
@@ -285,8 +344,18 @@ public class JavaProcessUtil {
                 }
 
                 if (flag == true) {
-                    neededLibraries.add((jdbcName).replaceAll(TalendTextUtils.QUOTATION_MARK, "").replaceAll( //$NON-NLS-1$
-                            TalendTextUtils.SINGLE_QUOTE, ""));//$NON-NLS-1$
+                    String jars = (jdbcName).replaceAll(TalendTextUtils.QUOTATION_MARK, "").replaceAll( //$NON-NLS-1$
+                            TalendTextUtils.SINGLE_QUOTE, "");
+                    String separator = ";"; //$NON-NLS-1$
+                    if (jars.contains(separator)) {
+                        for (String jar : jars.split(separator)) {
+                            ModuleNeeded module = new ModuleNeeded(null, jar, null, true);
+                            modulesNeeded.add(module);
+                        }
+                    } else {
+                        ModuleNeeded module = new ModuleNeeded(null, jars, null, true);
+                        modulesNeeded.add(module);
+                    }
                 }
             }
         }
@@ -300,7 +369,8 @@ public class JavaProcessUtil {
             }
 
             for (String jar : path.split(separator)) {
-                neededLibraries.add(jar);
+                ModuleNeeded module = new ModuleNeeded(null, jar, null, true);
+                modulesNeeded.add(module);
             }
         }
         if (curParam.getName().equals("HOTLIBS")) { //$NON-NLS-1$
@@ -309,9 +379,33 @@ public class JavaProcessUtil {
             for (Map<String, Object> line : tableValues) {
                 if (line.containsKey("LIBPATH") && !StringUtils.isEmpty((String) line.get("LIBPATH"))) {
                     String path = (String) line.get("LIBPATH");
-                    neededLibraries.add(TalendTextUtils.removeQuotes(path));
+                    ModuleNeeded module = new ModuleNeeded(null, TalendTextUtils.removeQuotes(path), null, true);
+                    modulesNeeded.add(module);
                 }
             }
         }
+    }
+
+    /**
+     * 
+     * DOC hcyi Comment method "getContextOriginalValue".
+     * 
+     * @param process
+     * @param contextStr
+     */
+    public static String getContextOriginalValue(final IProcess process, String contextStr) {
+        String originalValue = null;
+        IContext context = process.getContextManager().getDefaultContext();
+        if (context != null) {
+            List<IContextParameter> contextParameterList = context.getContextParameterList();
+            for (IContextParameter contextPara : contextParameterList) {
+                String var = ContextParameterUtils.getVariableFromCode(contextStr);
+                if (var.equals(contextPara.getName())) {
+                    originalValue = context.getContextParameter(contextPara.getName()).getValue();
+                    return originalValue;
+                }
+            }
+        }
+        return null;
     }
 }

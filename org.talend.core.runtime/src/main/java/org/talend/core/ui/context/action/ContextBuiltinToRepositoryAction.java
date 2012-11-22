@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -24,9 +24,8 @@ import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.runtime.CoreRuntimePlugin;
 import org.talend.core.runtime.i18n.Messages;
 import org.talend.core.ui.context.IContextModelManager;
-import org.talend.core.ui.context.model.template.ContextParameterParent;
-import org.talend.core.ui.context.model.template.ContextParameterSortedParent;
-import org.talend.core.ui.context.model.template.ContextParameterSortedSon;
+import org.talend.core.ui.context.model.template.ContextVariableTabChildModel;
+import org.talend.core.ui.context.model.template.ContextVariableTabParentModel;
 import org.talend.repository.ui.actions.AContextualAction;
 
 /**
@@ -78,29 +77,29 @@ public class ContextBuiltinToRepositoryAction extends AContextualAction {
         if (canWork) {
             for (Iterator<?> iter = selection.iterator(); iter.hasNext();) {
                 Object object = iter.next();
-                if (object instanceof ContextParameterSortedParent) {
-                    ContextParameterSortedParent param = (ContextParameterSortedParent) object;
+                if (object instanceof ContextVariableTabParentModel) {
+                    ContextVariableTabParentModel param = (ContextVariableTabParentModel) object;
                     if (!IContextParameter.BUILT_IN.equals(param.getSourceId())) {
                         setEnabled(false);
                         return;
                     } else {
-                        params.add(param.getParameter());
+                        params.add(param.getContextParameter());
                     }
-                } else if (object instanceof ContextParameterSortedSon) {
-                    ContextParameterSortedSon param = (ContextParameterSortedSon) object;
-                    if (!IContextParameter.BUILT_IN.equals(param.getParameter().getSource())) {
+                } else if (object instanceof ContextVariableTabChildModel) {
+                    ContextVariableTabChildModel param = (ContextVariableTabChildModel) object;
+                    if (!IContextParameter.BUILT_IN.equals(param.getContextParameter().getSource())) {
                         setEnabled(false);
                         return;
                     } else {
-                        params.add(param.getParameter());
+                        params.add(param.getContextParameter());
                     }
-                } else if (object instanceof ContextParameterParent) {
-                    ContextParameterParent param = (ContextParameterParent) object;
-                    if (!IContextParameter.BUILT_IN.equals(param.getParameter().getSource())) {
+                } else if (object instanceof ContextVariableTabParentModel) {
+                    ContextVariableTabParentModel param = (ContextVariableTabParentModel) object;
+                    if (!IContextParameter.BUILT_IN.equals(param.getContextParameter().getSource())) {
                         setEnabled(false);
                         return;
                     } else {
-                        params.add(param.getParameter());
+                        params.add(param.getContextParameter());
                     }
                 }
             }

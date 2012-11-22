@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -114,6 +114,8 @@ public class NewRoutineWizard extends Wizard {
         try {
             updateRoutineContent();
             property.setId(repositoryFactory.getNextId());
+            //changed by hqzhang for TDI-19527, label=displayName
+            property.setLabel(property.getDisplayName());
             repositoryFactory.create(routineItem, mainPage.getDestinationPath());
         } catch (PersistenceException e) {
             MessageDialog.openError(getShell(), Messages.getString("NewProcessWizard.failureTitle"), ""); //$NON-NLS-1$ //$NON-NLS-2$

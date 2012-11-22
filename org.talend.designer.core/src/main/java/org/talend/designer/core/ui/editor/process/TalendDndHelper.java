@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -15,6 +15,7 @@ package org.talend.designer.core.ui.editor.process;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.eclipse.emf.common.util.EList;
 import org.talend.core.database.EDatabaseTypeName;
@@ -39,7 +40,10 @@ import org.talend.repository.model.RepositoryNode;
 
 /**
  * ggu class global comment. Detailled comment
+ * 
+ * @deprecated replaced by RepositoryComponentManager
  */
+
 final class TalendDndHelper {
 
     private static final String MAP = "MAP";//$NON-NLS-1$
@@ -52,6 +56,10 @@ final class TalendDndHelper {
 
     public static List<IComponent> filterNeededComponents(Item item, RepositoryNode seletetedNode, ERepositoryObjectType type) {
         EDatabaseComponentName name = EDatabaseComponentName.getCorrespondingComponentName(item, type);
+        List<IComponent> neededComponents = new ArrayList<IComponent>();
+        if (name == null) {
+            return neededComponents;
+        }
         String productNameWanted = filterProductNameWanted(name, item);
         boolean hl7Related = false;
         boolean hl7Output = false;
@@ -82,7 +90,6 @@ final class TalendDndHelper {
         }
 
         Set<IComponent> components = ComponentsFactoryProvider.getInstance().getComponents();
-        List<IComponent> neededComponents = new ArrayList<IComponent>();
 
         EmfComponent emfComponent = null;
         for (IComponent component : components) {
@@ -105,6 +112,16 @@ final class TalendDndHelper {
                 boolean flag = filterComponent(component, name, type);
 
                 if (((componentProductname != null && productNameWanted.endsWith(componentProductname)) && value) || flag) {
+
+                    Pattern pattern = Pattern.compile("^.*oracle.*$", Pattern.CASE_INSENSITIVE);
+
+                    if (pattern.matcher(name.getDBType()).matches()
+                            && (emfComponent.getName().equals("tAmazonOracleInput") || emfComponent.getName().equals(
+                                    "tAmazonOracleOutput"))) {
+
+                        continue;
+                    }
+
                     if (item instanceof MDMConnectionItem) {
                         if (MdmConceptType.INPUT.equals(mdmType) && emfComponent.getName().endsWith(INPUT)) {
                             neededComponents.add(emfComponent);

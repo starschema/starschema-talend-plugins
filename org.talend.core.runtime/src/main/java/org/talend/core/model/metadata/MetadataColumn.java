@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -11,6 +11,9 @@
 //
 // ============================================================================
 package org.talend.core.model.metadata;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 
@@ -44,6 +47,8 @@ public class MetadataColumn implements IMetadataColumn, Cloneable {
 
     private String comment = ""; //$NON-NLS-1$
 
+    private Integer originalLength;
+
     private String pattern = ""; //$NON-NLS-1$
 
     private boolean custom = false;
@@ -59,6 +64,8 @@ public class MetadataColumn implements IMetadataColumn, Cloneable {
     private String relationshipType = "";
 
     private String expression = "";
+
+    private Map<String, String> additionalField = new HashMap<String, String>();
 
     public MetadataColumn() {
         super();
@@ -91,9 +98,11 @@ public class MetadataColumn implements IMetadataColumn, Cloneable {
         this.nullable = metadataColumn.isNullable();
         this.length = metadataColumn.getLength();
         this.precision = metadataColumn.getPrecision();
+        this.originalLength = metadataColumn.getOriginalLength();
 
         setDefault(metadataColumn.getDefault());
         setComment(metadataColumn.getComment());
+        setOriginalLength(metadataColumn.getOriginalLength());
 
         // Datacert: custom metadataColumn to set relatedEntity
         // and relationShipType info.
@@ -399,6 +408,17 @@ public class MetadataColumn implements IMetadataColumn, Cloneable {
                 }
             }
         }
+        if ((options & OPTIONS_IGNORE_ORIGINALLENGTH) == 0) {
+            if (!sameIntegerValue(this.originalLength, other.getOriginalLength())) {
+                if (((options & OPTIONS_IGNORE_BIGGER_SIZE) == 0)) {
+                    return false;
+
+                }
+                if (!largeValue(this.originalLength, other.getOriginalLength())) {
+                    return false;
+                }
+            }
+        }
         if ((options & OPTIONS_IGNORE_NULLABLE) == 0) {
             if (this.nullable != other.isNullable()) {
                 return false;
@@ -589,4 +609,16 @@ public class MetadataColumn implements IMetadataColumn, Cloneable {
         this.expression = expression;
     }
 
+    public Integer getOriginalLength() {
+        return originalLength;
+    }
+
+    public void setOriginalLength(Integer originalLength) {
+        this.originalLength = originalLength;
+    }
+
+    @Override
+    public Map<String, String> getAdditionalField() {
+        return additionalField;
+    }
 }

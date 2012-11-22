@@ -5,6 +5,7 @@
  <extension-point id="process_provider" name="Process Provider" schema="schema/process_provider.exsd"/>
  <extension-point id="replace_nodes" name="Replace Nodes when generating code" schema="schema/replace_nodes.exsd"/>
  <extension-point id="brms_provider" name="Brms provider" schema="schema/brms_provider.exsd"/>
+ <extension-point id="check_nodes" name="Check nodes" schema="schema/check_nodes.exsd"/>
    <extension
          point="org.eclipse.ui.editors">
       <editor
@@ -81,7 +82,12 @@
             id="org.talend.repository.prefs.documentation"
             name="%documentation">
       </page>
-      
+      <page
+            category="org.talend.core.prefs"
+            class="org.talend.designer.core.ui.preferences.ExchangePreferencePage"
+            id="org.talend.repository.prefs.exchange"
+            name="%exchange">
+      </page>      
    </extension>
    <extension
          point="org.eclipse.core.runtime.preferences">
@@ -92,7 +98,7 @@
    <extension
          point="org.eclipse.ui.views.properties.tabbed.propertyContributor">
       <propertyContributor
-            contributorId="org.talend.repository.views.repository"
+            contributorId="org.talend.repository.cnf.view"
             labelProvider="org.talend.designer.core.ui.editor.properties.GefEditorLabelProvider"
             typeMapper="org.talend.designer.core.ui.editor.properties.GefEditorTypeMapper">
          <propertyCategory category="TalendEditor"/>
@@ -100,7 +106,7 @@
    </extension>
    <extension
          point="org.eclipse.ui.views.properties.tabbed.propertyTabs">
-      <propertyTabs contributorId="org.talend.repository.views.repository">
+      <propertyTabs contributorId="org.talend.repository.cnf.view">
       <!--
          <propertyTab
                category="TalendEditor"
@@ -524,12 +530,22 @@
            class="org.talend.designer.core.ui.editor.properties.controllers.generator.GenerateGrammarControllerGenerator"
            mapping="GENERATEGRAMMARCONTROLLER"
            name="GenerateGrammarController launcher">
+     </generator>
+     <generator
+           class="org.talend.designer.core.ui.editor.properties.controllers.generator.GenerateSurvivorshipRulesControllerGenerator"
+           mapping="GENERATE_SURVIVORSHIP_RULES_CONTROLLER"
+           name="GenerateSurvivorshipRulesController">
      </generator>     
 	 <generator
            class="org.talend.designer.core.ui.editor.properties.controllers.generator.DCSchemaGenerator"
            mapping="DCSCHEMA"
            name="DCSchema">
-     </generator>   
+     </generator>
+  <generator
+        class="org.talend.designer.core.ui.editor.properties.controllers.generator.TreeTableGenerator"
+        mapping="TREE_TABLE"
+        name="Tree Table">
+  </generator>   
    </extension>
    <extension
          point="org.talend.core.runtime.service">
@@ -689,5 +705,28 @@
              id="jobsettings.treeview"
              title="%useProjectSetting">
        </page>
+    </extension>
+    <extension
+          point="org.talend.core.runtime.repositoryComponent_provider">
+       <DragAndDropFilter
+             clazz="org.talend.designer.core.repository.XMLOutputRepositoryComponentDndFilter"
+             id="org.talend.designer.core.XMLOutputRepositoryComponentDndFilter"
+             name="XMLOutput Filter">
+       </DragAndDropFilter>
+       <DragAndDropFilter
+             clazz="org.talend.designer.core.repository.WebServiceRepositoryComponentDndFilter"
+             id="org.talend.designer.core.WebServiceRepositoryComponentDndFilter"
+             name="WebService Filter">
+       </DragAndDropFilter>
+       <DragAndDropFilter
+             clazz="org.talend.designer.core.ui.editor.process.TAmazonOracleDndFilter"
+             id="org.talend.designer.core.tAmazonOracleFilter"
+             name="tAmazonOracleXXX">
+       </DragAndDropFilter>
+       <DragAndDropFilter
+             clazz="org.talend.designer.core.ui.editor.process.TMDMComponentDndFilter"
+             id="org.talend.designer.core.tMDMComponentDndFilter"
+             name="tMDMXXX">
+       </DragAndDropFilter>
     </extension>
 </plugin>

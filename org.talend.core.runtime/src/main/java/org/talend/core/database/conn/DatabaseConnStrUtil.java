@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -17,6 +17,7 @@ import org.apache.oro.text.regex.MatchResult;
 import org.apache.oro.text.regex.Pattern;
 import org.apache.oro.text.regex.Perl5Compiler;
 import org.apache.oro.text.regex.Perl5Matcher;
+import org.talend.core.database.EDatabaseTypeName;
 import org.talend.core.database.conn.template.EDatabaseConnTemplate;
 import org.talend.core.database.conn.version.EDatabaseVersion4Drivers;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
@@ -156,6 +157,11 @@ public class DatabaseConnStrUtil {
     }
 
     public static String getURLString(DatabaseConnection conn) {
+        // mzhao 2012-06-25 bug TDI-21552 , context url of generic JDBC cannot be replanced correctly, here
+        // just return the origin url.
+        if (conn.getDatabaseType().equals(EDatabaseTypeName.GENERAL_JDBC.getDisplayName())) {
+            return conn.getURL();
+        }
         return getURLString(false, conn);
     }
 
@@ -220,7 +226,7 @@ public class DatabaseConnStrUtil {
                 startStringConnection = stringConnection.substring(0, startTemplateString.length());
                 if (stringConnection.contains("(description=(address=(protocol=tcp)")) { //$NON-NLS-1$
                     return EDatabaseConnTemplate.ORACLESN.getDBDisplayName();
-                } else if (startTemplateString.equals(startStringConnection)) {
+                } else if (!startTemplateString.equals("") && startTemplateString.equals(startStringConnection)) {
                     return template.getDBDisplayName();
                 }
             }

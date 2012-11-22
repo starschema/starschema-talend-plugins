@@ -226,16 +226,16 @@ public class JobletContainer extends NodeContainer {
     }
 
     public void updateJobletNodes(boolean update) {
-        if (!isCollapsed()) {
-            refreshJobletNodes(update, isCollapsed());
-            updateSubjobContainer();
-            transferLocation(update);
-            refreshJobletConnections();
-        }
+        // TDI-18915:no need "if(!isCollapsed()){}" here since it is only called in UpdateJobletNodeCommand and can not
+        // update the joblet NodeContainer in job when modify the joblet
+        refreshJobletNodes(update, isCollapsed());
+        updateSubjobContainer();
+        transferLocation(update);
+        refreshJobletConnections();
     }
 
     public void refreshJobletNodes(boolean update, boolean coll) {
-        if (!coll) {
+        if (!coll || update) {
             JobletUtil util = new JobletUtil();
             IProcess jobletProcess = this.getNode().getComponent().getProcess();
             Set<IConnection> conns = new HashSet<IConnection>();

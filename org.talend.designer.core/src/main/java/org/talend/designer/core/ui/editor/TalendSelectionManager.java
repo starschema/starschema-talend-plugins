@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -131,16 +131,18 @@ public class TalendSelectionManager extends SelectionManager {
                 ProcessPart processPart = (ProcessPart) parentPart.getContents();
                 List children = processPart.getChildren();
                 for (int i = 0; i < children.size(); i++) {
-                    List nodeList = ((SubjobContainerPart) children.get(i)).getChildren();
-                    nodeList.remove(sourcePart.getParent());
-                    nodeList.remove(targetPart.getParent());
-                    for (int j = 0; j < nodeList.size(); j++) {
-                        if (nodeList.get(j) instanceof NodeContainerPart) {
-                            NodePart nodePart = ((NodeContainerPart) nodeList.get(j)).getNodePart();
-                            NodeFigure figure = (NodeFigure) nodePart.getFigure();
-                            if (figure.containsPoint(getSelectPoint())) {
-                                setSelectPoint(null);
-                                return nodePart;
+                    if (children.get(i) instanceof SubjobContainerPart) {
+                        List nodeList = ((SubjobContainerPart) children.get(i)).getChildren();
+                        nodeList.remove(sourcePart.getParent());
+                        nodeList.remove(targetPart.getParent());
+                        for (int j = 0; j < nodeList.size(); j++) {
+                            if (nodeList.get(j) instanceof NodeContainerPart) {
+                                NodePart nodePart = ((NodeContainerPart) nodeList.get(j)).getNodePart();
+                                NodeFigure figure = (NodeFigure) nodePart.getFigure();
+                                if (figure.containsPoint(getSelectPoint())) {
+                                    setSelectPoint(null);
+                                    return nodePart;
+                                }
                             }
                         }
                     }

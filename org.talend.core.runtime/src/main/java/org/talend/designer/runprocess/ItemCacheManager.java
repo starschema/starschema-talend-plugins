@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -27,9 +27,9 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 
 /**
  * DOC nrousseau class global comment. Detailled comment
- * 
+ *
  * @deprecated
- * 
+ *
  * Do not cache anymore. This class actually is only used for compatibility, and keep the system of LASTEST_VERSION
  */
 public class ItemCacheManager {
@@ -48,7 +48,7 @@ public class ItemCacheManager {
         IProxyRepositoryFactory factory = CoreRuntimePlugin.getInstance().getProxyRepositoryFactory();
         try {
             IRepositoryViewObject object = factory.getLastVersion(project, processId);
-            if (object == null || object.getRepositoryObjectType() != ERepositoryObjectType.PROCESS) {
+            if (object == null || !(object.getProperty().getItem() instanceof ProcessItem)) {
                 return null;
             }
             lastVersionOfProcess = (ProcessItem) object.getProperty().getItem();
@@ -104,7 +104,7 @@ public class ItemCacheManager {
             return null;
         }
         // feature 19312
-        if (version.equals("") || version == null || LATEST_VERSION.equals(version)) {
+        if (version == null || version.equals("") || LATEST_VERSION.equals(version)) {
             return getProcessItem(project, processId);
         }
         ProcessItem selectedProcessItem = null;
@@ -114,10 +114,9 @@ public class ItemCacheManager {
 
             List<IRepositoryViewObject> allVersions = factory.getAllVersion(project, processId, false);
             for (IRepositoryViewObject ro : allVersions) {
-                if (ro.getRepositoryObjectType() == ERepositoryObjectType.PROCESS) {
-                    if (ro.getVersion().equals(version)) {
-                        selectedProcessItem = (ProcessItem) ro.getProperty().getItem();
-                    }
+                if (ro.getVersion().equals(version) && ro.getProperty().getItem() instanceof ProcessItem) {
+                    selectedProcessItem = (ProcessItem) ro.getProperty().getItem();
+                    break;
                 }
             }
             return selectedProcessItem;

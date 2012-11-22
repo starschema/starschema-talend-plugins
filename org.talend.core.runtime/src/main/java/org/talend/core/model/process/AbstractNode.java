@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -21,6 +21,7 @@ import java.util.StringTokenizer;
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.components.IMultipleComponentManager;
 import org.talend.core.model.components.IODataComponent;
+import org.talend.core.model.general.ModuleNeeded;
 import org.talend.core.model.metadata.IMetadataTable;
 import org.talend.core.model.utils.NodeUtil;
 import org.talend.core.model.utils.ParameterValueUtil;
@@ -42,8 +43,6 @@ public abstract class AbstractNode implements INode {
     private List<? extends IConnection> incomingConnections = new ArrayList<IConnection>();
 
     private List<IMetadataTable> metadataList;
-
-    private String pluginFullName;
 
     private String uniqueName;
 
@@ -80,10 +79,14 @@ public abstract class AbstractNode implements INode {
     private INode designSubjobStartNode;
 
     private boolean isVirtualGenerateNode;
+    
+    private EConnectionType virtualLinkTo;
 
     private String uniqueShortName;
 
     private boolean subProcessContainBreakpoint;
+
+    private List<ModuleNeeded> modulesNeeded = new ArrayList<ModuleNeeded>();
 
     public String getComponentName() {
         return componentName;
@@ -127,14 +130,6 @@ public abstract class AbstractNode implements INode {
 
     public void setMetadataList(List<IMetadataTable> metadataList) {
         this.metadataList = metadataList;
-    }
-
-    public String getPluginFullName() {
-        return pluginFullName;
-    }
-
-    public void setPluginFullName(String pluginFullName) {
-        this.pluginFullName = pluginFullName;
     }
 
     public String getUniqueName() {
@@ -431,7 +426,7 @@ public abstract class AbstractNode implements INode {
     public List<? extends IConnection> getOutgoingSortedConnections() {
         return org.talend.core.model.utils.NodeUtil.getOutgoingSortedConnections(this);
     }
-    
+
     public List<? extends IConnection> getOutgoingCamelSortedConnections() {
         return org.talend.core.model.utils.NodeUtil.getOutgoingCamelSortedConnections(this);
     }
@@ -674,6 +669,14 @@ public abstract class AbstractNode implements INode {
         }
         return false;
     }
+    
+    public EConnectionType getVirtualLinkTo() {
+        return this.virtualLinkTo;
+    }
+
+    public void setVirtualLinkTo(EConnectionType virtualLinkTo) {
+        this.virtualLinkTo=virtualLinkTo;
+    }
 
     /*
      * (non-Javadoc)
@@ -891,5 +894,16 @@ public abstract class AbstractNode implements INode {
 
     public INode getJobletNode() {
         return null;
+    }
+
+    public List<ModuleNeeded> getModulesNeeded() {
+        if (modulesNeeded.isEmpty() && component != null && component.getModulesNeeded() != null) {
+            // if the list is empty, initialize from the original component
+            // this avoids complex refactor to initialize this list all the time, and add the possibility to add more
+            // modules needed to one original component
+
+            modulesNeeded.addAll(component.getModulesNeeded());
+        }
+        return modulesNeeded;
     }
 }

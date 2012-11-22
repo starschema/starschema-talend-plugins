@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -15,14 +15,12 @@ package org.talend.designer.core.ui.editor.properties.controllers;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.StringTokenizer;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
-import org.talend.commons.exception.PersistenceException;
-import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.utils.VersionUtils;
 import org.talend.core.CorePlugin;
 import org.talend.core.context.Context;
@@ -40,6 +38,7 @@ import org.talend.core.model.properties.Property;
 import org.talend.core.model.utils.ProcessStreamTrashReaderUtil;
 import org.talend.core.prefs.ITalendCorePrefConstants;
 import org.talend.core.utils.CsvArray;
+import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.ui.editor.jobletcontainer.JobletContainer;
 import org.talend.designer.core.ui.editor.nodecontainer.NodeContainer;
 import org.talend.designer.core.ui.editor.nodes.Node;
@@ -114,7 +113,7 @@ public class GuessSchemaProcess {
 
         if (node.getComponent().getModulesNeeded().size() > 0) {
             for (ModuleNeeded module : node.getComponent().getModulesNeeded()) {
-                if (module.isRequired()) {
+                if (module.isRequired(node.getElementParameters())) {
                     Node libNode1 = new Node(ComponentsFactoryProvider.getInstance().get(LIB_NODE), process);
                     libNode1.setPropertyValue("LIBRARY", "\"" + module.getModuleName() + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                     NodeContainer nc = null;
@@ -146,25 +145,25 @@ public class GuessSchemaProcess {
         }
 
         for (IElementParameter param : node.getElementParameters()) {
-            Set<String> neededLibraries = new HashSet<String>();
-            JavaProcessUtil.findMoreLibraries(neededLibraries, param, true); // add by hywang
+            List<ModuleNeeded> neededLibraries = new ArrayList<ModuleNeeded>();
+            JavaProcessUtil.findMoreLibraries(process, neededLibraries, param, true); // add by hywang
             // for bug 8350
             // add for tJDBCInput component
             if (param.getFieldType().equals(EParameterFieldType.MODULE_LIST)) {
                 if (!"".equals(param.getValue())) { //$NON-NLS-1$
                     // if the parameter is not empty.
                     String moduleValue = (String) param.getValue();
-                    neededLibraries.add(moduleValue); //$NON-NLS-1$
+                    neededLibraries.add(new ModuleNeeded(null, moduleValue, null, true)); //$NON-NLS-1$
                 }
                 if (param.isShow(node.getElementParameters())) {
-                    JavaProcessUtil.findMoreLibraries(neededLibraries, param, true);
+                    JavaProcessUtil.findMoreLibraries(process, neededLibraries, param, true);
                 } else {
-                    JavaProcessUtil.findMoreLibraries(neededLibraries, param, false);
+                    JavaProcessUtil.findMoreLibraries(process, neededLibraries, param, false);
                 }
             }
-            for (String lib : neededLibraries) {
+            for (ModuleNeeded module : neededLibraries) {
                 Node libNode1 = new Node(ComponentsFactoryProvider.getInstance().get(LIB_NODE), process);
-                libNode1.setPropertyValue("LIBRARY", "\"" + lib + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                libNode1.setPropertyValue("LIBRARY", "\"" + module.getModuleName() + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
                 process.addNodeContainer(new NodeContainer(libNode1));
             }
         }
@@ -260,6 +259,8 @@ public class GuessSchemaProcess {
     }
 
     public CsvArray run() throws ProcessorException {
+
+        CsvArray array = new CsvArray();
         buildProcess();
         IProcessor processor = ProcessorUtilities.getProcessor(process, null);
         processor.setContext(selectContext);
@@ -272,19 +273,43 @@ public class GuessSchemaProcess {
         ProcessStreamTrashReaderUtil.readAndForget(executeprocess, buffer);
         final String errorMessage = buffer.toString();
         if (!"".equals(buffer.toString())) {
-            try {
-                throw new PersistenceException(errorMessage) {
+            throw new ProcessorException(errorMessage) {
 
-                    /*
-                     * (non-Javadoc)
-                     * 
-                     * @see java.lang.Throwable#initCause(java.lang.Throwable)
-                     */
-                    @Override
-                    public synchronized Throwable initCause(Throwable cause) {
-                        // TODO Auto-generated method stub
-                        return super.initCause(cause);
+                private static final long serialVersionUID = 1L;
+
+                /*
+                 * (non-Javadoc)
+                 * 
+                 * @see java.lang.Throwable#initCause(java.lang.Throwable)
+                 */
+                @Override
+                public synchronized Throwable initCause(Throwable cause) {
+                    // TODO Auto-generated method stub
+                    return super.initCause(cause);
+                }
+
+                /*
+                 * (non-Javadoc)
+                 * 
+                 * @see java.lang.Throwable#getMessage()
+                 */
+                @Override
+                public String getMessage() {
+                    StringTokenizer tokenizer = new StringTokenizer(errorMessage, "\n");
+                    StringBuilder sqlError = new StringBuilder();
+                    if (tokenizer.countTokens() > 2) {
+                        tokenizer.nextToken();
+                        sqlError.append(tokenizer.nextToken()).append("\n");
                     }
+                    return sqlError.toString();
+                }
+
+            };
+        } else {
+            try {
+                array = array.createFrom(previousFile, currentProcessEncoding);
+            } catch (IOException ioe) {
+                throw new ProcessorException(ioe) {
 
                     /*
                      * (non-Javadoc)
@@ -293,23 +318,12 @@ public class GuessSchemaProcess {
                      */
                     @Override
                     public String getMessage() {
-                        return errorMessage;
+                        return Messages.getString("GuessSchemaController.0", System.getProperty("line.separator")); //$NON-NLS-1$ //$NON-NLS-2$                        
                     }
-
                 };
-            } catch (PersistenceException e) {
-                ExceptionHandler.process(e);
             }
         }
-
-        try {
-            CsvArray array = new CsvArray();
-            array = array.createFrom(previousFile, currentProcessEncoding);
-            return array;
-        } catch (IOException ioe) {
-            throw new ProcessorException(ioe);
-        }
-
+        return array;
     }
 
     public static Property getNewmockProperty() {

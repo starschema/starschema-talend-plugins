@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -13,6 +13,7 @@
 package org.talend.core.ui;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.gef.ui.actions.SelectionAction;
 import org.eclipse.ui.IEditorPart;
@@ -22,6 +23,7 @@ import org.eclipse.ui.part.MultiPageEditorPart;
 import org.talend.core.IService;
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.process.EConnectionType;
+import org.talend.core.model.process.IConnection;
 import org.talend.core.model.process.IElement;
 import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
@@ -78,7 +80,7 @@ public interface IJobletProviderService extends IService {
 
     public IEditorPart openJobletItem(JobletProcessItem item);
 
-    public SelectionAction getMoveToJobletAction(IWorkbenchPart part, INode jobletNode);
+    public SelectionAction getMoveToJobletAction(IWorkbenchPart part, INode jobletNode, Map<INode, IConnection> nodeMap);
 
     public SelectionAction getMoveToJobAction(IWorkbenchPart part);
 
@@ -101,5 +103,4 @@ public interface IJobletProviderService extends IService {
     public List<INode> checkDeleteNodes(IElement jobletContainer);
 
     public boolean checkModify(IElement jobletContainer);
-
 }

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -17,10 +17,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.emf.ecore.EObject;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
-import org.talend.core.AbstractDQModelService;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.IService;
 import org.talend.core.model.metadata.builder.connection.Connection;
@@ -30,56 +28,16 @@ import org.talend.core.model.metadata.builder.connection.MetadataColumn;
 import org.talend.core.model.metadata.builder.connection.MetadataTable;
 import org.talend.core.model.metadata.builder.connection.QueriesConnection;
 import org.talend.core.model.metadata.builder.connection.Query;
-import org.talend.core.model.properties.BRMSConnectionItem;
-import org.talend.core.model.properties.BusinessProcessItem;
-import org.talend.core.model.properties.CSVFileConnectionItem;
-import org.talend.core.model.properties.ContextItem;
 import org.talend.core.model.properties.DatabaseConnectionItem;
-import org.talend.core.model.properties.DelimitedFileConnectionItem;
-import org.talend.core.model.properties.DocumentationItem;
-import org.talend.core.model.properties.EDIFACTConnectionItem;
-import org.talend.core.model.properties.EbcdicConnectionItem;
-import org.talend.core.model.properties.ExcelFileConnectionItem;
-import org.talend.core.model.properties.FTPConnectionItem;
 import org.talend.core.model.properties.FolderItem;
-import org.talend.core.model.properties.GenericSchemaConnectionItem;
-import org.talend.core.model.properties.HL7ConnectionItem;
-import org.talend.core.model.properties.HeaderFooterConnectionItem;
 import org.talend.core.model.properties.InformationLevel;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.ItemState;
-import org.talend.core.model.properties.JobDocumentationItem;
-import org.talend.core.model.properties.JobScriptItem;
-import org.talend.core.model.properties.JobletDocumentationItem;
-import org.talend.core.model.properties.JobletProcessItem;
-import org.talend.core.model.properties.LDAPSchemaConnectionItem;
-import org.talend.core.model.properties.LdifFileConnectionItem;
-import org.talend.core.model.properties.LinkDocumentationItem;
-import org.talend.core.model.properties.LinkRulesItem;
-import org.talend.core.model.properties.MDMConnectionItem;
-import org.talend.core.model.properties.PositionalFileConnectionItem;
-import org.talend.core.model.properties.ProcessItem;
 import org.talend.core.model.properties.PropertiesFactory;
 import org.talend.core.model.properties.Property;
-import org.talend.core.model.properties.RegExFileConnectionItem;
-import org.talend.core.model.properties.RoutineItem;
-import org.talend.core.model.properties.RulesItem;
-import org.talend.core.model.properties.SAPConnectionItem;
-import org.talend.core.model.properties.SQLPatternItem;
-import org.talend.core.model.properties.SVGBusinessProcessItem;
-import org.talend.core.model.properties.SalesforceSchemaConnectionItem;
-import org.talend.core.model.properties.SnippetItem;
-import org.talend.core.model.properties.TDQItem;
 import org.talend.core.model.properties.User;
-import org.talend.core.model.properties.ValidationRulesConnectionItem;
-import org.talend.core.model.properties.WSDLSchemaConnectionItem;
-import org.talend.core.model.properties.XmlFileConnectionItem;
-import org.talend.core.model.properties.util.PropertiesSwitch;
-import org.talend.core.runtime.CoreRuntimePlugin;
-import org.talend.core.runtime.i18n.Messages;
 import org.talend.cwm.helper.ConnectionHelper;
 import org.talend.cwm.helper.PackageHelper;
-import org.talend.designer.core.ICamelDesignerCoreService;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.model.ERepositoryStatus;
 import org.talend.repository.model.IProxyRepositoryFactory;
@@ -160,6 +118,10 @@ public class RepositoryObject implements IRepositoryObject {
         return this.property.getLabel();
     }
 
+    public String getDisplayName() {
+        return this.property.getDisplayName();
+    }
+
     public String getPurpose() {
         return this.property.getPurpose();
     }
@@ -209,196 +171,7 @@ public class RepositoryObject implements IRepositoryObject {
     }
 
     public ERepositoryObjectType getRepositoryObjectType() {
-
-        return (ERepositoryObjectType) new PropertiesSwitch() {
-
-            public Object caseTDQItem(TDQItem object) {
-                AbstractDQModelService dqModelService = CoreRuntimePlugin.getInstance().getDQModelService();
-                if (dqModelService != null) {
-                    return dqModelService.getTDQRepObjType(object);
-                }
-                return null;
-            }
-
-            public Object caseDocumentationItem(DocumentationItem object) {
-                return ERepositoryObjectType.DOCUMENTATION;
-            }
-
-            public Object caseRoutineItem(RoutineItem object) {
-                return ERepositoryObjectType.ROUTINES;
-            }
-
-            //
-            // public Object caseBeanItem(BeanItem object) {
-            // return ERepositoryObjectType.BEANS;
-            // }
-
-            public Object caseJobScriptItem(JobScriptItem object) {
-                return ERepositoryObjectType.JOB_SCRIPT;
-            }
-
-            public Object caseContextItem(ContextItem object) {
-                return ERepositoryObjectType.CONTEXT;
-            }
-
-            public Object caseSnippetItem(SnippetItem object) {
-                return ERepositoryObjectType.SNIPPETS;
-            }
-
-            public Object caseProcessItem(ProcessItem object) {
-                return ERepositoryObjectType.PROCESS;
-            }
-
-            public Object caseRulesItem(RulesItem object) {
-                return ERepositoryObjectType.METADATA_FILE_RULES;
-            }
-
-            public Object caseLinkRulesItem(LinkRulesItem object) {
-                return ERepositoryObjectType.METADATA_FILE_LINKRULES;
-            }
-
-            public Object caseValidationRulesConnectionItem(ValidationRulesConnectionItem object) {
-                return ERepositoryObjectType.METADATA_VALIDATION_RULES;
-            }
-
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.talend.core.model.properties.util.PropertiesSwitch#caseJobletProcessItem(org.talend.core.model.properties
-             * .JobletProcessItem)
-             */
-            @Override
-            public Object caseJobletProcessItem(JobletProcessItem object) {
-                return ERepositoryObjectType.JOBLET;
-            }
-
-            public Object caseBusinessProcessItem(BusinessProcessItem object) {
-                return ERepositoryObjectType.BUSINESS_PROCESS;
-            }
-
-            public Object caseCSVFileConnectionItem(CSVFileConnectionItem object) {
-                throw new IllegalStateException(Messages.getString("RepositoryObject.NotImplemented")); //$NON-NLS-1$
-            }
-
-            public Object caseDatabaseConnectionItem(DatabaseConnectionItem object) {
-                return ERepositoryObjectType.METADATA_CONNECTIONS;
-            }
-
-            public Object caseSAPConnectionItem(SAPConnectionItem object) {
-                return ERepositoryObjectType.METADATA_SAPCONNECTIONS;
-            }
-
-            public Object caseHL7ConnectionItem(HL7ConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_HL7;
-            }
-
-            @Override
-            public Object caseEbcdicConnectionItem(EbcdicConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_EBCDIC;
-            }
-
-            public Object caseFTPConnectionItem(FTPConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_FTP;
-            }
-
-            @Override
-            public Object caseBRMSConnectionItem(BRMSConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_BRMS;
-            }
-
-            public Object caseMDMConnectionItem(MDMConnectionItem object) {
-                return ERepositoryObjectType.METADATA_MDMCONNECTION;
-            }
-
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.talend.core.model.properties.util.PropertiesSwitch#caseSQLPatternItem(org.talend.core.model.properties
-             * .SQLPatternItem)
-             */
-            @Override
-            public Object caseSQLPatternItem(SQLPatternItem object) {
-                return ERepositoryObjectType.SQLPATTERNS;
-            }
-
-            public Object caseDelimitedFileConnectionItem(DelimitedFileConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_DELIMITED;
-            }
-
-            public Object casePositionalFileConnectionItem(PositionalFileConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_POSITIONAL;
-            }
-
-            public Object caseRegExFileConnectionItem(RegExFileConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_REGEXP;
-            }
-
-            public Object caseXmlFileConnectionItem(XmlFileConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_XML;
-            }
-
-            public Object caseExcelFileConnectionItem(ExcelFileConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_EXCEL;
-            }
-
-            public Object caseLdifFileConnectionItem(LdifFileConnectionItem object) {
-                return ERepositoryObjectType.METADATA_FILE_LDIF;
-            }
-
-            public Object caseGenericSchemaConnectionItem(GenericSchemaConnectionItem object) {
-                return ERepositoryObjectType.METADATA_GENERIC_SCHEMA;
-            }
-
-            public Object caseLDAPSchemaConnectionItem(LDAPSchemaConnectionItem object) {
-                return ERepositoryObjectType.METADATA_LDAP_SCHEMA;
-            }
-
-            public Object caseJobDocumentationItem(JobDocumentationItem object) {
-                return ERepositoryObjectType.JOB_DOC;
-            }
-
-            public Object caseJobletDocumentationItem(JobletDocumentationItem object) {
-                return ERepositoryObjectType.JOBLET_DOC;
-            }
-
-            public Object caseWSDLSchemaConnectionItem(WSDLSchemaConnectionItem object) {
-                return ERepositoryObjectType.METADATA_WSDL_SCHEMA;
-            }
-
-            public Object caseSalesforceSchemaConnectionItem(SalesforceSchemaConnectionItem object) {
-                return ERepositoryObjectType.METADATA_SALESFORCE_SCHEMA;
-            }
-
-            @Override
-            public Object caseLinkDocumentationItem(LinkDocumentationItem object) {
-                return ERepositoryObjectType.DOCUMENTATION;
-            }
-
-            public Object caseHeaderFooterConnectionItem(HeaderFooterConnectionItem object) {
-                return ERepositoryObjectType.METADATA_HEADER_FOOTER;
-            }
-
-            @Override
-            public Object caseSVGBusinessProcessItem(SVGBusinessProcessItem object) {
-                return ERepositoryObjectType.SVG_BUSINESS_PROCESS;
-            }
-
-            @Override
-            public Object caseEDIFACTConnectionItem(EDIFACTConnectionItem object) {
-                return ERepositoryObjectType.METADATA_EDIFACT;
-            }
-
-            public Object defaultCase(EObject object) {
-                if (GlobalServiceRegister.getDefault().isServiceRegistered(ICamelDesignerCoreService.class)) {
-                    ICamelDesignerCoreService service = (ICamelDesignerCoreService) GlobalServiceRegister.getDefault()
-                            .getService(ICamelDesignerCoreService.class);
-                    return service.createCamelResource(property.getItem());
-                }
-                throw new IllegalStateException();
-            }
-        }.doSwitch(property.getItem());
+        return ERepositoryObjectType.getItemType(this.property.getItem());
     }
 
     public List<IRepositoryViewObject> getChildren() {
@@ -416,6 +189,7 @@ public class RepositoryObject implements IRepositoryObject {
             connectionProperty.setDescription(getDescription());
             connectionProperty.setId(getId());
             connectionProperty.setLabel(getLabel());
+            connectionProperty.setDisplayName(getDisplayName());
             connectionProperty.setModificationDate(getModificationDate());
             connectionProperty.setPurpose(getPurpose());
             connectionProperty.setStatusCode(getStatusCode());

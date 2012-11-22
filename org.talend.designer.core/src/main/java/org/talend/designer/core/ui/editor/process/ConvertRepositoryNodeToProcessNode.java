@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -18,6 +18,7 @@ import org.talend.core.database.EDatabaseTypeName;
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.metadata.IMetadataConnection;
 import org.talend.core.model.metadata.IMetadataTable;
+import org.talend.core.model.metadata.MetadataTable;
 import org.talend.core.model.metadata.builder.ConvertionHelper;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.process.EParameterFieldType;
@@ -26,6 +27,7 @@ import org.talend.core.model.process.IElementParameter;
 import org.talend.core.model.process.INode;
 import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
+import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.utils.CsvArray;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.ui.editor.cmd.ChangeValuesFromRepository;
@@ -88,8 +90,13 @@ public class ConvertRepositoryNodeToProcessNode {
         node = new Node(dbInputComponent, process);
         selectedContext = node.getProcess().getContextManager().getDefaultContext();
 
+        // TDI-20011
         IMetadataTable table = UpdateRepositoryUtils.getTableByName(connectionItem, tableName);
-
+        if (table == null) {
+            table = new MetadataTable();
+            table.setTableName(tableName);
+            table.setLabel(tableName);
+        }
         IElementParameter propertyParam = ((Node) node).getElementParameterFromField(EParameterFieldType.PROPERTY_TYPE);
         IElementParameter schemaParam = ((Node) node).getElementParameterFromField(EParameterFieldType.SCHEMA_TYPE);
         String propertyId = connectionItem.getProperty().getId();
@@ -106,7 +113,7 @@ public class ConvertRepositoryNodeToProcessNode {
         // change metadata command
         RepositoryChangeMetadataCommand changeMetadataCommand = new RepositoryChangeMetadataCommand((Node) node,
                 schemaParam.getName() + ":" //$NON-NLS-1$
-                        + EParameterName.REPOSITORY_SCHEMA_TYPE.getName(), value, table, null);
+                        + EParameterName.REPOSITORY_SCHEMA_TYPE.getName(), value, table, null, null);
         cc.add(changeMetadataCommand);
 
         // guess query command
@@ -118,9 +125,13 @@ public class ConvertRepositoryNodeToProcessNode {
         cc.execute();
 
         IElementParameter query = node.getElementParameter("QUERY"); //$NON-NLS-N$ //$NON-NLS-1$
-
+        //
         memoSQL = query.getValue().toString();
-
+        String memoSQLTemp = TalendTextUtils.removeQuotesIfExist(memoSQL);
+        if ((memoSQLTemp == null || memoSQLTemp.equals("")) && tableName != null && !tableName.equals("")) {
+            memoSQL = "select * from " + tableName;
+            memoSQL = TalendTextUtils.addSQLQuotes(memoSQL);
+        }
     }
 
     public CsvArray runMockProcess() throws ProcessorException {

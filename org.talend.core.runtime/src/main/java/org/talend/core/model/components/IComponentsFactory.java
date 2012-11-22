@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -12,6 +12,7 @@
 // ============================================================================
 package org.talend.core.model.components;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
@@ -53,6 +54,13 @@ public interface IComponentsFactory {
 
     public IComponent get(String name);
 
+    /**
+     * Shouldn't be used anymore.
+     * 
+     * @return
+     * @throws IOException
+     * @deprecated
+     */
     public URL getComponentPath() throws IOException;
 
     public List<String> getSkeletons();
@@ -61,9 +69,13 @@ public interface IComponentsFactory {
 
     public void loadUserComponentsFromComponentsProviderExtension();
 
-    public Map<String, ImageDescriptor> getAllComponentsCanBeProvided();
+    public Map<String, String> getAllComponentsCanBeProvided();
 
     public void initializeComponents(IProgressMonitor monitor);
 
     public void initializeComponents(IProgressMonitor monitor, boolean duringLogon);
+
+    public Map<String, File> getComponentsProvidersFolder();
+
+    public Map<String, ImageDescriptor> getComponentsImageRegistry();
 }

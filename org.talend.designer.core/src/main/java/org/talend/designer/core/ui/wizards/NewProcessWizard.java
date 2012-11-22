@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -43,7 +43,7 @@ import org.talend.repository.model.IProxyRepositoryFactory;
 /**
  * Wizard for the creation of a new project. <br/>
  * 
- * $Id: NewProcessWizard.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: NewProcessWizard.java 82047 2012-04-19 08:15:10Z hcyi $
  * 
  */
 public class NewProcessWizard extends Wizard {
@@ -87,11 +87,45 @@ public class NewProcessWizard extends Wizard {
     }
 
     /**
+     * Constructs a new NewProjectWizard.
+     * 
+     * @param author Project author.
+     * @param server
+     * @param password
+     * @param label
+     */
+    public NewProcessWizard(IPath path, String label) {
+        super();
+        this.path = path;
+
+        this.property = PropertiesFactory.eINSTANCE.createProperty();
+        this.property.setAuthor(((RepositoryContext) CorePlugin.getContext().getProperty(Context.REPOSITORY_CONTEXT_KEY))
+                .getUser());
+        if (label != null) {
+            property.setLabel(label);
+        }
+        this.property.setVersion(VersionUtils.DEFAULT_VERSION);
+        this.property.setStatusCode(""); //$NON-NLS-1$
+
+        processItem = PropertiesFactory.eINSTANCE.createProcessItem();
+
+        processItem.setProperty(property);
+
+        repositoryFactory = DesignerPlugin.getDefault().getRepositoryService().getProxyRepositoryFactory();
+
+        setDefaultPageImageDescriptor(ImageProvider.getImageDesc(ECoreImage.PROCESS_WIZ));
+    }
+
+    /**
      * @see org.eclipse.jface.wizard.Wizard#addPages()
      */
     @Override
     public void addPages() {
         mainPage = new NewProcessWizardPage(property, path);
+        // TDI-20399
+        if (property.getLabel() != null && !"".equals(property.getLabel())) {
+            mainPage.setNameModifiedByUser(true);
+        }
         addPage(mainPage);
         setWindowTitle(Messages.getString("NewProcessWizard.windowTitle")); //$NON-NLS-1$
     }
@@ -105,6 +139,8 @@ public class NewProcessWizard extends Wizard {
         try {
 
             property.setId(repositoryFactory.getNextId());
+            // changed by hqzhang for TDI-19527, label=displayName
+            property.setLabel(property.getDisplayName());
 
             ProcessType process = TalendFileFactory.eINSTANCE.createProcessType();
             ParametersType parameterType = TalendFileFactory.eINSTANCE.createParametersType();

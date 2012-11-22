@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -20,6 +20,7 @@ import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.wizard.IWizard;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.widgets.Button;
@@ -34,6 +35,7 @@ import org.eclipse.ui.PlatformUI;
 import org.talend.commons.CommonsPlugin;
 import org.talend.commons.ui.runtime.image.ECoreImage;
 import org.talend.commons.ui.runtime.image.ImageProvider;
+import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
 import org.talend.core.model.process.IProcess2;
 import org.talend.core.model.repository.RepositoryObject;
 import org.talend.core.ui.IUIRefresher;
@@ -85,6 +87,15 @@ public class OpenExistVersionProcessAction extends EditPropertiesAction {
                 processRoutineRenameOperation(originalName, node, path);
             }
         }
+    }
+
+    @Override
+    public void init(TreeViewer viewer, IStructuredSelection selection) {
+        if (!ExtractMetaDataUtils.haveLoadMetadataNode()) {
+            setEnabled(false);
+            return;
+        }
+        super.init(viewer, selection);
     }
 
     public class PropertyManagerWizardDialog extends WizardDialog {
@@ -171,4 +182,5 @@ public class OpenExistVersionProcessAction extends EditPropertiesAction {
             }
         }
     }
+
 }

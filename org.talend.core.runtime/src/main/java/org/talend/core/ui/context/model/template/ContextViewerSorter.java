@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -45,7 +45,6 @@ public class ContextViewerSorter extends ViewerSorter {
 
     /*
      * sort column
-     * 
      */
 
     public ContextViewerSorter(TreeViewer sortViewer, TreeColumn column, int direction) {
@@ -82,9 +81,11 @@ public class ContextViewerSorter extends ViewerSorter {
     @Override
     public int compare(Viewer viewer, Object e1, Object e2) {
         if (original) {
-            if (e1 instanceof ContextParameterParent && e2 instanceof ContextParameterParent) {
-                final int index1 = getContextParameterIndex(contextManager, ((ContextParameterParent) e1).getParameter());
-                final int index2 = getContextParameterIndex(contextManager, ((ContextParameterParent) e2).getParameter());
+            if (e1 instanceof ContextVariableTabParentModel && e2 instanceof ContextVariableTabParentModel) {
+                final int index1 = getContextParameterIndex(contextManager,
+                        ((ContextVariableTabParentModel) e1).getContextParameter());
+                final int index2 = getContextParameterIndex(contextManager,
+                        ((ContextVariableTabParentModel) e2).getContextParameter());
                 return new Integer(index1).compareTo(index2);
             }
 

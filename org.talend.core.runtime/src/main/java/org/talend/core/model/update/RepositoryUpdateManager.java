@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -118,8 +118,6 @@ public abstract class RepositoryUpdateManager {
      */
     protected Object parameter;
 
-    private boolean isDetectAndUpdate = false;
-
     private Map<ContextItem, Set<String>> newParametersMap = new HashMap<ContextItem, Set<String>>();
 
     private boolean onlyOpeningJob = false;
@@ -129,6 +127,8 @@ public abstract class RepositoryUpdateManager {
     private static IRepositoryService repistoryService = null;
 
     private static ICoreService coreService = null;
+
+    private boolean isDetectAndUpdate = false;
 
     static {
         if (GlobalServiceRegister.getDefault().isServiceRegistered(IRepositoryService.class)) {
@@ -144,15 +144,23 @@ public abstract class RepositoryUpdateManager {
         this.parameter = parameter;
     }
 
+    public RepositoryUpdateManager(Object parameter, boolean isDetectAndUpdate) {
+        super();
+        this.parameter = parameter;
+        this.isDetectAndUpdate = isDetectAndUpdate;
+    }
+
     public RepositoryUpdateManager(Object parameter, List<RelationshipItemBuilder.Relation> relations) {
         super();
         this.parameter = parameter;
         this.relations = relations;
     }
 
-    public RepositoryUpdateManager(Object parameter, boolean isDetectAndUpdate) {
+    // fwang fixed bug TDI-17155
+    public RepositoryUpdateManager(Object parameter, List<RelationshipItemBuilder.Relation> relations, boolean isDetectAndUpdate) {
         super();
         this.parameter = parameter;
+        this.relations = relations;
         this.isDetectAndUpdate = isDetectAndUpdate;
     }
 
@@ -503,6 +511,16 @@ public abstract class RepositoryUpdateManager {
                     MetadataTable table2 = (MetadataTable) tables.toArray(new MetadataTable[0])[0];
                     return table1.getId().equals(table2.getId());
                 }
+                if (parameter instanceof XmlFileConnection) {
+                    boolean isResult = false;
+                    for (MetadataTable table : tables) {
+                        if (table.getId() != null && table.getId().equals(((IMetadataTable) object).getId())) {
+                            isResult = true;
+                            break;
+                        }
+                    }
+                    return isResult;
+                }
             }
 
         }
@@ -515,6 +533,355 @@ public abstract class RepositoryUpdateManager {
             }
         }
         return false;
+    }
+
+    private void updateConnection(ContextItem citem) throws PersistenceException {
+        Map<ContextItem, Map<String, String>> renameMap = getContextRenamedMap();
+        if (renameMap == null) {
+            return;
+        }
+        Map<String, String> valueMap = renameMap.get(citem);
+        if (valueMap == null) {
+            return;
+        }
+        Set<String> set = valueMap.keySet();
+        List<String> list = new ArrayList<String>(set);
+        IProxyRepositoryFactory factory = CoreRuntimePlugin.getInstance().getProxyRepositoryFactory();
+        for (String newValue : list) {
+            String oldValue = valueMap.get(newValue);
+            oldValue = "context." + oldValue;
+            newValue = "context." + newValue;
+            List<IRepositoryViewObject> dbConnList = factory.getAll(ERepositoryObjectType.METADATA_CONNECTIONS, true);
+            for (IRepositoryViewObject obj : dbConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof DatabaseConnection) {
+                                DatabaseConnection dbConn = (DatabaseConnection) conn;
+                                if (dbConn.getAdditionalParams() != null && dbConn.getAdditionalParams().equals(oldValue)) {
+                                    dbConn.setAdditionalParams(newValue);
+                                } else if (dbConn.getUsername() != null && dbConn.getUsername().equals(oldValue)) {
+                                    dbConn.setUsername(newValue);
+                                } else if (dbConn.getPassword() != null && dbConn.getPassword().equals(oldValue)) {
+                                    dbConn.setPassword(newValue);
+                                } else if (dbConn.getServerName() != null && dbConn.getServerName().equals(oldValue)) {
+                                    dbConn.setServerName(newValue);
+                                } else if (dbConn.getPort() != null && dbConn.getPort().equals(oldValue)) {
+                                    dbConn.setPort(newValue);
+                                } else if (dbConn.getSID() != null && dbConn.getSID().equals(oldValue)) {
+                                    dbConn.setSID(newValue);
+                                } else if (dbConn.getDbmsId() != null && dbConn.getDbmsId().equals(oldValue)) {
+                                    dbConn.setDbmsId(newValue);
+                                } else if (dbConn.getDriverClass() != null && dbConn.getDriverClass().equals(oldValue)) {
+                                    dbConn.setDriverClass(newValue);
+                                } else if (dbConn.getDriverJarPath() != null && dbConn.getDriverJarPath().equals(oldValue)) {
+                                    dbConn.setDriverJarPath(newValue);
+                                } else if (dbConn.getURL() != null && dbConn.getURL().equals(oldValue)) {
+                                    dbConn.setURL(newValue);
+                                }
+                                factory.save(item);
+                            }
+                        }
+
+                    }
+                }
+            }
+            List<IRepositoryViewObject> excelConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_EXCEL, true);
+            for (IRepositoryViewObject obj : excelConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof FileExcelConnection) {
+                                if (((FileExcelConnection) conn).getFirstColumn() != null
+                                        && ((FileExcelConnection) conn).getFirstColumn().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setFirstColumn(newValue);
+                                } else if (((FileExcelConnection) conn).getLastColumn() != null
+                                        && ((FileExcelConnection) conn).getLastColumn().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setLastColumn(newValue);
+                                } else if (((FileExcelConnection) conn).getThousandSeparator() != null
+                                        && ((FileExcelConnection) conn).getThousandSeparator().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setThousandSeparator(newValue);
+                                } else if (((FileExcelConnection) conn).getDecimalSeparator() != null
+                                        && ((FileExcelConnection) conn).getDecimalSeparator().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setDecimalSeparator(newValue);
+                                } else if (((FileExcelConnection) conn).getFilePath() != null
+                                        && ((FileExcelConnection) conn).getFilePath().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setFilePath(newValue);
+                                } else if (((FileExcelConnection) conn).getEncoding() != null
+                                        && ((FileExcelConnection) conn).getEncoding().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setEncoding(newValue);
+                                } else if (((FileExcelConnection) conn).getLimitValue() != null
+                                        && ((FileExcelConnection) conn).getLimitValue().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setLimitValue(newValue);
+                                } else if (((FileExcelConnection) conn).getHeaderValue() != null
+                                        && ((FileExcelConnection) conn).getHeaderValue().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setHeaderValue(newValue);
+                                } else if (((FileExcelConnection) conn).getFooterValue() != null
+                                        && ((FileExcelConnection) conn).getFooterValue().equals(oldValue)) {
+                                    ((FileExcelConnection) conn).setFooterValue(newValue);
+                                }
+                                factory.save(item);
+                            }
+                        }
+                    }
+                }
+            }
+
+            List<IRepositoryViewObject> deliConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_DELIMITED, true);
+            for (IRepositoryViewObject obj : deliConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof DelimitedFileConnection) {
+                                if (((DelimitedFileConnection) conn).getFilePath() != null
+                                        && ((DelimitedFileConnection) conn).getFilePath().equals(oldValue)) {
+                                    ((DelimitedFileConnection) conn).setFilePath(newValue);
+                                } else if (((DelimitedFileConnection) conn).getEncoding() != null
+                                        && ((DelimitedFileConnection) conn).getEncoding().equals(oldValue)) {
+                                    ((DelimitedFileConnection) conn).setEncoding(newValue);
+                                } else if (((DelimitedFileConnection) conn).getLimitValue() != null
+                                        && ((DelimitedFileConnection) conn).getLimitValue().equals(oldValue)) {
+                                    ((DelimitedFileConnection) conn).setLimitValue(newValue);
+                                } else if (((DelimitedFileConnection) conn).getHeaderValue() != null
+                                        && ((DelimitedFileConnection) conn).getHeaderValue().equals(oldValue)) {
+                                    ((DelimitedFileConnection) conn).setHeaderValue(newValue);
+                                } else if (((DelimitedFileConnection) conn).getFooterValue() != null
+                                        && ((DelimitedFileConnection) conn).getFooterValue().equals(oldValue)) {
+                                    ((DelimitedFileConnection) conn).setFooterValue(newValue);
+                                } else if (((DelimitedFileConnection) conn).getRowSeparatorValue() != null
+                                        && ((DelimitedFileConnection) conn).getRowSeparatorValue().equals(oldValue)) {
+                                    ((DelimitedFileConnection) conn).setRowSeparatorValue(newValue);
+                                } else if (((DelimitedFileConnection) conn).getFieldSeparatorValue() != null
+                                        && ((DelimitedFileConnection) conn).getFieldSeparatorValue().equals(oldValue)) {
+                                    ((DelimitedFileConnection) conn).setFieldSeparatorValue(newValue);
+                                }
+                                factory.save(item);
+                            }
+
+                        }
+                    }
+                }
+            }
+            List<IRepositoryViewObject> regConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_REGEXP, true);
+            for (IRepositoryViewObject obj : regConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof RegexpFileConnection) {
+                                if (((RegexpFileConnection) conn).getFilePath() != null
+                                        && ((RegexpFileConnection) conn).getFilePath().equals(oldValue)) {
+                                    ((RegexpFileConnection) conn).setFilePath(newValue);
+                                } else if (((RegexpFileConnection) conn).getEncoding() != null
+                                        && ((RegexpFileConnection) conn).getEncoding().equals(oldValue)) {
+                                    ((RegexpFileConnection) conn).setEncoding(newValue);
+                                } else if (((RegexpFileConnection) conn).getLimitValue() != null
+                                        && ((RegexpFileConnection) conn).getLimitValue().equals(oldValue)) {
+                                    ((RegexpFileConnection) conn).setLimitValue(newValue);
+                                } else if (((RegexpFileConnection) conn).getHeaderValue() != null
+                                        && ((RegexpFileConnection) conn).getHeaderValue().equals(oldValue)) {
+                                    ((RegexpFileConnection) conn).setHeaderValue(newValue);
+                                } else if (((RegexpFileConnection) conn).getFooterValue() != null
+                                        && ((RegexpFileConnection) conn).getFooterValue().equals(oldValue)) {
+                                    ((RegexpFileConnection) conn).setFooterValue(newValue);
+                                } else if (((RegexpFileConnection) conn).getRowSeparatorValue() != null
+                                        && ((RegexpFileConnection) conn).getRowSeparatorValue().equals(oldValue)) {
+                                    ((RegexpFileConnection) conn).setRowSeparatorValue(newValue);
+                                } else if (((RegexpFileConnection) conn).getFieldSeparatorValue() != null
+                                        && ((RegexpFileConnection) conn).getFieldSeparatorValue().equals(oldValue)) {
+                                    ((RegexpFileConnection) conn).setFieldSeparatorValue(newValue);
+                                }
+                                factory.save(item);
+                            }
+
+                        }
+                    }
+                }
+            }
+            List<IRepositoryViewObject> ldifConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_LDIF, true);
+            for (IRepositoryViewObject obj : ldifConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof LdifFileConnection) {
+                                LdifFileConnection dbConn = (LdifFileConnection) conn;
+                                if (dbConn.getFilePath() != null && dbConn.getFilePath().equals(oldValue)) {
+                                    dbConn.setFilePath(newValue);
+                                }
+                                factory.save(item);
+                            }
+                        }
+                    }
+                }
+            }
+            List<IRepositoryViewObject> posiConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_POSITIONAL, true);
+            for (IRepositoryViewObject obj : posiConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof PositionalFileConnection) {
+                                PositionalFileConnection dbConn = (PositionalFileConnection) conn;
+                                if (dbConn.getFilePath() != null && dbConn.getFilePath().equals(oldValue)) {
+                                    dbConn.setFilePath(newValue);
+                                } else if (dbConn.getEncoding() != null && dbConn.getEncoding().equals(oldValue)) {
+                                    dbConn.setEncoding(newValue);
+                                } else if (dbConn.getLimitValue() != null && dbConn.getLimitValue().equals(oldValue)) {
+                                    dbConn.setLimitValue(newValue);
+                                } else if (dbConn.getHeaderValue() != null && dbConn.getHeaderValue().equals(oldValue)) {
+                                    dbConn.setHeaderValue(newValue);
+                                } else if (dbConn.getFooterValue() != null && dbConn.getFooterValue().equals(oldValue)) {
+                                    dbConn.setFooterValue(newValue);
+                                } else if (dbConn.getRowSeparatorValue() != null
+                                        && dbConn.getRowSeparatorValue().equals(oldValue)) {
+                                    dbConn.setRowSeparatorValue(newValue);
+                                } else if (dbConn.getFieldSeparatorValue() != null
+                                        && dbConn.getFieldSeparatorValue().equals(oldValue)) {
+                                    dbConn.setFieldSeparatorValue(newValue);
+                                }
+                                factory.save(item);
+                            }
+
+                        }
+                    }
+                }
+            }
+            List<IRepositoryViewObject> xmlConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_XML, true);
+            for (IRepositoryViewObject obj : xmlConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof XmlFileConnection) {
+                                XmlFileConnection dbConn = (XmlFileConnection) conn;
+                                if (dbConn.getXmlFilePath() != null && dbConn.getXmlFilePath().equals(oldValue)) {
+                                    dbConn.setXmlFilePath(newValue);
+                                } else if (dbConn.getEncoding() != null && dbConn.getEncoding().equals(oldValue)) {
+                                    dbConn.setEncoding(newValue);
+                                } else if (dbConn.getOutputFilePath() != null && dbConn.getOutputFilePath().equals(oldValue)) {
+                                    dbConn.setOutputFilePath(newValue);
+                                }
+                                EList schema = dbConn.getSchema();
+                                if (schema != null && schema.size() > 0) {
+                                    if (schema.get(0) instanceof XmlXPathLoopDescriptor) {
+                                        XmlXPathLoopDescriptor descriptor = (XmlXPathLoopDescriptor) schema.get(0);
+                                        if (descriptor.getAbsoluteXPathQuery() != null
+                                                && descriptor.getAbsoluteXPathQuery().equals(oldValue)) {
+                                            descriptor.setAbsoluteXPathQuery(newValue);
+                                        }
+                                    }
+                                }
+                                factory.save(item);
+                            }
+                        }
+                    }
+                }
+            }
+            List<IRepositoryViewObject> saleConnList = factory.getAll(ERepositoryObjectType.METADATA_SALESFORCE_SCHEMA, true);
+            for (IRepositoryViewObject obj : saleConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof SalesforceSchemaConnection) {
+                                SalesforceSchemaConnection dbConn = (SalesforceSchemaConnection) conn;
+                                if (dbConn.getWebServiceUrl() != null && dbConn.getWebServiceUrl().equals(oldValue)) {
+                                    dbConn.setWebServiceUrl(newValue);
+                                } else if (dbConn.getPassword() != null && dbConn.getPassword().equals(oldValue)) {
+                                    dbConn.setPassword(newValue);
+                                } else if (dbConn.getUserName() != null && dbConn.getUserName().equals(oldValue)) {
+                                    dbConn.setUserName(newValue);
+                                } else if (dbConn.getTimeOut() != null && dbConn.getTimeOut().equals(oldValue)) {
+                                    dbConn.setTimeOut(newValue);
+                                } else if (dbConn.getBatchSize() != null && dbConn.getBatchSize().equals(oldValue)) {
+                                    dbConn.setBatchSize(newValue);
+                                } else if (dbConn.getQueryCondition() != null && dbConn.getQueryCondition().equals(oldValue)) {
+                                    dbConn.setQueryCondition(newValue);
+                                }
+                                factory.save(item);
+                            }
+                        }
+                    }
+                }
+            }
+            List<IRepositoryViewObject> wsdlConnList = factory.getAll(ERepositoryObjectType.METADATA_WSDL_SCHEMA, true);
+            for (IRepositoryViewObject obj : wsdlConnList) {
+                Item item = obj.getProperty().getItem();
+                if (item instanceof ConnectionItem) {
+                    Connection conn = ((ConnectionItem) item).getConnection();
+                    if (conn.isContextMode()) {
+                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
+                        if (contextItem == null) {
+                            continue;
+                        }
+                        if (citem == contextItem) {
+                            if (conn instanceof WSDLSchemaConnection) {
+                                WSDLSchemaConnection dbConn = (WSDLSchemaConnection) conn;
+                                if (dbConn.getUserName() != null && dbConn.getUserName().equals(oldValue)) {
+                                    dbConn.setUserName(newValue);
+                                } else if (dbConn.getPassword() != null && dbConn.getPassword().equals(oldValue)) {
+                                    dbConn.setPassword(newValue);
+                                } else if (dbConn.getProxyHost() != null && dbConn.getProxyHost().equals(oldValue)) {
+                                    dbConn.setProxyHost(newValue);
+                                } else if (dbConn.getProxyPassword() != null && dbConn.getProxyPassword().equals(oldValue)) {
+                                    dbConn.setProxyPassword(newValue);
+                                } else if (dbConn.getProxyUser() != null && dbConn.getProxyUser().equals(oldValue)) {
+                                    dbConn.setProxyUser(newValue);
+                                } else if (dbConn.getProxyPort() != null && dbConn.getProxyPort().equals(oldValue)) {
+                                    dbConn.setProxyPort(newValue);
+                                }
+                                factory.save(item);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
     public static IEditorReference[] getEditors() {
@@ -589,8 +956,7 @@ public abstract class RepositoryUpdateManager {
                         if (!checkOnlyLastVersion) {
                             List<IRepositoryViewObject> allVersion = factory.getAllVersion(relatedObj.getId());
                             for (IRepositoryViewObject object : allVersion) {
-                                if (factory.getStatus(object) != ERepositoryStatus.LOCK_BY_OTHER
-                                        && factory.getStatus(object) != ERepositoryStatus.LOCK_BY_USER) {
+                                if (factory.getStatus(object) != ERepositoryStatus.LOCK_BY_OTHER) {
                                     allVersionList.add(object);
                                 }
                             }
@@ -599,7 +965,7 @@ public abstract class RepositoryUpdateManager {
                             // factory.getLastVersion(repositoryObj.getId());
                             IRepositoryViewObject lastVersion = relatedObj; // factory.getLastVersion(repositoryObj.getId());
                             ERepositoryStatus status = factory.getStatus(lastVersion);
-                            if (status != ERepositoryStatus.LOCK_BY_OTHER && status != ERepositoryStatus.LOCK_BY_USER) {
+                            if (status != ERepositoryStatus.LOCK_BY_OTHER) {
                                 allVersionList.add(lastVersion);
                             }
                         }
@@ -907,16 +1273,12 @@ public abstract class RepositoryUpdateManager {
             // for save item
             List<UpdateResult> resultFromProcess = getResultFromProcess(process2, types, onlySimpleShow);
 
-            IProxyRepositoryFactory factory = CoreRuntimePlugin.getInstance().getProxyRepositoryFactory();
-            if (!ERepositoryStatus.LOCK_BY_USER.equals(factory.getStatus(item))) {
-
-                for (UpdateResult result : resultFromProcess) {
-                    if (result.getJob() != null) {
-                        result.setJob(null);
-                    }
-                    result.setFromItem(true);
-                    result.setObjectId(item.getProperty().getId());
+            for (UpdateResult result : resultFromProcess) {
+                if (result.getJob() != null) {
+                    result.setJob(null);
                 }
+                result.setFromItem(true);
+                result.setObjectId(item.getProperty().getId());
             }
 
             process2.dispose();
@@ -970,6 +1332,16 @@ public abstract class RepositoryUpdateManager {
         return updateDBConnection(connection, true, false);
     }
 
+    /**
+     * 
+     * hwang Comment method "updateServices".
+     * 
+     * for repository wizard.
+     */
+    public static boolean updateServices(ConnectionItem connection) {
+        return updateServices(connection, true, false);
+    }
+
     public static boolean updateDBConnection(ConnectionItem connection, boolean show) {
         return updateDBConnection(connection, show, false);
     }
@@ -986,6 +1358,36 @@ public abstract class RepositoryUpdateManager {
         List<RelationshipItemBuilder.Relation> relations = RelationshipItemBuilder.getInstance().getItemsRelatedTo(
                 connectionItem.getProperty().getId(), RelationshipItemBuilder.LATEST_VERSION,
                 RelationshipItemBuilder.PROPERTY_RELATION);
+
+        RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(connectionItem.getConnection(), relations) {
+
+            @Override
+            public Set<EUpdateItemType> getTypes() {
+                Set<EUpdateItemType> types = new HashSet<EUpdateItemType>();
+                types.add(EUpdateItemType.NODE_PROPERTY);
+                types.add(EUpdateItemType.JOB_PROPERTY_EXTRA);
+                types.add(EUpdateItemType.JOB_PROPERTY_STATS_LOGS);
+                types.add(EUpdateItemType.JOB_PROPERTY_HEADERFOOTER);
+
+                return types;
+            }
+
+        };
+        return repositoryUpdateManager.doWork(true, false);
+    }
+
+    /**
+     * 
+     * hwang Comment method "updateServices".
+     * 
+     * if show is false, will work for context menu action.
+     */
+    public static boolean updateServices(ConnectionItem connectionItem, boolean show, final boolean onlySimpleShow) {
+        List<IRepositoryViewObject> updateList = new ArrayList<IRepositoryViewObject>();
+        IProxyRepositoryFactory factory = CoreRuntimePlugin.getInstance().getProxyRepositoryFactory();
+        List<RelationshipItemBuilder.Relation> relations = RelationshipItemBuilder.getInstance().getItemsRelatedTo(
+                connectionItem.getProperty().getId(), RelationshipItemBuilder.LATEST_VERSION,
+                RelationshipItemBuilder.SERVICES_RELATION);
 
         RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(connectionItem.getConnection(), relations) {
 
@@ -1151,6 +1553,37 @@ public abstract class RepositoryUpdateManager {
         return schemaRenamedMap;
     }
 
+    /**
+     * 
+     * overload the method for TDQ-3930.
+     * 
+     * @param connection
+     * @param property
+     * @param oldTableMap
+     * @return
+     */
+    public static Map<String, String> getSchemaRenamedMap(Connection connection, Property property,
+            Map<String, String> oldTableMap) {
+        if (connection == null || oldTableMap == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, String> schemaRenamedMap = new HashMap<String, String>();
+
+        final String prefix = property.getId() + UpdatesConstants.SEGMENT_LINE;
+        Set<MetadataTable> tables = ConnectionHelper.getTables(connection);
+        if (tables != null) {
+            for (MetadataTable table : (Set<MetadataTable>) tables) {
+                String oldName = oldTableMap.get(table.getId());
+                String newName = table.getLabel();
+                if (oldName != null && !oldName.equals(newName)) {
+                    schemaRenamedMap.put(prefix + oldName, prefix + newName);
+                }
+            }
+        }
+        return schemaRenamedMap;
+    }
+
     @SuppressWarnings("unchecked")
     public static Map<String, String> getSchemaRenamedMap(SAPFunctionUnit functionUnit, ConnectionItem connItem,
             Map<String, String> oldTableMap) {
@@ -1228,9 +1661,9 @@ public abstract class RepositoryUpdateManager {
             deletedOrReselectTablesMap = new HashMap<String, EUpdateResult>();
 
             List<IMetadataTable> newMetadataTable = new ArrayList<IMetadataTable>();
-            if (repistoryService != null && coreService != null && connection instanceof DatabaseConnection) {
-                Set<org.talend.core.model.metadata.builder.connection.MetadataTable> newTables = repistoryService
-                        .getTablesFromSpecifiedDataPackage((DatabaseConnection) connection);
+            if (coreService != null && connection instanceof DatabaseConnection) {
+                Set<org.talend.core.model.metadata.builder.connection.MetadataTable> newTables = ConnectionHelper
+                        .getTables(connection);
                 if (newTables != null) {
                     for (org.talend.core.model.metadata.builder.connection.MetadataTable originalTable : newTables) {
                         IMetadataTable conversionTable = coreService.convert(originalTable);
@@ -1291,6 +1724,7 @@ public abstract class RepositoryUpdateManager {
 
         // set renamed schema
         repositoryUpdateManager.setDeletedOrReselectTablesMap(deletedOrReselectTablesMap);
+
         final boolean doWork = repositoryUpdateManager.doWork(show, onlySimpleShow);
         repositoryUpdateManager.deletedOrReselectTablesMap.clear();
         return doWork;
@@ -1303,12 +1737,12 @@ public abstract class RepositoryUpdateManager {
         for (IMetadataTable oldTable : oldTables) {
             String prefix;
             boolean isDeleted = true;
-            String oldtableName = oldTable.getTableName();
+            String oldtableLabel = oldTable.getLabel();
             String oldtableId = oldTable.getId();
             for (IMetadataTable newTable : newTables) {
                 String tableLabel = newTable.getLabel();
                 String tableId = newTable.getId();
-                if (tableLabel.equals(oldtableName)) {
+                if (tableLabel.equals(oldtableLabel)) {
                     isDeleted = false;
                     /* if table name is same but tableId is not same,means table has been deselect and reselect */
                     if (!tableId.equals(oldtableId)) {
@@ -1320,7 +1754,7 @@ public abstract class RepositoryUpdateManager {
             /* if can't find the name when looping the new tables,means the table has been removed */
             if (isDeleted) {
                 prefix = connItem.getProperty().getId() + UpdatesConstants.SEGMENT_LINE;
-                deletedOrReselectTables.put(prefix + oldtableName, EUpdateResult.DELETE);
+                deletedOrReselectTables.put(prefix + oldtableLabel, EUpdateResult.DELETE);
             }
         }
         return !deletedOrReselectTables.isEmpty();
@@ -1369,7 +1803,11 @@ public abstract class RepositoryUpdateManager {
 
     }
 
-    private static boolean sameAsMetadatTable(List<IMetadataTable> newTables, List<IMetadataTable> oldTables,
+    /**
+     * MOD qiongli 2011-11-28 change this method 'private' into 'public'.it is used to judge if need to update DQ
+     * analyses.
+     */
+    public static boolean sameAsMetadatTable(List<IMetadataTable> newTables, List<IMetadataTable> oldTables,
             Map<String, String> oldTableMap) {
         if (newTables == null || oldTables == null) {
             return false;
@@ -1583,7 +2021,7 @@ public abstract class RepositoryUpdateManager {
                     RelationshipItemBuilder.QUERY_RELATION);
         }
 
-        RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(parameter, relations) {
+        RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(parameter, relations, true) {
 
             @Override
             public Set<EUpdateItemType> getTypes() {
@@ -1681,7 +2119,6 @@ public abstract class RepositoryUpdateManager {
                 newParametersMap.put(item, repositoryContextManager.getNewParameters());
             }
             repositoryUpdateManager.setNewParametersMap(newParametersMap);
-
         }
         try {
             repositoryUpdateManager.updateConnection(item);
@@ -1691,8 +2128,16 @@ public abstract class RepositoryUpdateManager {
         return repositoryUpdateManager.doWork(show, onlySimpleShow);
     }
 
-    public static boolean updateAllJob(boolean isDetectAndUpdate) {
-        RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(null, isDetectAndUpdate) {
+    public Map<ContextItem, Set<String>> getNewParametersMap() {
+        return newParametersMap;
+    }
+
+    public void setNewParametersMap(Map<ContextItem, Set<String>> newParametersMap) {
+        this.newParametersMap = newParametersMap;
+    }
+
+    public static boolean updateAllJob() {
+        RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(null) {
 
             @Override
             public Set<EUpdateItemType> getTypes() {
@@ -1707,357 +2152,8 @@ public abstract class RepositoryUpdateManager {
         return repositoryUpdateManager.doWork();
     }
 
-    private void updateConnection(ContextItem citem) throws PersistenceException {
-        Map<ContextItem, Map<String, String>> renameMap = getContextRenamedMap();
-        if (renameMap == null) {
-            return;
-        }
-        Map<String, String> valueMap = renameMap.get(citem);
-        if (valueMap == null) {
-            return;
-        }
-        Set<String> set = valueMap.keySet();
-        List<String> list = new ArrayList<String>(set);
-        IProxyRepositoryFactory factory = CoreRuntimePlugin.getInstance().getProxyRepositoryFactory();
-        for (String newValue : list) {
-            String oldValue = valueMap.get(newValue);
-            oldValue = "context." + oldValue;
-            newValue = "context." + newValue;
-            List<IRepositoryViewObject> dbConnList = factory.getAll(ERepositoryObjectType.METADATA_CONNECTIONS, true);
-            for (IRepositoryViewObject obj : dbConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof DatabaseConnection) {
-                                DatabaseConnection dbConn = (DatabaseConnection) conn;
-                                if (dbConn.getAdditionalParams() != null && dbConn.getAdditionalParams().equals(oldValue)) {
-                                    dbConn.setAdditionalParams(newValue);
-                                } else if (dbConn.getUsername() != null && dbConn.getUsername().equals(oldValue)) {
-                                    dbConn.setUsername(newValue);
-                                } else if (dbConn.getPassword() != null && dbConn.getPassword().equals(oldValue)) {
-                                    dbConn.setPassword(newValue);
-                                } else if (dbConn.getServerName() != null && dbConn.getServerName().equals(oldValue)) {
-                                    dbConn.setServerName(newValue);
-                                } else if (dbConn.getPort() != null && dbConn.getPort().equals(oldValue)) {
-                                    dbConn.setPort(newValue);
-                                } else if (dbConn.getSID() != null && dbConn.getSID().equals(oldValue)) {
-                                    dbConn.setSID(newValue);
-                                }
-                                factory.save(item);
-                            }
-                        }
-
-                    }
-                }
-            }
-            List<IRepositoryViewObject> excelConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_EXCEL, true);
-            for (IRepositoryViewObject obj : excelConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof FileExcelConnection) {
-                                if (((FileExcelConnection) conn).getFirstColumn() != null
-                                        && ((FileExcelConnection) conn).getFirstColumn().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setFirstColumn(newValue);
-                                } else if (((FileExcelConnection) conn).getLastColumn() != null
-                                        && ((FileExcelConnection) conn).getLastColumn().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setLastColumn(newValue);
-                                } else if (((FileExcelConnection) conn).getThousandSeparator() != null
-                                        && ((FileExcelConnection) conn).getThousandSeparator().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setThousandSeparator(newValue);
-                                } else if (((FileExcelConnection) conn).getDecimalSeparator() != null
-                                        && ((FileExcelConnection) conn).getDecimalSeparator().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setDecimalSeparator(newValue);
-                                } else if (((FileExcelConnection) conn).getFilePath() != null
-                                        && ((FileExcelConnection) conn).getFilePath().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setFilePath(newValue);
-                                } else if (((FileExcelConnection) conn).getEncoding() != null
-                                        && ((FileExcelConnection) conn).getEncoding().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setEncoding(newValue);
-                                } else if (((FileExcelConnection) conn).getLimitValue() != null
-                                        && ((FileExcelConnection) conn).getLimitValue().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setLimitValue(newValue);
-                                } else if (((FileExcelConnection) conn).getHeaderValue() != null
-                                        && ((FileExcelConnection) conn).getHeaderValue().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setHeaderValue(newValue);
-                                } else if (((FileExcelConnection) conn).getFooterValue() != null
-                                        && ((FileExcelConnection) conn).getFooterValue().equals(oldValue)) {
-                                    ((FileExcelConnection) conn).setFooterValue(newValue);
-                                }
-                                factory.save(item);
-                            }
-                        }
-                    }
-                }
-            }
-
-            List<IRepositoryViewObject> deliConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_DELIMITED, true);
-            for (IRepositoryViewObject obj : deliConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof DelimitedFileConnection) {
-                                if (((DelimitedFileConnection) conn).getFilePath() != null
-                                        && ((DelimitedFileConnection) conn).getFilePath().equals(oldValue)) {
-                                    ((DelimitedFileConnection) conn).setFilePath(newValue);
-                                } else if (((DelimitedFileConnection) conn).getEncoding() != null
-                                        && ((DelimitedFileConnection) conn).getEncoding().equals(oldValue)) {
-                                    ((DelimitedFileConnection) conn).setEncoding(newValue);
-                                } else if (((DelimitedFileConnection) conn).getLimitValue() != null
-                                        && ((DelimitedFileConnection) conn).getLimitValue().equals(oldValue)) {
-                                    ((DelimitedFileConnection) conn).setLimitValue(newValue);
-                                } else if (((DelimitedFileConnection) conn).getHeaderValue() != null
-                                        && ((DelimitedFileConnection) conn).getHeaderValue().equals(oldValue)) {
-                                    ((DelimitedFileConnection) conn).setHeaderValue(newValue);
-                                } else if (((DelimitedFileConnection) conn).getFooterValue() != null
-                                        && ((DelimitedFileConnection) conn).getFooterValue().equals(oldValue)) {
-                                    ((DelimitedFileConnection) conn).setFooterValue(newValue);
-                                } else if (((DelimitedFileConnection) conn).getRowSeparatorValue() != null
-                                        && ((DelimitedFileConnection) conn).getRowSeparatorValue().equals(oldValue)) {
-                                    ((DelimitedFileConnection) conn).setRowSeparatorValue(newValue);
-                                } else if (((DelimitedFileConnection) conn).getFieldSeparatorValue() != null
-                                        && ((DelimitedFileConnection) conn).getFieldSeparatorValue().equals(oldValue)) {
-                                    ((DelimitedFileConnection) conn).setFieldSeparatorValue(newValue);
-                                }
-                                factory.save(item);
-                            }
-
-                        }
-                    }
-                }
-            }
-            List<IRepositoryViewObject> regConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_REGEXP, true);
-            for (IRepositoryViewObject obj : regConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof RegexpFileConnection) {
-                                if (((RegexpFileConnection) conn).getFilePath() != null
-                                        && ((RegexpFileConnection) conn).getFilePath().equals(oldValue)) {
-                                    ((RegexpFileConnection) conn).setFilePath(newValue);
-                                } else if (((RegexpFileConnection) conn).getEncoding() != null
-                                        && ((RegexpFileConnection) conn).getEncoding().equals(oldValue)) {
-                                    ((RegexpFileConnection) conn).setEncoding(newValue);
-                                } else if (((RegexpFileConnection) conn).getLimitValue() != null
-                                        && ((RegexpFileConnection) conn).getLimitValue().equals(oldValue)) {
-                                    ((RegexpFileConnection) conn).setLimitValue(newValue);
-                                } else if (((RegexpFileConnection) conn).getHeaderValue() != null
-                                        && ((RegexpFileConnection) conn).getHeaderValue().equals(oldValue)) {
-                                    ((RegexpFileConnection) conn).setHeaderValue(newValue);
-                                } else if (((RegexpFileConnection) conn).getFooterValue() != null
-                                        && ((RegexpFileConnection) conn).getFooterValue().equals(oldValue)) {
-                                    ((RegexpFileConnection) conn).setFooterValue(newValue);
-                                } else if (((RegexpFileConnection) conn).getRowSeparatorValue() != null
-                                        && ((RegexpFileConnection) conn).getRowSeparatorValue().equals(oldValue)) {
-                                    ((RegexpFileConnection) conn).setRowSeparatorValue(newValue);
-                                } else if (((RegexpFileConnection) conn).getFieldSeparatorValue() != null
-                                        && ((RegexpFileConnection) conn).getFieldSeparatorValue().equals(oldValue)) {
-                                    ((RegexpFileConnection) conn).setFieldSeparatorValue(newValue);
-                                }
-                                factory.save(item);
-                            }
-
-                        }
-                    }
-                }
-            }
-            List<IRepositoryViewObject> ldifConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_LDIF, true);
-            for (IRepositoryViewObject obj : ldifConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof LdifFileConnection) {
-                                LdifFileConnection dbConn = (LdifFileConnection) conn;
-                                if (dbConn.getFilePath() != null && dbConn.getFilePath().equals(oldValue)) {
-                                    dbConn.setFilePath(newValue);
-                                }
-                                factory.save(item);
-                            }
-                        }
-                    }
-                }
-            }
-            List<IRepositoryViewObject> posiConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_POSITIONAL, true);
-            for (IRepositoryViewObject obj : posiConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof PositionalFileConnection) {
-                                PositionalFileConnection dbConn = (PositionalFileConnection) conn;
-                                if (dbConn.getFilePath() != null && dbConn.getFilePath().equals(oldValue)) {
-                                    dbConn.setFilePath(newValue);
-                                } else if (dbConn.getEncoding() != null && dbConn.getEncoding().equals(oldValue)) {
-                                    dbConn.setEncoding(newValue);
-                                } else if (dbConn.getLimitValue() != null && dbConn.getLimitValue().equals(oldValue)) {
-                                    dbConn.setLimitValue(newValue);
-                                } else if (dbConn.getHeaderValue() != null && dbConn.getHeaderValue().equals(oldValue)) {
-                                    dbConn.setHeaderValue(newValue);
-                                } else if (dbConn.getFooterValue() != null && dbConn.getFooterValue().equals(oldValue)) {
-                                    dbConn.setFooterValue(newValue);
-                                } else if (dbConn.getRowSeparatorValue() != null
-                                        && dbConn.getRowSeparatorValue().equals(oldValue)) {
-                                    dbConn.setRowSeparatorValue(newValue);
-                                } else if (dbConn.getFieldSeparatorValue() != null
-                                        && dbConn.getFieldSeparatorValue().equals(oldValue)) {
-                                    dbConn.setFieldSeparatorValue(newValue);
-                                }
-                                factory.save(item);
-                            }
-
-                        }
-                    }
-                }
-            }
-            List<IRepositoryViewObject> xmlConnList = factory.getAll(ERepositoryObjectType.METADATA_FILE_XML, true);
-            for (IRepositoryViewObject obj : xmlConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof XmlFileConnection) {
-                                XmlFileConnection dbConn = (XmlFileConnection) conn;
-                                if (dbConn.getXmlFilePath() != null && dbConn.getXmlFilePath().equals(oldValue)) {
-                                    dbConn.setXmlFilePath(newValue);
-                                } else if (dbConn.getEncoding() != null && dbConn.getEncoding().equals(oldValue)) {
-                                    dbConn.setEncoding(newValue);
-                                } else if (dbConn.getOutputFilePath() != null && dbConn.getOutputFilePath().equals(oldValue)) {
-                                    dbConn.setOutputFilePath(newValue);
-                                }
-                                EList schema = dbConn.getSchema();
-                                if (schema != null && schema.size() > 0) {
-                                    if (schema.get(0) instanceof XmlXPathLoopDescriptor) {
-                                        XmlXPathLoopDescriptor descriptor = (XmlXPathLoopDescriptor) schema.get(0);
-                                        if (descriptor.getAbsoluteXPathQuery() != null
-                                                && descriptor.getAbsoluteXPathQuery().equals(oldValue)) {
-                                            descriptor.setAbsoluteXPathQuery(newValue);
-                                        }
-                                    }
-                                }
-                                factory.save(item);
-                            }
-                        }
-                    }
-                }
-            }
-            List<IRepositoryViewObject> saleConnList = factory.getAll(ERepositoryObjectType.METADATA_SALESFORCE_SCHEMA, true);
-            for (IRepositoryViewObject obj : saleConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof SalesforceSchemaConnection) {
-                                SalesforceSchemaConnection dbConn = (SalesforceSchemaConnection) conn;
-                                if (dbConn.getWebServiceUrl() != null && dbConn.getWebServiceUrl().equals(oldValue)) {
-                                    dbConn.setWebServiceUrl(newValue);
-                                } else if (dbConn.getPassword() != null && dbConn.getPassword().equals(oldValue)) {
-                                    dbConn.setPassword(newValue);
-                                } else if (dbConn.getUserName() != null && dbConn.getUserName().equals(oldValue)) {
-                                    dbConn.setUserName(newValue);
-                                } else if (dbConn.getTimeOut() != null && dbConn.getTimeOut().equals(oldValue)) {
-                                    dbConn.setTimeOut(newValue);
-                                } else if (dbConn.getBatchSize() != null && dbConn.getBatchSize().equals(oldValue)) {
-                                    dbConn.setBatchSize(newValue);
-                                } else if (dbConn.getQueryCondition() != null && dbConn.getQueryCondition().equals(oldValue)) {
-                                    dbConn.setQueryCondition(newValue);
-                                }
-                                factory.save(item);
-                            }
-                        }
-                    }
-                }
-            }
-            List<IRepositoryViewObject> wsdlConnList = factory.getAll(ERepositoryObjectType.METADATA_WSDL_SCHEMA, true);
-            for (IRepositoryViewObject obj : wsdlConnList) {
-                Item item = obj.getProperty().getItem();
-                if (item instanceof ConnectionItem) {
-                    Connection conn = ((ConnectionItem) item).getConnection();
-                    if (conn.isContextMode()) {
-                        ContextItem contextItem = ContextUtils.getContextItemById2(conn.getContextId());
-                        if (contextItem == null) {
-                            continue;
-                        }
-                        if (citem == contextItem) {
-                            if (conn instanceof WSDLSchemaConnection) {
-                                WSDLSchemaConnection dbConn = (WSDLSchemaConnection) conn;
-                                if (dbConn.getUserName() != null && dbConn.getUserName().equals(oldValue)) {
-                                    dbConn.setUserName(newValue);
-                                } else if (dbConn.getPassword() != null && dbConn.getPassword().equals(oldValue)) {
-                                    dbConn.setPassword(newValue);
-                                } else if (dbConn.getProxyHost() != null && dbConn.getProxyHost().equals(oldValue)) {
-                                    dbConn.setProxyHost(newValue);
-                                } else if (dbConn.getProxyPassword() != null && dbConn.getProxyPassword().equals(oldValue)) {
-                                    dbConn.setProxyPassword(newValue);
-                                } else if (dbConn.getProxyUser() != null && dbConn.getProxyUser().equals(oldValue)) {
-                                    dbConn.setProxyUser(newValue);
-                                } else if (dbConn.getProxyPort() != null && dbConn.getProxyPort().equals(oldValue)) {
-                                    dbConn.setProxyPort(newValue);
-                                }
-                                factory.save(item);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-    }
-
-    public Map<ContextItem, Set<String>> getNewParametersMap() {
-        return newParametersMap;
-    }
-
-    public void setNewParametersMap(Map<ContextItem, Set<String>> newParametersMap) {
-        this.newParametersMap = newParametersMap;
-    }
-
-    public static boolean updateAllJob() {
-        RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(null) {
+    public static boolean updateAllJob(boolean isDetectAndUpdate) {
+        RepositoryUpdateManager repositoryUpdateManager = new RepositoryUpdateManager(null, isDetectAndUpdate) {
 
             @Override
             public Set<EUpdateItemType> getTypes() {
@@ -2151,4 +2247,5 @@ public abstract class RepositoryUpdateManager {
     public void setDeletedOrReselectTablesMap(Map<String, EUpdateResult> deletedOrReselectTablesMap) {
         this.deletedOrReselectTablesMap = deletedOrReselectTablesMap;
     }
+
 }

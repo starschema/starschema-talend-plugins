@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,7 +38,7 @@ import com.ibm.icu.util.StringTokenizer;
  * With VAR1, VAR2, VAR3 & VAR4 as the name of differents parameters and 'value1'.. the values to test. (values must be
  * between quotes)<br>
  * 
- * $Id: Expression.java 54939 2011-02-11 01:34:57Z mhirt $
+ * $Id: Expression.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public final class Expression {
@@ -194,7 +194,7 @@ public final class Expression {
         // #LINK@NODE, #PREVIOUS@NODE, #NEXT@NODE ----->implement them later
         if ((variableName != null) && (variableValue != null)) {
             if (varNames[0].equals("#LINK@NODE")) {
-                if (currentParam.getElement() instanceof INode) {
+                if (currentParam != null && currentParam.getElement() instanceof INode) {
                     INode node = (INode) currentParam.getElement();
                     String relatedNodeName = ElementParameterParser.getValue(node, "__" + varNames[1] + "__");
                     List<? extends INode> generatingNodes = node.getProcess().getGeneratingNodes();
@@ -222,6 +222,9 @@ public final class Expression {
                     boolean found = false;
                     if (param.getFieldType().equals(EParameterFieldType.TABLE)) {
                         List<Map<String, Object>> tableValues = (List<Map<String, Object>>) param.getValue();
+                        if (currentParam == null) {
+                            continue;
+                        }
                         Map<String, Object> currentRow = tableValues.get(currentParam.getCurrentRow());
                         if (currentRow.containsKey(varNames[1])) {
                             for (Object curObj : param.getListItemsValue()) {
@@ -300,8 +303,8 @@ public final class Expression {
                                         if (baseColumn != null) {
                                             switch (LanguageManager.getCurrentLanguage()) {
                                             case JAVA:
-                                                value = JavaTypesManager.getTypeToGenerate(baseColumn.getTalendType(), baseColumn
-                                                        .isNullable());
+                                                value = JavaTypesManager.getTypeToGenerate(baseColumn.getTalendType(),
+                                                        baseColumn.isNullable());
                                                 break;
                                             default:
                                                 value = baseColumn.getTalendType();

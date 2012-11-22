@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -18,9 +18,12 @@ import java.util.Map;
 
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
+import org.talend.commons.xml.XmlUtil;
 import org.talend.core.model.metadata.ColumnNameChanged;
 import org.talend.core.model.metadata.IMetadataTable;
+import org.talend.core.model.metadata.builder.connection.Connection;
 import org.talend.core.model.metadata.builder.connection.SalesforceSchemaConnection;
+import org.talend.core.model.metadata.builder.connection.XmlFileConnection;
 import org.talend.core.model.metadata.designerproperties.RepositoryToComponentProperty;
 import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IElementParameter;
@@ -28,6 +31,7 @@ import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.SalesforceSchemaConnectionItem;
 import org.talend.core.model.repository.IRepositoryViewObject;
+import org.talend.core.utils.TalendQuoteUtils;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.model.components.EmfComponent;
 import org.talend.designer.core.ui.editor.nodes.Node;
@@ -51,8 +55,12 @@ public class RepositoryChangeMetadataCommand extends ChangeMetadataCommand {
 
     private String newRepositoryIdValue, oldRepositoryIdValue;
 
+    private final Connection connection;
+
+    private String[] xmlComponent = new String[] { "tFileInputXML", "tExtractXMLField", "tInGESTCoreXMLInput" };
+
     public RepositoryChangeMetadataCommand(Node node, String propName, Object propValue, IMetadataTable newOutputMetadata,
-            String newRepositoryIdValue) {
+            String newRepositoryIdValue, Connection connection) {
         super(node, node.getElementParameter(propName) == null ? null : node.getElementParameter(propName).getParentParameter(),
                 null, newOutputMetadata, node.getElementParameter(propName) == null ? null : node.getElementParameter(propName)
                         .getParentParameter());
@@ -62,6 +70,7 @@ public class RepositoryChangeMetadataCommand extends ChangeMetadataCommand {
         this.node = node;
         this.newRepositoryIdValue = newRepositoryIdValue;
         this.setRepositoryMode(true);
+        this.connection = connection;
     }
 
     @Override
@@ -95,8 +104,10 @@ public class RepositoryChangeMetadataCommand extends ChangeMetadataCommand {
         // }
 
         node.getElementParameter(EParameterName.UPDATE_COMPONENTS.getName()).setValue(true);
-        setDBTableFieldValue(node, newOutputMetadata.getTableName(), oldOutputMetadata.getTableName());
-        setSAPFunctionName(node, newOutputMetadata.getLabel());
+        if (newOutputMetadata != null) {
+            setDBTableFieldValue(node, newOutputMetadata.getTableName(), oldOutputMetadata.getTableName());
+            setSAPFunctionName(node, newOutputMetadata.getLabel());
+        }
         super.execute();
         String propertyType = (String) node.getPropertyValue(EParameterName.PROPERTY_TYPE.getName());
         if (propertyType != null) {
@@ -131,12 +142,22 @@ public class RepositoryChangeMetadataCommand extends ChangeMetadataCommand {
                                         table, newOutputMetadata);
                                 param.setRepositoryValueUsed(true);
                             } else {
-                                Object value = RepositoryToComponentProperty.getValue(((ConnectionItem) item).getConnection(),
-                                        param.getRepositoryValue(), newOutputMetadata);
-                                if (value != null) {
-                                    param.setValue(value);
+                                String componentName = node.getComponent().getName();
+                                if (connection != null
+                                        && (xmlComponent[0].equals(componentName) || xmlComponent[1].equals(componentName) || xmlComponent[2]
+                                                .equals(componentName))
+                                        && connection instanceof XmlFileConnection
+                                        && XmlUtil.isXSDFile(TalendQuoteUtils.removeQuotes(((XmlFileConnection) connection)
+                                                .getXmlFilePath())) && param.getRepositoryValue().equals("FILE_PATH")) {
+                                    // do nothing
+                                } else {
+                                    Object value = RepositoryToComponentProperty.getValue(
+                                            ((ConnectionItem) item).getConnection(), param.getRepositoryValue(),
+                                            newOutputMetadata);
+                                    if (value != null) {
+                                        param.setValue(value);
+                                    }
                                 }
-
                             }
                         }
                     }

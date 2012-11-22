@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -17,16 +17,11 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IWorkbench;
 import org.talend.core.IService;
 import org.talend.core.model.components.IComponentsFactory;
 import org.talend.core.model.metadata.IMetadataConnection;
@@ -34,13 +29,14 @@ import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
 import org.talend.core.model.process.IContextManager;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.model.process.INode;
-import org.talend.core.model.properties.ConnectionItem;
-import org.talend.core.model.properties.Property;
+import org.talend.core.model.properties.RulesItem;
 import org.talend.core.model.properties.SQLPatternItem;
 import org.talend.core.model.repository.ERepositoryObjectType;
 import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.repository.IRepositoryChangedListener;
 import org.talend.repository.IRepositoryElementDelta;
+import org.talend.repository.ui.actions.AContextualAction;
+import org.talend.repository.ui.views.IRepositoryView;
 
 /**
  * DOC qian class global comment. Interface for RepositoryService. <br/>
@@ -75,13 +71,6 @@ public interface IRepositoryService extends IService {
      */
     public void registerRepositoryChangedListenerAsFirst(IRepositoryChangedListener listener);
 
-    public WizardDialog getGenericSchemaWizardDialog(Shell shell, IWorkbench workbench, boolean creation, ISelection selection,
-            String[] existingNames, boolean isSinglePageOnly);
-
-    public Property getPropertyFromWizardDialog();
-
-    public IPath getPathForSaveAsGenericSchema();
-
     // for integration with eclipse
     public void openLoginDialog();
 
@@ -97,12 +86,6 @@ public interface IRepositoryService extends IService {
     public boolean isRCPMode();
 
     public void setRCPMode();
-
-    public void openMetadataConnection(IRepositoryViewObject o, INode node);
-
-    public ConnectionItem openMetadataConnection(boolean creation, IRepositoryNode realNode, INode node);
-
-    public void openEditSchemaWizard(String value);
 
     public DatabaseConnection cloneOriginalValueConnection(DatabaseConnection dbConn);
 
@@ -130,15 +113,17 @@ public interface IRepositoryService extends IService {
 
     public IRepositoryNode getRootRepositoryNode(ERepositoryObjectType type);
 
-    public TreeViewer getRepositoryTreeView();
-
-    public Action getRepositoryViewDoubleClickAction();
-
     public void setInternalNodeHTMLMap(INode node, Map<String, Object> internalNodeHTMLMap);
 
     public IDialogSettings getDialogSettings();
 
     public Set<org.talend.core.model.metadata.builder.connection.MetadataTable> getTablesFromSpecifiedDataPackage(
             DatabaseConnection dbconn);
+
+    public Class getClassForSalesforceModule();
+
+    public AContextualAction getCreateRoutineAction(IRepositoryView repositoryView);
+
+    public String getRulesProviderPath(RulesItem currentRepositoryItem);
 
 }

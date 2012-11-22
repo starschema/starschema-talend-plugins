@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -55,13 +55,19 @@ import org.eclipse.ui.internal.wizards.datatransfer.ZipLeveledStructureProvider;
 import org.eclipse.ui.wizards.datatransfer.IImportStructureProvider;
 import org.eclipse.ui.wizards.datatransfer.ImportOperation;
 import org.osgi.framework.Bundle;
+import org.talend.commons.exception.PersistenceException;
 import org.talend.commons.ui.runtime.exception.ExceptionHandler;
 import org.talend.commons.utils.io.FilesUtils;
+import org.talend.commons.utils.platform.PluginChecker;
 import org.talend.commons.xml.XmlUtil;
 import org.talend.core.GlobalServiceRegister;
 import org.talend.core.language.ECodeLanguage;
+import org.talend.core.model.metadata.builder.database.PluginConstant;
+import org.talend.core.model.properties.Project;
+import org.talend.core.repository.utils.XmiResourceManager;
 import org.talend.core.ui.branding.IBrandingService;
 import org.talend.repository.i18n.Messages;
+import org.talend.repository.ui.utils.AfterImportProjectUtil;
 import org.talend.resources.ResourcesPlugin;
 
 /**
@@ -86,7 +92,10 @@ public class ImportProjectsUtilities {
 
         importProject(shell, provider, new File(sourcePath), new Path(technicalName), true, false, monitor);
 
-        afterImportAs(newName, technicalName);
+        Project project=afterImportAs(newName, technicalName);
+        
+        //do additional actions after importing projects
+        AfterImportProjectUtil.runAfterImportProjectActions(new org.talend.core.model.general.Project(project));
     }
 
     /**
@@ -96,26 +105,41 @@ public class ImportProjectsUtilities {
      * @param technicalName
      * @throws InvocationTargetException
      */
-    private static void afterImportAs(String newName, String technicalName) throws InvocationTargetException {
+    private static Project afterImportAs(String newName, String technicalName) throws InvocationTargetException {
         // Rename in ".project" and "talendProject" or "talend.project"
         // TODO SML Optimize
         final IWorkspace workspace = org.eclipse.core.resources.ResourcesPlugin.getWorkspace();
         IContainer containers = (IProject) workspace.getRoot().findMember(new Path(technicalName));
-
         IResource file2 = containers.findMember(IProjectDescription.DESCRIPTION_FILE_NAME);
         try {
             FilesUtils.replaceInFile("<name>.*</name>", file2.getLocation().toOSString(), "<name>" + technicalName + "</name>"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-
-            IResource file3 = containers.findMember(OLD_TALEND_PROJECT_FILE_NAME);
-            if (file3 == null || !file3.exists()) {
-                file3 = containers.findMember(TALEND_PROJECT_FILE_NAME);
+            // TDI-19269
+            final IProject project = workspace.getRoot().getProject(technicalName);
+            XmiResourceManager xmiManager = new XmiResourceManager();
+            try {
+                final Project loadProject = xmiManager.loadProject(project);
+                loadProject.setTechnicalLabel(technicalName);
+                loadProject.setLabel(newName);
+                loadProject.setLocal(true);
+                loadProject.setId(0);
+                loadProject.setUrl(null);
+                loadProject.setCreationDate(null);
+                loadProject.setDescription("");
+                loadProject.setType(null);
+                // ADD xqliu 2012-03-12 TDQ-4771 clear the list of Folders
+                if (loadProject.getFolders() != null) {
+                    loadProject.getFolders().clear();
+                }
+                // ~ TDQ-4771
+                xmiManager.saveResource(loadProject.eResource());
+                return loadProject;
+            } catch (PersistenceException e) {
+                //
             }
-            replaceInFile("label=\".*?\"", file3.getLocation().toOSString(), "label=\"" + newName + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-            replaceInFile("technicalLabel=\".*?\"", file3.getLocation().toOSString(), "technicalLabel=\"" //$NON-NLS-1$ //$NON-NLS-2$
-                    + technicalName + "\""); //$NON-NLS-1$
         } catch (IOException e) {
             throw new InvocationTargetException(e);
         }
+        return null;
     }
 
     private static void replaceInFile(String regex, String fileName, String replacement) throws IOException {
@@ -144,7 +168,10 @@ public class ImportProjectsUtilities {
             IProgressMonitor monitor) throws InvocationTargetException, InterruptedException, TarException, IOException {
         importArchiveProject(shell, technicalName, sourcePath, monitor);
 
-        afterImportAs(newName, technicalName);
+        Project project=afterImportAs(newName, technicalName);
+        
+        //do additional actions after importing projects
+        AfterImportProjectUtil.runAfterImportProjectActions(new org.talend.core.model.general.Project(project));
     }
 
     public static void importArchiveProject(Shell shell, String technicalName, String sourcePath, IProgressMonitor monitor)
@@ -224,6 +251,7 @@ public class ImportProjectsUtilities {
         Iterator childrenEnum = children.iterator();
 
         while (childrenEnum.hasNext()) {
+
             Object child = childrenEnum.next();
             // Add the child, this way we get every files except the project
             // folder itself which we don't want
@@ -347,14 +375,14 @@ public class ImportProjectsUtilities {
      * @return a list of <code>DemoProjectBean</code>
      */
     public static List<DemoProjectBean> getAllDemoProjects() {
-
         SAXReader reader = new SAXReader();
         Document doc = null;
         List<DemoProjectBean> demoProjectList = new ArrayList<DemoProjectBean>();
         DemoProjectBean demoProject = null;
-        for (int t = 0; t < getXMLFilePath().size(); t++) {
+        List<File> xmlFilePath = getXMLFilePath();
+        for (int t = 0; t < xmlFilePath.size(); t++) {
             try {
-                doc = reader.read(getXMLFilePath().get(t));
+                doc = reader.read(xmlFilePath.get(t));
             } catch (DocumentException e) {
                 ExceptionHandler.process(e);
                 return null;
@@ -382,12 +410,26 @@ public class ImportProjectsUtilities {
                 demoProject.setDemoProjectFileType(EDemoProjectFileType.getDemoProjectFileTypeName(demoProjectFileType));
                 demoProject.setDemoProjectFilePath(demoProjectElement.attributeValue("demoFilePath")); //$NON-NLS-1$
                 demoProject.setDescriptionFilePath(demoProjectElement.attributeValue("descriptionFilePath")); //$NON-NLS-1$
+                //get the demo plugin Id                
+                demoProject.setPluginId(demoProjectElement.attributeValue("pluginId")); //$NON-NLS-1$                
+                if (demoProject.getProjectName().equals("ESBDEMOS")) {
+                    if (!PluginChecker.isPluginLoaded("org.talend.repository.services")) {
+                        continue;
+                    }
+                }
                 demoProjectList.add(demoProject);
             }
         }
         return demoProjectList;
     }
 
+    private static String getMDMDemoPluginId(){
+        if (!PluginChecker.isPluginLoaded("org.talend.mdm.workbench.enterprise")) {//CE //$NON-NLS-1$ 
+            return "org.talend.mdm.repository"; //$NON-NLS-1$
+        }else{//EE
+            return "org.talend.mdm.repository.enterprise"; //$NON-NLS-1$
+        }
+    }
     /**
      * Gets the path of demo projects xml file.
      * 
@@ -396,18 +438,27 @@ public class ImportProjectsUtilities {
     private static List<File> getXMLFilePath() {
         List<File> xmlListFile = new ArrayList<File>();
         String[] pluginIDs = new String[] { ResourcesPlugin.PLUGIN_ID, "org.talend.resources.perl", //$NON-NLS-1$
-                "org.talend.datacleansing.core.ui" }; //$NON-NLS-1$
+                ResourcesPlugin.TDQ_PLUGIN_ID , getMDMDemoPluginId()}; //$NON-NLS-1$
+
         for (int i = 0; i < pluginIDs.length; i++) {
             Bundle bundle = Platform.getBundle(pluginIDs[i]);
             if (bundle != null) {
                 URL url = null;
 
+                String fullPath = XML_FILE_PATH;
+                if (ResourcesPlugin.TDQ_PLUGIN_ID.equals(pluginIDs[i])) {
+                    fullPath = PluginConstant.EMPTY_STRING;
+                }
+                URL fileUrl=FileLocator.find(bundle, new Path(fullPath), null);
                 try {
-                    url = FileLocator.toFileURL(FileLocator.find(bundle, new Path(XML_FILE_PATH), null));
+                    if(fileUrl!=null){
+                        url = FileLocator.toFileURL(fileUrl);
+                    }
                 } catch (IOException e) {
                     ExceptionHandler.process(e);
                 }
-
+                if(url==null)
+                    continue;
                 File xmlFilePath = new File(url.getPath());
                 if (xmlFilePath.exists()) {
                     String files[] = xmlFilePath.list(new FilenameFilter() {

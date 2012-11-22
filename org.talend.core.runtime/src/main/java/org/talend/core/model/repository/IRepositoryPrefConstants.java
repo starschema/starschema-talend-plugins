@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -40,6 +40,8 @@ public interface IRepositoryPrefConstants {
     public static final String USER_FILTER_TABLE_ENABLED = "user_Filter_Table_Enabled"; //$NON-NLS-1$
 
     public static final String USE_FILTER = "use_filter";
+
+    public static final String USE_PERSPECTIVE_FILTER = "use_perspective_filter";
 
     public static final String USE_EXPORT_SAVE = "use_export_save_for_jobscript";
 

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -42,6 +42,7 @@ import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.repository.ProjectManager;
 import org.talend.repository.RepositoryWorkUnit;
 import org.talend.repository.i18n.Messages;
+import org.talend.repository.model.IProxyRepositoryFactory;
 import org.talend.repository.ui.actions.ExportProjectSettings;
 import org.talend.repository.ui.actions.ImportProjectSettings;
 
@@ -71,8 +72,11 @@ public class ProjectSettingsPreferenceDialog extends PreferenceDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-        importButton = createButton(parent, IMPORT, "Import", false); //$NON-NLS-1$
-        exportButton = createButton(parent, EXPORT, "Export", false); //$NON-NLS-1$
+        IProxyRepositoryFactory factory = ProxyRepositoryFactory.getInstance();
+        if (!factory.isUserReadOnlyOnCurrentProject()) {
+            importButton = createButton(parent, IMPORT, "Import", false); //$NON-NLS-1$
+            exportButton = createButton(parent, EXPORT, "Export", false); //$NON-NLS-1$
+        }
         super.createButtonsForButtonBar(parent);
 
     }

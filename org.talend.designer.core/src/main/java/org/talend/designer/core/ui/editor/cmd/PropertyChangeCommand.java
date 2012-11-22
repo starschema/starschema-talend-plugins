@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -54,7 +54,7 @@ import org.talend.designer.runprocess.ItemCacheManager;
  * Command that changes a given property. It will call the set or get property value in an element. This element can be
  * either a node, a connection or a process. <br/>
  * 
- * $Id: PropertyChangeCommand.java 57414 2011-03-25 10:52:23Z hcyi $
+ * $Id: PropertyChangeCommand.java 77427 2012-01-31 10:41:55Z ldong $
  * 
  */
 public class PropertyChangeCommand extends Command {
@@ -512,9 +512,9 @@ public class PropertyChangeCommand extends Command {
                                         found = true;
                                         break;
                                     }
-                                    if (!found) {
-                                        toAdd.add(column);
-                                    }
+                                }
+                                if (!found) {
+                                    toAdd.add(column);
                                 }
 
                                 newMetadataTable.getListColumns().addAll(toAdd);
@@ -529,9 +529,32 @@ public class PropertyChangeCommand extends Command {
                     if (metadataTable != null && newMetadataTable != null) {
                         newMetadataTable.setTableName(metadataTable.getTableName());
                         newMetadataTable.setAttachedConnector(metadataTable.getAttachedConnector());
-                        metadataTable.setReadOnly(newMetadataTable.isReadOnly());
-                        metadataTable.setListColumns(newMetadataTable.clone(true).getListColumns());
-                        changeMetadataCommand = new ChangeMetadataCommand(node, null, metadataTable, newMetadataTable);
+
+                        // remove all custom columns first, since new custom columns from default table will be added
+                        // automatically
+                        List<IMetadataColumn> columnsToRemove = new ArrayList<IMetadataColumn>();
+                        for (IMetadataColumn column : metadataTable.getListColumns()) {
+                            if (column.isCustom()) {
+                                columnsToRemove.add(column);
+                            }
+                        }
+                        metadataTable.getListColumns().removeAll(columnsToRemove);
+
+                        boolean onlyHaveCustomInDefault = true;
+                        List<IMetadataColumn> customColumnsFromDefault = new ArrayList<IMetadataColumn>();
+                        for (IMetadataColumn column : newMetadataTable.getListColumns()) {
+                            if (!column.isCustom()) {
+                                onlyHaveCustomInDefault = false;
+                            } else {
+                                customColumnsFromDefault.add(column);
+                            }
+                        }
+                        metadataTable.getListColumns().addAll(customColumnsFromDefault);
+                        if (onlyHaveCustomInDefault) {
+                            newMetadataTable = metadataTable;
+                        }
+
+                        changeMetadataCommand = new ChangeMetadataCommand(node, null, null, newMetadataTable);
                         changeMetadataCommand.execute(true);
                     }
                 }
@@ -643,13 +666,17 @@ public class PropertyChangeCommand extends Command {
 
     private void refreshTraceConnections() {
         if (propName.equals(EParameterName.TRACES_CONNECTION_ENABLE.getName()) || this.elem instanceof Connection) {
-            ((Connection) this.elem).getConnectionTrace().setPropertyValue(EParameterName.TRACES_SHOW_ENABLE.getName(), true);
+            // TDI-8003:if the connection's style is RunIf,its trace should be null here
+            if (((Connection) this.elem).getConnectionTrace() != null && !propName.equals(EParameterName.CONDITION))
+                ((Connection) this.elem).getConnectionTrace().setPropertyValue(EParameterName.TRACES_SHOW_ENABLE.getName(), true);
         }
     }
 
     private void refreshResumingConnections() {
         if (propName.equals(EParameterName.RESUMING_CHECKPOINT.getName()) || this.elem instanceof Connection) {
-            ((Connection) this.elem).getConnectionTrace().setPropertyValue(EParameterName.RESUMING_CHECKPOINT.getName(), true);
+            if (((Connection) this.elem).getConnectionTrace() != null && !propName.equals(EParameterName.CONDITION))
+                ((Connection) this.elem).getConnectionTrace()
+                        .setPropertyValue(EParameterName.RESUMING_CHECKPOINT.getName(), true);
         }
     }
 

@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -32,6 +32,7 @@ import org.talend.core.model.components.EComponentType;
 import org.talend.core.model.components.IComponent;
 import org.talend.core.model.components.IComponentsService;
 import org.talend.core.model.general.Project;
+import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.properties.ItemRelation;
 import org.talend.core.model.properties.ItemRelations;
@@ -74,7 +75,7 @@ public class RelationshipItemBuilder {
 
     // upgrade of version must be done each time there is any change in this class.
     // this will force next time the project to upgrade to be sure to be up to date when logon.
-    public static final String INDEX_VERSION = "1.1"; //$NON-NLS-1$
+    public static final String INDEX_VERSION = "1.2"; //$NON-NLS-1$
 
     public static final String LATEST_VERSION = "Latest"; //$NON-NLS-1$
 
@@ -83,6 +84,8 @@ public class RelationshipItemBuilder {
     public static final String JOB_RELATION = "job"; //$NON-NLS-1$
 
     public static final String JOBLET_RELATION = "joblet"; //$NON-NLS-1$
+
+    public static final String SERVICES_RELATION = "services"; //$NON-NLS-1$
 
     public static final String PROPERTY_RELATION = "property"; //$NON-NLS-1$
 
@@ -97,6 +100,8 @@ public class RelationshipItemBuilder {
     public static final String SQLPATTERN_RELATION = "sqlPattern"; //$NON-NLS-1$
 
     public static final String ROUTINE_RELATION = "routine"; //$NON-NLS-1$
+
+    public static final String SURVIVOR_RELATION = "survivorshipRuleRelation"; //$NON-NLS-1$
 
     public static RelationshipItemBuilder instance;
 
@@ -461,6 +466,7 @@ public class RelationshipItemBuilder {
                     String jobIdStr = null;
                     String jobVersion = LATEST_VERSION;
                     String nowVersion = "";
+                    Set<String> jobIdSet = new HashSet<String>();
                     for (Object o2 : currentNode.getElementParameter()) {
                         if (o2 instanceof ElementParameterType) {
                             ElementParameterType param = (ElementParameterType) o2;
@@ -471,9 +477,7 @@ public class RelationshipItemBuilder {
                                 String[] jobsArr = jobIds.split(RelationshipItemBuilder.COMMA);
                                 for (String jobId : jobsArr) {
                                     if (StringUtils.isNotEmpty(jobId)) {
-                                        addRelationShip(item, jobId, nowVersion, JOB_RELATION);
-                                        // factory.save(project, item.getProperty());
-                                        factory.save(project, item);
+                                        jobIdSet.add(jobId);
                                     }
                                     jobIdStr = jobId;
                                 }
@@ -489,6 +493,10 @@ public class RelationshipItemBuilder {
                                 }
                             }
                         }
+                    }
+                    for (String jobId : jobIdSet) {
+                        addRelationShip(item, jobId, nowVersion, JOB_RELATION);
+                        factory.save(project, item);
                     }
                 }
             }
@@ -650,6 +658,14 @@ public class RelationshipItemBuilder {
                                     }
                                 }
                             }
+
+                            // only for SurvivorshipFileItem
+                            if (param.getField() != null
+                                    && param.getField().equals(EParameterFieldType.SURVIVOR_RELATION.getName())) { //$NON-NLS-1$
+                                String relatedID = param.getValue();
+                                addRelationShip(item, relatedID, LATEST_VERSION, SURVIVOR_RELATION);
+                            }
+
                         }
                     }
                     // handle tMap schema relations...
@@ -690,6 +706,7 @@ public class RelationshipItemBuilder {
                     if ("tRunJob".equals(currentNode.getComponentName())) { //$NON-NLS-1$
                         // in case of tRunJob
                         String jobVersion = LATEST_VERSION;
+                        Set<String> jobIdSet = new HashSet<String>();
                         for (Object o2 : currentNode.getElementParameter()) {
                             if (o2 instanceof ElementParameterType) {
                                 ElementParameterType param = (ElementParameterType) o2;
@@ -700,7 +717,8 @@ public class RelationshipItemBuilder {
                                     String[] jobsArr = jobIds.split(RelationshipItemBuilder.COMMA);
                                     for (String jobId : jobsArr) {
                                         if (StringUtils.isNotEmpty(jobId)) {
-                                            addRelationShip(item, jobId, jobVersion, JOB_RELATION);
+                                            jobIdSet.add(jobId);
+                                            // addRelationShip(item, jobId, jobVersion, JOB_RELATION);
                                         }
                                     }
                                 }
@@ -709,6 +727,9 @@ public class RelationshipItemBuilder {
                                     jobVersion = param.getValue();
                                 }
                             }
+                        }
+                        for (String jobId : jobIdSet) {
+                            addRelationShip(item, jobId, jobVersion, JOB_RELATION);
                         }
                     }
                 }

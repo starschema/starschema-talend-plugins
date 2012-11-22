@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -171,5 +171,25 @@ public interface IMetadataConnection extends IMetadata {
     public String getUiSchema();
 
     public void setUiSchema(String schema);
+
+    public String getDatamodel();
+
+    public void setDatamodel(String datamodel);
+
+    public String getDatacluster();
+
+    public void setDatacluster(String datacluster);
+
+    public boolean isContentModel();
+
+    public void setContentModel(boolean contentModel);
+
+    public String getContextId();
+
+    public void setContextId(String contextId);
+
+    public String getContextName();
+
+    public void setContextName(String contextName);
 
 }

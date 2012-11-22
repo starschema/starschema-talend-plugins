@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -26,6 +26,10 @@ public interface IBrandingService extends IService {
 
     public String getFullProductName();
 
+    public String getProductName();
+
+    public String getOptionName();
+
     public String getShortProductName();
 
     public String getAcronym();
@@ -43,4 +47,6 @@ public interface IBrandingService extends IService {
     public boolean isPoweredbyTalend();
 
     public boolean isPoweredOnlyCamel();
+
+    public String getStartingBrowserId();
 }

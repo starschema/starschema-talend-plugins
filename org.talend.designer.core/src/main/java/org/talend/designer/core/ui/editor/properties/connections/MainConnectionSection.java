@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -38,7 +38,7 @@ import org.talend.designer.core.ui.editor.properties.controllers.AbstractElement
 /**
  * Main Section of the property for the connections. <br/>
  * 
- * $Id: MainConnectionSection.java 55943 2011-03-01 06:00:02Z zli $
+ * $Id: MainConnectionSection.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class MainConnectionSection extends DynamicTabbedPropertySection {

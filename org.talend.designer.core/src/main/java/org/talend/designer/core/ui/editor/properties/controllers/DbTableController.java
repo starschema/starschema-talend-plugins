@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -56,8 +56,8 @@ import org.talend.core.database.conn.DatabaseConnStrUtil;
 import org.talend.core.model.metadata.IMetadataConnection;
 import org.talend.core.model.metadata.builder.ConvertionHelper;
 import org.talend.core.model.metadata.builder.connection.DatabaseConnection;
-import org.talend.core.model.metadata.builder.database.ConnectionStatus;
 import org.talend.core.model.metadata.builder.database.ExtractMetaDataFromDataBase;
+import org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils;
 import org.talend.core.model.process.EParameterFieldType;
 import org.talend.core.model.process.IContextManager;
 import org.talend.core.model.process.IElementParameter;
@@ -68,6 +68,7 @@ import org.talend.core.model.repository.IRepositoryViewObject;
 import org.talend.core.model.utils.ContextParameterUtils;
 import org.talend.core.model.utils.TalendTextUtils;
 import org.talend.core.properties.tab.IDynamicProperty;
+import org.talend.core.repository.ConnectionStatus;
 import org.talend.core.sqlbuilder.util.ConnectionParameters;
 import org.talend.core.ui.ISQLBuilderService;
 import org.talend.core.ui.metadata.dialog.DbTableSelectorDialog;
@@ -77,6 +78,7 @@ import org.talend.designer.core.DesignerPlugin;
 import org.talend.designer.core.i18n.Messages;
 import org.talend.designer.core.model.components.EParameterName;
 import org.talend.designer.core.ui.editor.cmd.PropertyChangeCommand;
+import org.talend.designer.core.ui.editor.connections.TracesConnectionUtils;
 import org.talend.designer.core.ui.editor.nodes.Node;
 import org.talend.designer.core.ui.editor.properties.ConfigureConnParamDialog;
 import org.talend.designer.core.ui.editor.properties.controllers.creator.SelectAllTextControlCreator;
@@ -404,7 +406,9 @@ public class DbTableController extends AbstractElementPropertySectionController 
         openSQLEditorButton.setEnabled(!param.isReadOnly());
         openSQLEditorButton.setData(NAME, SQLEDITOR);
         openSQLEditorButton.setData(PARAMETER_NAME, param.getName());
-
+        if (param.getFieldType() == EParameterFieldType.DBTABLE) {
+            openSQLEditorButton.setEnabled(ExtractMetaDataUtils.haveLoadMetadataNode());
+        }
         openSQLEditorButton.addSelectionListener(openSQLListener);
 
         return buttonControl;
@@ -468,9 +472,7 @@ public class DbTableController extends AbstractElementPropertySectionController 
                     if (connParameters == null) {
                         initConnectionParameters();
                     }
-                    ISQLBuilderService service = (ISQLBuilderService) GlobalServiceRegister.getDefault().getService(
-                            ISQLBuilderService.class);
-                    existConnection = service.createConnection(connParameters);
+                    existConnection = TracesConnectionUtils.createConnection(connParameters);
                 }
                 final DatabaseConnection con = existConnection;
                 IMetadataConnection iMetadataConnection = null;

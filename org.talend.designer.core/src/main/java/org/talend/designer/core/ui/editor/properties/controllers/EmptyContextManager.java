@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -31,7 +31,8 @@ public class EmptyContextManager implements IContextManager, Cloneable {
     /*
      * (non-Javadoc)
      * 
-     * @see org.talend.core.model.process.IContextManager#addContextListener(org.talend.core.model.process.IContextListener)
+     * @see
+     * org.talend.core.model.process.IContextManager#addContextListener(org.talend.core.model.process.IContextListener)
      */
     public void addContextListener(IContextListener listener) {
     }
@@ -65,7 +66,9 @@ public class EmptyContextManager implements IContextManager, Cloneable {
     /*
      * (non-Javadoc)
      * 
-     * @see org.talend.core.model.process.IContextManager#removeContextListener(org.talend.core.model.process.IContextListener)
+     * @see
+     * org.talend.core.model.process.IContextManager#removeContextListener(org.talend.core.model.process.IContextListener
+     * )
      */
     public void removeContextListener(IContextListener listener) {
     }
@@ -86,15 +89,6 @@ public class EmptyContextManager implements IContextManager, Cloneable {
     public void setListContext(List<IContext> listContext) {
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.talend.core.model.process.IContextManager#checkValidContextName(java.lang.String)
-     */
-    public boolean checkValidParameterName(String contextName) {
-        return false;
-    }
-
     public IContext getContext(String name) {
         return null;
     }
@@ -106,6 +100,11 @@ public class EmptyContextManager implements IContextManager, Cloneable {
     }
 
     public boolean sameAs(IContextManager contextManager) {
+        return false;
+    }
+
+    public boolean checkValidParameterName(String oldParameterName, String newParameterName) {
+        // TODO Auto-generated method stub
         return false;
     }
 }

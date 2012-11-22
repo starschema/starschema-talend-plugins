@@ -3,6 +3,8 @@
 <mapping>
 	<dbms product="SAS" id="sas_id" label="Mapping SAS" default="true">
 		<dbTypes>
+		 <dbType type="CHAR" defaultLength="20" ignoreLen="false" ignorePre="true"/> 
+ 		 <dbType type="NUM" defaultLength="20" defaultPrecision="10" ignoreLen="false" ignorePre="false"/> 
 		</dbTypes>
 		<language name="java">
 			<talendToDbTypes><!-- Adviced mappings  -->
@@ -19,7 +21,9 @@
 				</talendType>
 				<talendType type="id_BigDecimal">
 				</talendType>
-				<talendType type="id_Double" />
+				<talendType type="id_Double"> 
+ 		            <dbType type="NUM" default="true"/> 
+ 		        </talendType>
 				<talendType type="id_Float">
 				</talendType>
 				<talendType type="id_Integer">
@@ -30,9 +34,17 @@
 				<talendType type="id_Short">
 				</talendType>
 				<talendType type="id_String">
+				<dbType type="CHAR" default="true"/> 
 				</talendType>
 			</talendToDbTypes>
 			<dbToTalendTypes>
+			<dbType type="CHAR"> 
+ 		       <talendType type="id_String" default="true" /> 
+ 		        <talendType type="id_Character" /> 
+ 		       </dbType> 
+ 		     <dbType type="NUM"> 
+ 	              <talendType type="id_Double" default="true" /> 
+ 		     </dbType> 
 			</dbToTalendTypes>
 		</language>
 	</dbms>

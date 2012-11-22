@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -59,6 +59,13 @@ public abstract class AbstractContextTabEditComposite extends Composite {
     }
 
     public abstract IContextModelManager getContextModelManager();
+
+    /**
+     * Added by Marvin Wang on Mar.19, 2012 for verifying the current status.
+     * 
+     * @return
+     */
+    public abstract boolean isGroupBySource();
 
     public abstract TreeViewer getViewer();
 

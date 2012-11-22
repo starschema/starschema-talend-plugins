@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -71,7 +71,7 @@ public class AddRepositoryContextVariablesCommand extends Command {
                 // existed.
                 if (!paramExisted.isBuiltIn() && contextItem.getProperty().getId().equals(paramExisted.getSource())) {
                     // update the parameter.
-                    modelManager.onContextRemoveParameter(manager, defaultContextParamType.getName());
+                    modelManager.onContextRemoveParameter(manager, defaultContextParamType.getName(), paramExisted.getSource());
                     helper.addContextParameterType(defaultContextParamType);
 
                 }

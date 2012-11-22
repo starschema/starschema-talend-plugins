@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -18,8 +18,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.wizard.IWizard;
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
@@ -50,7 +52,7 @@ import org.talend.repository.model.RepositoryConstants;
 /**
  * Page for new project details. <br/>
  * 
- * $Id: NewProjectWizardPage.java 59308 2011-04-27 04:59:46Z nrousseau $
+ * $Id: NewProjectWizardPage.java 79567 2012-03-09 09:29:22Z fwang $
  * 
  */
 public class NewProjectWizardPage extends WizardPage {
@@ -86,7 +88,7 @@ public class NewProjectWizardPage extends WizardPage {
     public NewProjectWizardPage() {
         super("WizardPage"); //$NON-NLS-1$
 
-        setTitle(Messages.getString("NewProjectWizardPage.title")); //$NON-NLS-1$
+        setTitle(Messages.getString("NewProjectWizardPage.title2")); //$NON-NLS-1$
         setDescription(Messages.getString("NewProjectWizardPage.description")); //$NON-NLS-1$
         initKeyWords();
 
@@ -145,7 +147,7 @@ public class NewProjectWizardPage extends WizardPage {
         languageJavaRadio.setSelection(true);
 
         languagePerlRadio = new Button(radioContainer, SWT.RADIO);
-        languagePerlRadio.setText(ECodeLanguage.PERL.getName() + " (deprecated)");
+        languagePerlRadio.setText(ECodeLanguage.PERL.getName() + " (deprecated)"); //$NON-NLS-1$
 
         IBrandingService brandingService = (IBrandingService) GlobalServiceRegister.getDefault().getService(
                 IBrandingService.class);
@@ -172,7 +174,27 @@ public class NewProjectWizardPage extends WizardPage {
 
         setControl(container);
         addListeners();
-        setPageComplete(false);
+        init();
+    }
+
+    private void init() {
+        String defaultProjectName = getDefaultProjectName();
+        nameText.setText(defaultProjectName);
+        if ("".equals(defaultProjectName)) { //$NON-NLS-1$
+            setPageComplete(false);
+        } else {
+            setPageComplete(true);
+        }
+    }
+
+    private String getDefaultProjectName() {
+        IWizard wizard = this.getWizard();
+        if (wizard != null && wizard instanceof NewProjectWizard) {
+            NewProjectWizard projectWizard = (NewProjectWizard) wizard;
+            return StringUtils.trimToEmpty(projectWizard.getDefaultProjectName());
+        }
+
+        return ""; //$NON-NLS-1$
     }
 
     Project[] projects;
@@ -236,6 +258,8 @@ public class NewProjectWizardPage extends WizardPage {
     protected void checkFieldsValue() {
         // Field Name
         if (nameText.getText().length() == 0) {
+            // for bug TDI-6993
+            technicalNameText.setText("");
             nameStatus = new Status(IStatus.ERROR, RepositoryPlugin.PLUGIN_ID, IStatus.OK,
                     Messages.getString("NewProjectWizardPage.nameEmpty"), null); //$NON-NLS-1$
         } else {

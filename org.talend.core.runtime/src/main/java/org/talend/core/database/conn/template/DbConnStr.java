@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -40,6 +40,9 @@ class DbConnStr {
     protected String defaultPort;
 
     protected String additionProperty;
+
+    // for hbase only need server name and port can create a connection
+    protected String server;
 
     protected EDatabaseVersion4Drivers[] dbVersions;
 
@@ -134,7 +137,7 @@ class DbConnStr {
             }
 
         } catch (MalformedPatternException e) {
-            // 
+            //
         }
 
         StringBuffer sb = new StringBuffer();

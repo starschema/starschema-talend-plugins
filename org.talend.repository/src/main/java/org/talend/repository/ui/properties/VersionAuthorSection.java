@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2011 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2012 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -33,7 +33,7 @@ import org.talend.repository.model.RepositoryNode;
 /**
  * DOC mhelleboid class global comment. Detailled comment <br/>
  * 
- * $Id: VersionAuthorSection.java 58590 2011-04-15 06:30:53Z nrousseau $
+ * $Id: VersionAuthorSection.java 77219 2012-01-24 01:14:15Z mhirt $
  * 
  */
 public class VersionAuthorSection extends AbstractSection {
